@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      color: #333;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ── 로딩 ── */
+    .loading {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; font-size: 16px; color: #666;
+    }
+    .loading.hidden { display: none; }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid #ddd;
+      border-top-color: #2F5496; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin-right: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── 헤더 ── */
+    .header {
+      background: #2F5496; color: #fff; padding: 14px 16px;
+      display: flex; align-items: center; position: sticky; top: 0; z-index: 100;
+    }
+    .header-back {
+      background: none; border: none; color: #fff; font-size: 20px;
+      cursor: pointer; margin-right: 12px; padding: 4px 8px; display: none;
+    }
+    .header-title { font-size: 16px; font-weight: 600; flex: 1; }
+    .header-info { font-size: 13px; opacity: 0.9; }
+    .header-btn {
+      background: rgba(255,255,255,0.2); border: none; color: #fff;
+      padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer;
+      margin-left: 8px;
+    }
+
+    /* ── 비밀번호 화면 ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    #loginScreen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; background: #2F5496;
+    }
+    .login-box {
+      background: #fff; border-radius: 16px; padding: 40px 32px;
+      width: 90%; max-width: 360px; text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .login-box h1 { font-size: 18px; color: #2F5496; margin-bottom: 4px; }
+    .login-box p { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .login-input {
+      width: 100%; padding: 14px; border: 2px solid #ddd; border-radius: 10px;
+      font-size: 16px; text-align: center; outline: none;
+      -webkit-appearance: none;
+    }
+    .login-input:focus { border-color: #2F5496; }
+    .login-btn {
+      width: 100%; padding: 14px; background: #2F5496; color: #fff;
+      border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
+      cursor: pointer; margin-top: 12px;
+    }
+    .login-btn:active { background: #1e3a6e; }
+    .login-error { color: #e74c3c; font-size: 13px; margin-top: 8px; }
+
+    /* ── 메인 화면 (동 선택) ── */
+    .summary-bar {
+      background: #fff; padding: 16px; margin: 12px; border-radius: 12px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .summary-bar .label { font-size: 13px; color: #888; margin-bottom: 6px; }
+    .summary-bar .numbers { font-size: 22px; font-weight: 700; color: #2F5496; }
+    .summary-bar .numbers span { font-size: 14px; color: #888; font-weight: 400; }
+    .progress-bar {
+      height: 8px; background: #e9ecef; border-radius: 4px;
+      margin-top: 8px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: #2F5496; border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+
+    .building-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; padding: 0 12px 24px;
+    }
+    .building-card {
+      background: #fff; border-radius: 12px; padding: 16px 12px;
+      text-align: center; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      transition: transform 0.1s;
+    }
+    .building-card:active { transform: scale(0.97); }
+    .building-card .name { font-size: 15px; font-weight: 600; color: #333; }
+    .building-card .count {
+      font-size: 13px; color: #2F5496; font-weight: 600; margin-top: 4px;
+    }
+    .building-card .rate { font-size: 11px; color: #888; margin-top: 2px; }
+    .building-card .mini-bar {
+      height: 4px; background: #e9ecef; border-radius: 2px;
+      margin-top: 8px; overflow: hidden;
+    }
+    .building-card .mini-fill {
+      height: 100%; background: #2F5496; border-radius: 2px;
+    }
+
+    /* ── 동별 그리드 ── */
+    .grid-wrapper {
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      padding: 12px;
+    }
+    .grid-table {
+      border-collapse: collapse; width: max-content; min-width: 100%;
+    }
+    .grid-table th, .grid-table td {
+      border: 1px solid #d0d0d0; text-align: center; font-size: 12px;
+    }
+    .grid-table th {
+      background: #2F5496; color: #fff; font-weight: 600;
+      padding: 8px 4px; position: sticky; top: 0; z-index: 10;
+    }
+    .grid-table .floor-label {
+      background: #e8edf5; font-weight: 600; color: #333;
+      padding: 10px 6px; position: sticky; left: 0; z-index: 5;
+      min-width: 48px;
+    }
+    .grid-table .floor-label-header {
+      background: #2F5496; color: #fff; position: sticky;
+      left: 0; z-index: 15; min-width: 48px;
+    }
+    .grid-table .cell {
+      min-width: 56px; height: 44px; padding: 4px 2px;
+      cursor: pointer; transition: background 0.15s;
+      max-width: 72px; overflow: hidden; text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .grid-table .cell:active { background: #e3eaf5; }
+    .grid-table .cell.empty { background: #f8f8f8; color: #ccc; }
+    .grid-table .cell.online { color: #0000FF; font-weight: 600; background: #f0f4ff; }
+    .grid-table .cell.manual { color: #000; font-weight: 600; background: #f0fff0; }
+
+    .grid-table .stats-col {
+      background: #f5f5f5; font-size: 11px; color: #666;
+      padding: 4px 6px; min-width: 44px;
+    }
+
+    .grid-footer {
+      background: #fff; padding: 12px 16px; margin: 0 12px 24px;
+      border-radius: 10px; display: flex; justify-content: space-between;
+      font-size: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .grid-footer strong { color: #2F5496; }
+
+    /* ── 모달 ── */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 200; display: none;
+      align-items: flex-end; justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #fff; width: 100%; max-width: 480px;
+      border-radius: 20px 20px 0 0; padding: 24px 20px 32px;
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #333; }
+    .modal-label { font-size: 13px; color: #888; margin-bottom: 6px; }
+    .modal-input {
+      width: 100%; padding: 14px; border: 2px solid #ddd; border-radius: 10px;
+      font-size: 16px; outline: none; margin-bottom: 12px;
+      -webkit-appearance: none;
+    }
+    .modal-input:focus { border-color: #2F5496; }
+    .modal-info { font-size: 12px; color: #888; margin-bottom: 16px; line-height: 1.6; }
+    .modal-actions { display: flex; gap: 10px; }
+    .modal-btn {
+      flex: 1; padding: 14px; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+    .modal-btn.primary { background: #2F5496; color: #fff; }
+    .modal-btn.primary:active { background: #1e3a6e; }
+    .modal-btn.cancel { background: #e9ecef; color: #333; }
+    .modal-btn.danger { background: #e74c3c; color: #fff; flex: 0.6; }
+    .modal-btn.danger:active { background: #c0392b; }
+
+    /* ── 대시보드 ── */
+    .dash-table {
+      width: 100%; border-collapse: collapse; margin: 12px 0;
+      background: #fff; border-radius: 10px; overflow: hidden;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .dash-table th {
+      background: #2F5496; color: #fff; padding: 10px 8px;
+      font-size: 13px; font-weight: 600;
+    }
+    .dash-table td {
+      padding: 10px 8px; font-size: 13px; text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    .dash-table tr:last-child td { border-bottom: none; }
+    .dash-stat {
+      display: flex; gap: 12px; margin: 12px 0;
+    }
+    .dash-stat-card {
+      flex: 1; background: #fff; border-radius: 10px; padding: 16px;
+      text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .dash-stat-card .num { font-size: 24px; font-weight: 700; color: #2F5496; }
+    .dash-stat-card .label { font-size: 12px; color: #888; margin-top: 4px; }
+  </style>
+</head>
+<body>
+
+<!-- 로딩 -->
+<div class="loading" id="loading">
+  <div class="spinner"></div> 로딩 중...
+</div>
+
+<!-- 로그인 -->
+<div class="screen active" id="loginScreen">
+  <div class="login-box">
+    <h1>상계주공 9단지</h1>
+    <p>사전동의 관리 시스템</p>
+    <input type="password" class="login-input" id="passwordInput"
+           placeholder="비밀번호 입력" inputmode="numeric">
+    <button class="login-btn" onclick="doLogin()">입장</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- 메인 (동 선택) -->
+<div class="screen" id="mainScreen">
+  <div class="header">
+    <div class="header-title">상계주공 9단지</div>
+    <button class="header-btn" onclick="showDashboard()">현황</button>
+  </div>
+  <div class="summary-bar" id="mainSummary"></div>
+  <div class="building-grid" id="buildingGrid"></div>
+</div>
+
+<!-- 동별 그리드 -->
+<div class="screen" id="gridScreen">
+  <div class="header">
+    <button class="header-back" id="gridBack" onclick="showMain()" style="display:block">←</button>
+    <div class="header-title" id="gridTitle">912동</div>
+    <div class="header-info" id="gridInfo">16/120</div>
+  </div>
+  <div class="grid-wrapper" id="gridWrapper"></div>
+  <div class="grid-footer" id="gridFooter"></div>
+</div>
+
+<!-- 대시보드 -->
+<div class="screen" id="dashScreen">
+  <div class="header">
+    <button class="header-back" onclick="showMain()" style="display:block">←</button>
+    <div class="header-title">전체 현황</div>
+  </div>
+  <div style="padding: 12px;" id="dashContent"></div>
+</div>
+
+<!-- 모달 -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">912동 1304호</div>
+    <div class="modal-label">성명</div>
+    <input type="text" class="modal-input" id="modalName" placeholder="이름 입력">
+    <div class="modal-info" id="modalInfo"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script>
+// ── 상태 ──
+var currentBuilding = null;
+var currentBuildingData = null;
+var currentUnit = null;
+var dashboardCache = null;
+
+// ── 로딩 ──
+function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
+function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
+
+// ── 화면 전환 ──
+function showScreen(id) {
+  var screens = document.querySelectorAll('.screen');
+  for (var i = 0; i < screens.length; i++) {
+    screens[i].classList.remove('active');
+  }
+  document.getElementById(id).classList.add('active');
+}
+
+// ── 로그인 ──
+function doLogin() {
+  var pw = document.getElementById('passwordInput').value;
+  if (!pw) return;
+
+  document.getElementById('loginError').textContent = '';
+  showLoading();
+
+  google.script.run
+    .withSuccessHandler(function(ok) {
+      hideLoading();
+      if (ok) {
+        sessionStorage.setItem('auth', '1');
+        loadMain();
+      } else {
+        document.getElementById('loginError').textContent = '비밀번호가 올바르지 않습니다.';
+      }
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      document.getElementById('loginError').textContent = '오류: ' + err.message;
+    })
+    .verifyPassword(pw);
+}
+
+// 엔터키
+document.getElementById('passwordInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ── 메인 화면 ──
+function loadMain() {
+  showScreen('mainScreen');
+  showLoading();
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      dashboardCache = data;
+      renderMain(data);
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      alert('데이터 로딩 실패: ' + err.message);
+    })
+    .getDashboardData();
+}
+
+function renderMain(data) {
+  // 요약바
+  var summary = document.getElementById('mainSummary');
+  summary.innerHTML =
+    '<div class="label">전체 동의 현황</div>' +
+    '<div class="numbers">' + data.totalConsent + ' <span>/ ' + data.totalUnits + '세대 (' + data.totalRate + '%)</span></div>' +
+    '<div class="progress-bar"><div class="progress-fill" style="width:' + data.totalRate + '%"></div></div>';
+
+  // 동 카드
+  var grid = document.getElementById('buildingGrid');
+  var html = '';
+  for (var i = 0; i < data.buildings.length; i++) {
+    var b = data.buildings[i];
+    html +=
+      '<div class="building-card" onclick="loadBuilding(\'' + b.building + '\')">' +
+        '<div class="name">' + b.building + '</div>' +
+        '<div class="count">' + b.consent + '/' + b.total + '</div>' +
+        '<div class="rate">' + b.rate + '%</div>' +
+        '<div class="mini-bar"><div class="mini-fill" style="width:' + b.rate + '%"></div></div>' +
+      '</div>';
+  }
+  grid.innerHTML = html;
+}
+
+function showMain() {
+  if (dashboardCache) {
+    showScreen('mainScreen');
+  } else {
+    loadMain();
+  }
+}
+
+// ── 동별 그리드 ──
+function loadBuilding(building) {
+  currentBuilding = building;
+  showScreen('gridScreen');
+  document.getElementById('gridTitle').textContent = building;
+  showLoading();
+
+  google.script.run
+    .withSuccessHandler(function(data) {
+      hideLoading();
+      currentBuildingData = data;
+      renderGrid(data);
+    })
+    .withFailureHandler(function(err) {
+      hideLoading();
+      alert('데이터 로딩 실패: ' + err.message);
+    })
+    .getBuildingData(building);
+}
+
+function renderGrid(data) {
+  document.getElementById('gridInfo').textContent = data.consentCount + '/' + data.totalUnits;
+
+  var floors = data.floors;
+  var units = data.units;
+  var grid = data.grid;
+
+  var html = '<table class="grid-table"><thead><tr>';
+  html += '<th class="floor-label-header">층\\호</th>';
+  for (var u = 0; u < units.length; u++) {
+    html += '<th>' + (units[u] < 10 ? '0' + units[u] : units[u]) + '</th>';
+  }
+  html += '<th>동의</th>';
+  html += '</tr></thead><tbody>';
+
+  for (var f = floors; f >= 1; f--) {
+    html += '<tr>';
+    html += '<td class="floor-label">' + f + '층</td>';
+    var floorCount = 0;
+
+    for (var ui = 0; ui < units.length; ui++) {
+      var unitNum = String(f * 100 + units[ui]);
+      var info = grid[unitNum];
+
+      if (info) {
+        var cls = (info.source === '온라인') ? 'online' : 'manual';
+        var displayName = info.name.length > 3 ? info.name.substring(0, 3) + '..' : info.name;
+        html += '<td class="cell ' + cls + '" onclick="openModal(\'' + unitNum + '\')" title="' + info.name + '">' + displayName + '</td>';
+        floorCount++;
+      } else {
+        html += '<td class="cell empty" onclick="openModal(\'' + unitNum + '\')">·</td>';
+      }
+    }
+
+    html += '<td class="stats-col">' + floorCount + '</td>';
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+  document.getElementById('gridWrapper').innerHTML = html;
+
+  var rate = data.totalUnits > 0 ? (data.consentCount / data.totalUnits * 100).toFixed(1) : 0;
+  document.getElementById('gridFooter').innerHTML =
+    '<span>소계: <strong>' + data.consentCount + '/' + data.totalUnits + '</strong></span>' +
+    '<span>동의율: <strong>' + rate + '%</strong></span>';
+}
+
+// ── 모달 ──
+function openModal(unitNum) {
+  currentUnit = unitNum;
+  var info = currentBuildingData.grid[unitNum];
+  var floor = Math.floor(parseInt(unitNum) / 100);
+  var pos = parseInt(unitNum) % 100;
+  var posStr = pos < 10 ? '0' + pos : String(pos);
+
+  document.getElementById('modalTitle').textContent =
+    currentBuilding + ' ' + floor + '층 ' + posStr + '호';
+
+  var nameInput = document.getElementById('modalName');
+  var modalInfo = document.getElementById('modalInfo');
+  var actions = document.getElementById('modalActions');
+
+  if (info) {
+    // 기존 데이터 있음 → 수정/삭제
+    nameInput.value = info.name;
+    var sourceLabel = info.source === '온라인' ? '전자동의' : '수동입력';
+    modalInfo.innerHTML = '입력경로: ' + sourceLabel + '<br>등록일: ' + (info.timestamp || '-');
+    actions.innerHTML =
+      '<button class="modal-btn danger" onclick="doDelete()">삭제</button>' +
+      '<button class="modal-btn cancel" onclick="closeModal()">취소</button>' +
+      '<button class="modal-btn primary" onclick="doSave()">저장</button>';
+  } else {
+    // 빈 셀 → 새 입력
+    nameInput.value = '';
+    modalInfo.innerHTML = '';
+    actions.innerHTML =
+      '<button class="modal-btn cancel" onclick="closeModal()">취소</button>' +
+      '<button class="modal-btn primary" onclick="doSave()">저장</button>';
+  }
+
+  document.getElementById('modal').classList.add('active');
+  setTimeout(function() { nameInput.focus(); }, 300);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+  currentUnit = null;
+}
+
+// 모달 바깥 터치로 닫기
+document.getElementById('modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+function doSave() {
+  var name = document.getElementById('modalName').value.trim();
+  if (!name) { alert('이름을 입력해주세요.'); return; }
+
+  var info = currentBuildingData.grid[currentUnit];
+  closeModal();
+  showLoading();
+
+  if (info) {
+    // 수정
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        if (result.success) {
+          dashboardCache = null;
+          loadBuilding(currentBuilding);
+        } else {
+          alert('수정 실패: ' + (result.error || ''));
+        }
+      })
+      .withFailureHandler(function(err) { hideLoading(); alert('오류: ' + err.message); })
+      .updateConsent(currentBuilding, currentUnit, name);
+  } else {
+    // 추가
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        if (result.success) {
+          dashboardCache = null;
+          loadBuilding(currentBuilding);
+        } else {
+          alert('추가 실패: ' + (result.error || ''));
+        }
+      })
+      .withFailureHandler(function(err) { hideLoading(); alert('오류: ' + err.message); })
+      .addConsent(currentBuilding, currentUnit, name);
+  }
+}
+
+function doDelete() {
+  if (!confirm('삭제하시겠습니까?')) return;
+
+  closeModal();
+  showLoading();
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.success) {
+        dashboardCache = null;
+        loadBuilding(currentBuilding);
+      } else {
+        alert('삭제 실패: ' + (result.error || ''));
+      }
+    })
+    .withFailureHandler(function(err) { hideLoading(); alert('오류: ' + err.message); })
+    .deleteConsent(currentBuilding, currentUnit);
+}
+
+// ── 대시보드 ──
+function showDashboard() {
+  showScreen('dashScreen');
+
+  var data = dashboardCache;
+  if (!data) { loadMain(); return; }
+
+  var html = '';
+
+  // 전체 요약
+  html += '<div class="summary-bar">';
+  html += '<div class="label">전체 동의 현황</div>';
+  html += '<div class="numbers">' + data.totalConsent + ' <span>/ ' + data.totalUnits + '세대 (' + data.totalRate + '%)</span></div>';
+  html += '<div class="progress-bar"><div class="progress-fill" style="width:' + data.totalRate + '%"></div></div>';
+  html += '</div>';
+
+  // 통계 카드
+  html += '<div class="dash-stat">';
+  html += '<div class="dash-stat-card"><div class="num">' + data.online + '</div><div class="label">전자동의</div></div>';
+  html += '<div class="dash-stat-card"><div class="num">' + data.manual + '</div><div class="label">수동입력</div></div>';
+  html += '<div class="dash-stat-card"><div class="num">' + data.totalRate + '%</div><div class="label">동의율</div></div>';
+  html += '</div>';
+
+  // 동별 테이블
+  html += '<table class="dash-table"><thead><tr><th>동</th><th>동의</th><th>세대</th><th>비율</th></tr></thead><tbody>';
+  for (var i = 0; i < data.buildings.length; i++) {
+    var b = data.buildings[i];
+    html += '<tr><td>' + b.building + '</td><td><strong>' + b.consent + '</strong></td><td>' + b.total + '</td><td>' + b.rate + '%</td></tr>';
+  }
+  html += '</tbody></table>';
+
+  document.getElementById('dashContent').innerHTML = html;
+}
+
+// ── 초기화 ──
+hideLoading();
+if (sessionStorage.getItem('auth') === '1') {
+  loadMain();
+}
+</script>
+</body>
+</html>

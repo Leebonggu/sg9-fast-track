@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import html2canvas from 'html2canvas-pro';
+import Link from 'next/link';
 
 type BuildingInfo = {
   building: string;
@@ -49,6 +51,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<{ unit: string; info: GridInfo | null } | null>(null);
   const [modalName, setModalName] = useState('');
+  const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && sessionStorage.getItem('auth') === '1') {
@@ -179,6 +182,46 @@ export default function Home() {
     }
   }
 
+  function downloadCSV() {
+    if (!buildingData) return;
+    const { building, grid } = buildingData;
+    const BOM = '\uFEFF';
+    const header = '호수,성명,연락처,입력경로,등록일,수거여부';
+    const rows = Object.entries(grid)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([unit, info]) =>
+        [unit, info.name, info.phone, info.source, info.timestamp, info.collected ? '완료' : '미수거']
+          .map(v => `"${String(v).replace(/"/g, '""')}"`)
+          .join(',')
+      );
+    const csv = BOM + [header, ...rows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${building}_사전동의_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function captureGrid() {
+    if (!gridRef.current || !buildingData) return;
+    const el = gridRef.current;
+    const originalOverflow = el.style.overflow;
+    const originalWidth = el.style.width;
+    el.style.overflow = 'visible';
+    el.style.width = `${el.scrollWidth}px`;
+    try {
+      const canvas = await html2canvas(el, { scale: 2, useCORS: true });
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = `${buildingData.building}_그리드_${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+    } finally {
+      el.style.overflow = originalOverflow;
+      el.style.width = originalWidth;
+    }
+  }
+
   // ── 로그인 화면 ──
   if (!authed) {
     return (
@@ -201,6 +244,7 @@ export default function Home() {
             입장
           </button>
           {loginError && <p className="text-red-500 text-sm mt-2">{loginError}</p>}
+          <Link href="/guide" className="inline-block mt-5 text-sm text-gray-400 underline underline-offset-2">사용 가이드 보기</Link>
         </div>
       </div>
     );
@@ -221,6 +265,7 @@ export default function Home() {
         {loadingOverlay}
         <header className="bg-[#2F5496] text-white p-3.5 flex items-center sticky top-0 z-40">
           <span className="font-semibold flex-1">상계주공 9단지</span>
+          <Link href="/guide" className="bg-white/20 px-3 py-1.5 rounded-lg text-sm mr-2">가이드</Link>
           <button onClick={() => { setScreen('dashboard'); window.history.pushState({ screen: 'dashboard' }, '', '/?v=dashboard'); }} className="bg-white/20 px-3 py-1.5 rounded-lg text-sm">현황</button>
         </header>
 
@@ -276,12 +321,39 @@ export default function Home() {
       <div className="min-h-screen bg-gray-50">
         {loadingOverlay}
         <header className="bg-[#2F5496] text-white p-3.5 flex items-center sticky top-0 z-40">
-          <button onClick={() => { window.history.back(); }} className="mr-3 text-xl">←</button>
+          <button onClick={() => loadDashboard()} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/20 active:bg-white/30 mr-2 text-lg">←</button>
           <span className="font-semibold flex-1">{building}</span>
           <span className="text-xs opacity-90">접수 {receivedCount} | 수거 {collectedCount} / {totalUnits}</span>
         </header>
 
-        <div className="overflow-x-auto p-3">
+        <div className="sticky top-[52px] z-30 bg-gray-50 px-3 pt-2 pb-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-xs">
+                <span className="w-3 h-3 rounded-sm bg-green-600 inline-block" />
+                <span className="text-gray-600">수거완료</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs">
+                <span className="w-3 h-3 rounded-sm bg-blue-50 border border-blue-200 inline-block" />
+                <span className="text-gray-600">온라인 접수</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs">
+                <span className="w-3 h-3 rounded-sm bg-amber-50 border border-amber-200 inline-block" />
+                <span className="text-gray-600">수동 입력</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs">
+                <span className="w-3 h-3 rounded-sm bg-gray-50 border border-gray-300 inline-block" />
+                <span className="text-gray-600">미접수</span>
+              </span>
+            </div>
+            <div className="flex gap-1.5">
+              <button onClick={downloadCSV} className="px-2.5 py-1 bg-white border border-gray-300 rounded-lg text-xs text-gray-600 active:bg-gray-100">CSV</button>
+              <button onClick={captureGrid} className="px-2.5 py-1 bg-white border border-gray-300 rounded-lg text-xs text-gray-600 active:bg-gray-100">IMG</button>
+            </div>
+          </div>
+        </div>
+
+        <div ref={gridRef} className="overflow-x-auto p-3">
           <table className="border-collapse w-max min-w-full">
             <thead>
               <tr>
@@ -322,7 +394,7 @@ export default function Home() {
                           className={`text-center text-xs p-1 border border-gray-300 cursor-pointer active:bg-blue-100 h-[44px] ${
                             info
                               ? info.collected
-                                ? 'text-white font-semibold bg-[#2F5496]'
+                                ? 'text-white font-semibold bg-green-600'
                                 : info.source === '온라인'
                                   ? 'text-blue-600 font-semibold bg-blue-50'
                                   : 'text-black font-semibold bg-amber-50'
@@ -420,7 +492,7 @@ export default function Home() {
       <div className="min-h-screen bg-gray-50">
         {loadingOverlay}
         <header className="bg-[#2F5496] text-white p-3.5 flex items-center sticky top-0 z-40">
-          <button onClick={() => window.history.back()} className="mr-3 text-xl">←</button>
+          <button onClick={() => loadDashboard()} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/20 active:bg-white/30 mr-2 text-lg">←</button>
           <span className="font-semibold">전체 현황</span>
         </header>
 

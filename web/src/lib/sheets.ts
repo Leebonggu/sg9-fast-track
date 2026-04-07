@@ -159,13 +159,15 @@ export async function getBuildingData(building: string) {
   };
 }
 
-export async function addConsent(building: string, unit: string, name: string) {
+export async function addConsent(building: string, unit: string, name: string, collected = false) {
   const doc = await getDoc();
   const sheet = doc.sheetsByTitle[building];
   if (!sheet) throw new Error('시트 없음: ' + building);
 
+  const now = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+
   await sheet.addRow({
-    '타임스탬프': new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
+    '타임스탬프': now,
     '성명': name,
     '연락처': '',
     '호수': unit,
@@ -173,8 +175,8 @@ export async function addConsent(building: string, unit: string, name: string) {
     '사전동의여부': '신속통합기획 추진 검토에 동의합니다.',
     '개인정보동의여부': '개인정보 수집 및 이용에 동의합니다.',
     '입력경로': '수동입력(웹)',
-    '동의서수거여부': 'FALSE',
-    '수거일': '',
+    '동의서수거여부': collected ? 'TRUE' : 'FALSE',
+    '수거일': collected ? now.split(' ')[0] : '',
     '수거자': '',
     '비고': '',
   });

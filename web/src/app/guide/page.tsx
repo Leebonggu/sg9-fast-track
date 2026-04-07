@@ -87,7 +87,8 @@ export default function GuidePage() {
           <Step num={1} text="메인 화면에서 등록할 동 카드를 터치합니다." />
           <Step num={2} text="그리드에서 빈 셀(회색, · 표시)을 터치합니다." />
           <Step num={3} text="하단에 뜨는 창에서 이름을 입력합니다." />
-          <Step num={4} text="저장 버튼을 누르면 등록 완료됩니다." />
+          <Step num={4} text="동의서를 이미 수거한 경우, '동의서를 수거하였습니까?' 체크박스를 선택합니다." />
+          <Step num={5} text="저장 버튼을 누르면 등록 완료됩니다." />
           <div className="mt-3 bg-blue-50 rounded-lg p-2.5">
             <p className="text-xs text-blue-700">입력경로가 "수동입력(웹)"으로 자동 기록됩니다.</p>
           </div>

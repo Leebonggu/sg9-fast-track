@@ -51,6 +51,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<{ unit: string; info: GridInfo | null } | null>(null);
   const [modalName, setModalName] = useState('');
+  const [modalCollected, setModalCollected] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -132,6 +133,7 @@ export default function Home() {
     if (excluded.includes(unitNum)) return;
     const info = buildingData.grid[unitNum] || null;
     setModalName(info?.name || '');
+    setModalCollected(false);
     setModal({ unit: unitNum, info });
   }
 
@@ -152,7 +154,7 @@ export default function Home() {
         await fetch('/api/consent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim() }),
+          body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim(), collected: modalCollected }),
         });
       }
       setModal(null);
@@ -443,6 +445,17 @@ export default function Home() {
                 onChange={(e) => setModalName(e.target.value)}
                 autoFocus
               />
+              {!modal.info && (
+                <label className="flex items-center gap-2.5 mb-4 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={modalCollected}
+                    onChange={(e) => setModalCollected(e.target.checked)}
+                    className="w-5 h-5 accent-green-600 rounded"
+                  />
+                  <span className="text-sm text-gray-600">동의서를 수거하였습니까?</span>
+                </label>
+              )}
               {modal.info && (
                 <div className="mb-4">
                   <p className="text-xs text-gray-400 mb-3">

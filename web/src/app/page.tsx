@@ -399,14 +399,14 @@ export default function Home() {
           <table className="border-collapse w-max min-w-full">
             <thead>
               <tr>
-                <th className="bg-[#2F5496] text-white text-xs p-2 sticky left-0 top-0 z-20 min-w-[48px]">층\호</th>
+                <th className="bg-[#2F5496] text-white text-xs p-2 sticky left-0 z-10 min-w-[48px]">층\호</th>
                 {units.map((u) => (
-                  <th key={u} className="bg-[#2F5496] text-white text-xs p-2 sticky top-0 z-[9] min-w-[56px]">
+                  <th key={u} className="bg-[#2F5496] text-white text-xs p-2 min-w-[56px]">
                     {u < 10 ? `0${u}` : u}
                   </th>
                 ))}
-                <th className="bg-[#2F5496] text-white text-xs p-1.5 sticky top-0 z-[9] min-w-[32px]">접수</th>
-                <th className="bg-green-700 text-white text-xs p-1.5 sticky top-0 z-[9] min-w-[32px]">수거</th>
+                <th className="bg-[#2F5496] text-white text-xs p-1.5 min-w-[32px]">접수</th>
+                <th className="bg-green-700 text-white text-xs p-1.5 min-w-[32px]">수거</th>
               </tr>
             </thead>
             <tbody>
@@ -445,7 +445,7 @@ export default function Home() {
                               : 'text-gray-300 bg-gray-50 border border-gray-300'
                           }`}
                         >
-                          {info ? info.name : '·'}
+                          {info ? info.name : unitNum}
                         </td>
                       );
                     })}

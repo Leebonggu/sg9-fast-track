@@ -157,6 +157,7 @@ export default function GuidePage() {
             <Step num={2} text="하단의 공유 버튼 (↑ 모양)을 터치합니다." />
             <Step num={3} text='"홈 화면에 추가"를 선택합니다.' />
             <Step num={4} text='"추가"를 누르면 홈 화면에 아이콘이 생깁니다.' />
+            <p className="text-[11px] text-red-500 mt-1 ml-7">* iPhone은 Safari에서만 가능합니다. Chrome에서는 홈 화면 추가가 지원되지 않습니다.</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3">
             <p className="text-xs font-semibold text-gray-700 mb-2">Android (Chrome)</p>

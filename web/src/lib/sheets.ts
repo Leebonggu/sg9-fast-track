@@ -180,7 +180,7 @@ export async function addConsent(building: string, unit: string, name: string, c
     '성명': name,
     '연락처': '',
     '호수': unit,
-    '주민등록상주소': '',
+    '주민등록상주소': `노원구 노원로 532, ${building} ${unit}호`,
     '사전동의여부': '신속통합기획 추진 검토에 동의합니다.',
     '개인정보동의여부': '개인정보 수집 및 이용에 동의합니다.',
     '입력경로': '수동입력(웹)',

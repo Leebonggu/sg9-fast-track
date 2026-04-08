@@ -45,6 +45,12 @@ type BuildingData = {
   grid: Record<string, GridInfo>;
 };
 
+const BUILDINGS = [
+  '901동','902동','903동','904동','905동','906동','907동','908동','909동','910동',
+  '911동','912동','913동','914동','915동','916동','917동','918동','919동','920동',
+  '921동','922동','923동',
+];
+
 export default function Home() {
   const [authed, setAuthed] = useState(false);
   const [password, setPassword] = useState('');
@@ -333,6 +339,21 @@ export default function Home() {
         </header>
 
         <div className="sticky top-[52px] z-30 bg-gray-50 px-3 pt-2 pb-2 space-y-1.5">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+            {BUILDINGS.map((b) => (
+              <button
+                key={b}
+                onClick={() => loadBuilding(b)}
+                className={`flex-shrink-0 px-2.5 py-1.5 rounded-lg text-xs font-medium ${
+                  b === building
+                    ? 'bg-[#2F5496] text-white'
+                    : 'bg-white text-gray-600 border border-gray-200 active:bg-gray-100'
+                }`}
+              >
+                {b.replace('동', '')}
+              </button>
+            ))}
+          </div>
           <div className="bg-white rounded-lg px-3 py-2 shadow-sm text-sm space-y-1">
             <div className="flex justify-between">
               <span>접수: <strong className="text-[#2F5496]">{receivedCount}</strong> / {totalUnits}</span>
@@ -412,7 +433,7 @@ export default function Home() {
                         <td
                           key={u}
                           onClick={() => openModal(unitNum)}
-                          className={`text-center text-xs p-1 cursor-pointer active:bg-blue-100 h-[44px] ${
+                          className={`text-center text-[10px] leading-tight p-0.5 cursor-pointer active:bg-blue-100 h-[44px] overflow-hidden break-all ${
                             info
                               ? info.collected
                                 ? info.source === '온라인'
@@ -424,7 +445,7 @@ export default function Home() {
                               : 'text-gray-300 bg-gray-50 border border-gray-300'
                           }`}
                         >
-                          {info ? (info.name.length > 3 ? info.name.slice(0, 3) + '..' : info.name) : '·'}
+                          {info ? info.name : '·'}
                         </td>
                       );
                     })}

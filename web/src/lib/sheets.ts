@@ -118,12 +118,15 @@ export async function getBuildingData(building: string) {
 
   const doc = await getDoc();
   const sheet = doc.sheetsByTitle[building];
-  const grid: Record<string, { name: string; source: string; timestamp: string; phone: string; collected: boolean }> = {};
+  type GridEntry = { name: string; source: string; timestamp: string; phone: string; collected: boolean };
+  const grid: Record<string, GridEntry> = {};
+  const duplicates: Record<string, GridEntry[]> = {};
+  const unitCount: Record<string, number> = {};
 
   if (sheet) {
     const rows = await sheet.getRows();
 
-    // 뒤에서부터 읽어서 최신 데이터만 수집
+    // 뒤에서부터 읽어서 최신 데이터만 수집 + 중복 추적
     for (let i = rows.length - 1; i >= 0; i--) {
       const row = rows[i];
       const unit = String(row.get('호수') || '');
@@ -133,16 +136,24 @@ export async function getBuildingData(building: string) {
       if (!unit || !name) continue;
       if (note.includes('중복(이전 응답)')) continue;
       if (note.includes('삭제')) continue;
-      if (grid[unit]) continue;
 
       const collectedVal = String(row.get('동의서수거여부') || '');
-      grid[unit] = {
+      const entry: GridEntry = {
         name,
         source: String(row.get('입력경로') || ''),
         timestamp: String(row.get('타임스탬프') || ''),
         phone: String(row.get('연락처') || ''),
         collected: collectedVal === 'TRUE' || collectedVal === 'true',
       };
+
+      unitCount[unit] = (unitCount[unit] || 0) + 1;
+
+      if (!grid[unit]) {
+        grid[unit] = entry;
+      } else {
+        if (!duplicates[unit]) duplicates[unit] = [];
+        duplicates[unit].push(entry);
+      }
     }
   }
 
@@ -165,6 +176,7 @@ export async function getBuildingData(building: string) {
     onlineCollectedCount,
     manualCollectedCount,
     grid,
+    duplicates,
   };
 }
 

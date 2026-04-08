@@ -43,6 +43,7 @@ type BuildingData = {
   onlineCollectedCount: number;
   manualCollectedCount: number;
   grid: Record<string, GridInfo>;
+  duplicates: Record<string, GridInfo[]>;
 };
 
 const BUILDINGS = [
@@ -327,7 +328,7 @@ export default function Home() {
 
   // ── 동별 그리드 ──
   if (screen === 'grid' && buildingData) {
-    const { building, floors, units, excludedUnits, receivedCount, collectedCount, totalUnits, grid } = buildingData;
+    const { building, floors, units, excludedUnits, receivedCount, collectedCount, totalUnits, grid, duplicates } = buildingData;
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -445,7 +446,7 @@ export default function Home() {
                               : 'text-gray-300 bg-gray-50 border border-gray-300'
                           }`}
                         >
-                          {info ? info.name : unitNum}
+                          {info ? (<>{info.name}{duplicates[unitNum] && <span className="block text-[8px] text-red-500 leading-none">중복{duplicates[unitNum].length + 1}</span>}</>) : unitNum}
                         </td>
                       );
                     })}
@@ -520,6 +521,16 @@ export default function Home() {
                   >
                     동의서 수거: {modal.info.collected ? '완료' : '미수거'} (터치하여 변경)
                   </button>
+                </div>
+              )}
+              {duplicates[modal.unit] && (
+                <div className="mb-4 bg-red-50 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-red-600 mb-2">중복 데이터 {duplicates[modal.unit].length}건 (시트에서 정리 필요)</p>
+                  {duplicates[modal.unit].map((d, i) => (
+                    <div key={i} className="text-xs text-red-500 border-t border-red-100 pt-1.5 mt-1.5">
+                      {d.name} · {d.source === '온라인' ? '온라인접수' : '수동접수'} · {d.timestamp || '-'}
+                    </div>
+                  ))}
                 </div>
               )}
               <div className="flex gap-2.5">

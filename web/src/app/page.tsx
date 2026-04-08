@@ -38,6 +38,10 @@ type BuildingData = {
   totalUnits: number;
   receivedCount: number;
   collectedCount: number;
+  onlineCount: number;
+  manualCount: number;
+  onlineCollectedCount: number;
+  manualCollectedCount: number;
   grid: Record<string, GridInfo>;
 };
 
@@ -328,20 +332,35 @@ export default function Home() {
           <span className="text-xs opacity-90">접수 {receivedCount} | 수거 {collectedCount} / {totalUnits}</span>
         </header>
 
-        <div className="sticky top-[52px] z-30 bg-gray-50 px-3 pt-2 pb-1">
+        <div className="sticky top-[52px] z-30 bg-gray-50 px-3 pt-2 pb-2 space-y-1.5">
+          <div className="bg-white rounded-lg px-3 py-2 shadow-sm text-sm space-y-1">
+            <div className="flex justify-between">
+              <span>접수: <strong className="text-[#2F5496]">{receivedCount}</strong> / {totalUnits}</span>
+              <span>수거: <strong className="text-green-600">{collectedCount}</strong></span>
+              <span>접수율: <strong className="text-[#2F5496]">{totalUnits > 0 ? (receivedCount / totalUnits * 100).toFixed(1) : 0}%</strong></span>
+            </div>
+            <div className="flex justify-between text-xs text-gray-500 border-t border-gray-100 pt-1">
+              <span>온라인접수 <strong className="text-blue-600">{buildingData.onlineCount}</strong> · 수동접수 <strong className="text-amber-600">{buildingData.manualCount}</strong></span>
+              <span>수거: 온라인 <strong className="text-blue-600">{buildingData.onlineCollectedCount}</strong> · 수동 <strong className="text-amber-600">{buildingData.manualCollectedCount}</strong></span>
+            </div>
+          </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1 text-xs">
-                <span className="w-3 h-3 rounded-sm bg-green-600 inline-block" />
-                <span className="text-gray-600">수거완료</span>
+                <span className="w-3 h-3 rounded-sm bg-green-400 border-2 border-green-700 inline-block" />
+                <span className="text-gray-600">수거(온라인)</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-xs">
+                <span className="w-3 h-3 rounded-sm bg-green-400 border-2 border-yellow-500 inline-block" />
+                <span className="text-gray-600">수거(수동)</span>
               </span>
               <span className="inline-flex items-center gap-1 text-xs">
                 <span className="w-3 h-3 rounded-sm bg-blue-50 border border-blue-200 inline-block" />
-                <span className="text-gray-600">온라인 접수</span>
+                <span className="text-gray-600">온라인접수</span>
               </span>
               <span className="inline-flex items-center gap-1 text-xs">
                 <span className="w-3 h-3 rounded-sm bg-amber-50 border border-amber-200 inline-block" />
-                <span className="text-gray-600">수동 입력</span>
+                <span className="text-gray-600">수동접수</span>
               </span>
               <span className="inline-flex items-center gap-1 text-xs">
                 <span className="w-3 h-3 rounded-sm bg-gray-50 border border-gray-300 inline-block" />
@@ -393,14 +412,16 @@ export default function Home() {
                         <td
                           key={u}
                           onClick={() => openModal(unitNum)}
-                          className={`text-center text-xs p-1 border border-gray-300 cursor-pointer active:bg-blue-100 h-[44px] ${
+                          className={`text-center text-xs p-1 cursor-pointer active:bg-blue-100 h-[44px] ${
                             info
                               ? info.collected
-                                ? 'text-white font-semibold bg-green-600'
+                                ? info.source === '온라인'
+                                  ? 'text-green-950 font-semibold bg-green-400 border-2 border-green-700'
+                                  : 'text-green-950 font-semibold bg-green-400 border-2 border-yellow-500'
                                 : info.source === '온라인'
-                                  ? 'text-blue-600 font-semibold bg-blue-50'
-                                  : 'text-black font-semibold bg-amber-50'
-                              : 'text-gray-300 bg-gray-50'
+                                  ? 'text-blue-600 font-semibold bg-blue-50 border border-gray-300'
+                                  : 'text-black font-semibold bg-amber-50 border border-gray-300'
+                              : 'text-gray-300 bg-gray-50 border border-gray-300'
                           }`}
                         >
                           {info ? (info.name.length > 3 ? info.name.slice(0, 3) + '..' : info.name) : '·'}
@@ -423,11 +444,6 @@ export default function Home() {
           </table>
         </div>
 
-        <div className="bg-white m-3 p-3 rounded-xl shadow-sm flex justify-between text-sm">
-          <span>접수: <strong className="text-[#2F5496]">{receivedCount}</strong> / {totalUnits}</span>
-          <span>수거: <strong className="text-green-600">{collectedCount}</strong></span>
-          <span>접수율: <strong className="text-[#2F5496]">{totalUnits > 0 ? (receivedCount / totalUnits * 100).toFixed(1) : 0}%</strong></span>
-        </div>
 
         {/* 모달 */}
         {modal && (

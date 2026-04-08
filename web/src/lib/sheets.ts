@@ -69,7 +69,6 @@ export async function getDashboardData() {
   let totalCollected = 0;
   let totalUnits = 0;
 
-  // 전체현황 시트에서 한 번에 읽기 시도
   const summarySheet = doc.sheetsByTitle['전체현황'];
   let summaryData: Record<string, { received: number; collected: number }> = {};
 
@@ -147,14 +146,24 @@ export async function getBuildingData(building: string) {
     }
   }
 
+  const values = Object.values(grid);
+  const onlineCount = values.filter(v => v.source === '온라인').length;
+  const manualCount = values.filter(v => v.source !== '온라인').length;
+  const onlineCollectedCount = values.filter(v => v.source === '온라인' && v.collected).length;
+  const manualCollectedCount = values.filter(v => v.source !== '온라인' && v.collected).length;
+
   return {
     building,
     floors: config.floors,
     units: config.units,
     excludedUnits: config.excludedUnits || [],
     totalUnits: getTotalUnits(building),
-    receivedCount: Object.keys(grid).length,
-    collectedCount: Object.values(grid).filter(v => v.collected).length,
+    receivedCount: values.length,
+    collectedCount: values.filter(v => v.collected).length,
+    onlineCount,
+    manualCount,
+    onlineCollectedCount,
+    manualCollectedCount,
     grid,
   };
 }

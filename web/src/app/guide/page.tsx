@@ -148,6 +148,24 @@ export default function GuidePage() {
           <Step num={2} text="23개 동의 접수, 수거, 세대수, 접수율을 한눈에 확인할 수 있습니다." />
         </Section>
 
+        {/* 7. 홈 화면에 추가 */}
+        <Section title="홈 화면에 추가 (앱처럼 사용)">
+          <p className="text-xs text-gray-500 mb-3">홈 화면에 추가하면 앱처럼 전체화면으로 열립니다.</p>
+          <div className="bg-gray-50 rounded-lg p-3 mb-3">
+            <p className="text-xs font-semibold text-gray-700 mb-2">iPhone (Safari)</p>
+            <Step num={1} text="Safari로 이 사이트에 접속합니다." />
+            <Step num={2} text="하단의 공유 버튼 (↑ 모양)을 터치합니다." />
+            <Step num={3} text='"홈 화면에 추가"를 선택합니다.' />
+            <Step num={4} text='"추가"를 누르면 홈 화면에 아이콘이 생깁니다.' />
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3">
+            <p className="text-xs font-semibold text-gray-700 mb-2">Android (Chrome)</p>
+            <Step num={1} text="Chrome으로 이 사이트에 접속합니다." />
+            <Step num={2} text="우측 상단 점 세개(⋮) 메뉴를 터치합니다." />
+            <Step num={3} text='"홈 화면에 추가"를 선택합니다.' />
+          </div>
+        </Section>
+
         {/* 하단 링크 */}
         <Link
           href="/"

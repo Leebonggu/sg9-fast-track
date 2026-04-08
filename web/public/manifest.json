@@ -1,0 +1,22 @@
+{
+  "name": "상계주공 9단지 사전동의 관리",
+  "short_name": "SG9 동의",
+  "description": "상계주공 9단지 신속통합기획 사전동의 관리 시스템",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2F5496",
+  "theme_color": "#2F5496",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icon",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

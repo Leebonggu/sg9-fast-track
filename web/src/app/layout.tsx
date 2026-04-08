@@ -15,6 +15,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "상계주공 9단지 사전동의 관리",
   robots: { index: false, follow: false },
+  manifest: "/manifest.json",
+  themeColor: "#2F5496",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SG9 동의",
+  },
 };
 
 export default function RootLayout({

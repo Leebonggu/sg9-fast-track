@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import html2canvas from 'html2canvas-pro';
 import Link from 'next/link';
+import { BUILDINGS } from '@/lib/buildings';
 
 type BuildingInfo = {
   building: string;
@@ -45,12 +46,6 @@ type BuildingData = {
   grid: Record<string, GridInfo>;
   duplicates: Record<string, GridInfo[]>;
 };
-
-const BUILDINGS = [
-  '901동','902동','903동','904동','905동','906동','907동','908동','909동','910동',
-  '911동','912동','913동','914동','915동','916동','917동','918동','919동','920동',
-  '921동','922동','923동',
-];
 
 export default function Home() {
   const [authed, setAuthed] = useState(false);

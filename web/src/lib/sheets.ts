@@ -1,64 +1,19 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
-import { JWT } from 'google-auth-library';
-
-const BUILDING_CONFIG: Record<string, { floors: number; units: number[]; excludedUnits?: string[] }> = {
-  '901동': { floors: 15, units: [1, 2, 3, 4, 5, 6] },
-  '902동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '903동': { floors: 12, units: [1, 2, 3, 4, 5, 6], excludedUnits: ['103', '104'] },
-  '904동': { floors: 12, units: [1, 2, 3, 4, 5, 6], excludedUnits: ['103', '104'] },
-  '905동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '906동': { floors: 15, units: [1, 2, 3, 4, 5, 6] },
-  '907동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
-  '908동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
-  '909동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '910동': { floors: 12, units: [1, 2, 3, 4, 5, 6], excludedUnits: ['103', '104'] },
-  '911동': { floors: 12, units: [1, 2, 3, 4, 5, 6], excludedUnits: ['103', '104'] },
-  '912동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '913동': { floors: 15, units: [1, 2, 3, 4, 5, 6] },
-  '914동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '915동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
-  '916동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '917동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
-  '918동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7] },
-  '919동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '920동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] },
-  '921동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '922동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7, 8] },
-  '923동': { floors: 15, units: [1, 2, 3, 4, 5, 6, 7] },
-};
+import { BUILDING_CONFIG, getTotalUnits } from './buildings';
+import { getServiceAccountAuth } from './google-auth';
 
 export { BUILDING_CONFIG };
-
-// 컬럼 인덱스 (v2 시트 헤더 순서)
-const COL = {
-  TIMESTAMP: 0, NAME: 1, PHONE: 2, UNIT: 3,
-  ADDRESS: 4, CONSENT: 5, PRIVACY: 6, SOURCE: 7,
-  COLLECTED: 8, COLLECT_DATE: 9, COLLECTOR: 10, NOTE: 11,
-};
 
 let docCache: GoogleSpreadsheet | null = null;
 
 async function getDoc(): Promise<GoogleSpreadsheet> {
   if (docCache) return docCache;
 
-  const auth = new JWT({
-    email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-    key: (process.env.GOOGLE_PRIVATE_KEY || '')
-      .replace(/\\n/g, '\n')
-      .replace(/"/g, ''),
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-
+  const auth = getServiceAccountAuth();
   const doc = new GoogleSpreadsheet(process.env.SPREADSHEET_ID!, auth);
   await doc.loadInfo();
   docCache = doc;
   return doc;
-}
-
-function getTotalUnits(building: string): number {
-  const config = BUILDING_CONFIG[building];
-  if (!config) return 0;
-  return config.floors * config.units.length - (config.excludedUnits?.length || 0);
 }
 
 export async function getDashboardData() {
@@ -135,7 +90,7 @@ export async function getBuildingData(building: string) {
 
       if (!unit || !name) continue;
       if (note.includes('중복(이전 응답)')) continue;
-      if (note.includes('삭제')) continue;
+      if (note.trim() === '삭제') continue;
 
       const collectedVal = String(row.get('동의서수거여부') || '');
       const entry: GridEntry = {
@@ -215,7 +170,7 @@ export async function updateConsent(building: string, unit: string, newName: str
     const rowUnit = String(row.get('호수') || '');
     const note = String(row.get('비고') || '');
 
-    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.includes('삭제')) {
+    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.trim() === '삭제') {
       row.set('성명', newName);
       await row.save();
       return;
@@ -236,8 +191,21 @@ export async function deleteConsent(building: string, unit: string) {
     const rowUnit = String(row.get('호수') || '');
     const note = String(row.get('비고') || '');
 
-    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.includes('삭제')) {
+    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.trim() === '삭제') {
       await row.delete();
+
+      // 삭제 후 같은 호수의 "중복(이전 응답)" 마킹된 행이 남아있으면 마킹 해제 (최신 1개만)
+      const remainingRows = await sheet.getRows();
+      for (let j = remainingRows.length - 1; j >= 0; j--) {
+        const r = remainingRows[j];
+        const rUnit = String(r.get('호수') || '');
+        const rNote = String(r.get('비고') || '');
+        if (rUnit === unit && rNote.includes('중복(이전 응답)') && !rNote.includes('삭제')) {
+          r.set('비고', rNote.replace('중복(이전 응답)', '').trim());
+          await r.save();
+          break;
+        }
+      }
       return;
     }
   }
@@ -256,7 +224,7 @@ export async function toggleCollected(building: string, unit: string) {
     const rowUnit = String(row.get('호수') || '');
     const note = String(row.get('비고') || '');
 
-    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.includes('삭제')) {
+    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.trim() === '삭제') {
       const current = String(row.get('동의서수거여부') || '');
       const newVal = (current === 'TRUE' || current === 'true') ? 'FALSE' : 'TRUE';
       row.set('동의서수거여부', newVal);

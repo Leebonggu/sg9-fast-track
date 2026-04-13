@@ -11,8 +11,10 @@
   "dependencies": {
     "google-auth-library": "^10.6.2",
     "google-spreadsheet": "^5.2.0",
+    "googleapis": "^171.4.0",
     "html2canvas-pro": "^2.0.2",
     "next": "16.2.2",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },

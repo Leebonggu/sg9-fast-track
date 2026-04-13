@@ -170,7 +170,7 @@ export async function updateConsent(building: string, unit: string, newName: str
     const rowUnit = String(row.get('호수') || '');
     const note = String(row.get('비고') || '');
 
-    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.trim() === '삭제') {
+    if (rowUnit === unit && !note.includes('중복(이전 응답)') && note.trim() !== '삭제') {
       row.set('성명', newName);
       await row.save();
       return;
@@ -191,7 +191,7 @@ export async function deleteConsent(building: string, unit: string) {
     const rowUnit = String(row.get('호수') || '');
     const note = String(row.get('비고') || '');
 
-    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.trim() === '삭제') {
+    if (rowUnit === unit && !note.includes('중복(이전 응답)') && note.trim() !== '삭제') {
       await row.delete();
 
       // 삭제 후 같은 호수의 "중복(이전 응답)" 마킹된 행이 남아있으면 마킹 해제 (최신 1개만)
@@ -224,7 +224,7 @@ export async function toggleCollected(building: string, unit: string) {
     const rowUnit = String(row.get('호수') || '');
     const note = String(row.get('비고') || '');
 
-    if (rowUnit === unit && !note.includes('중복(이전 응답)') && !note.trim() === '삭제') {
+    if (rowUnit === unit && !note.includes('중복(이전 응답)') && note.trim() !== '삭제') {
       const current = String(row.get('동의서수거여부') || '');
       const newVal = (current === 'TRUE' || current === 'true') ? 'FALSE' : 'TRUE';
       row.set('동의서수거여부', newVal);

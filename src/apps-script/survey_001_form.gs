@@ -10,8 +10,8 @@
  */
 
 var TARGET_FOLDER_ID = '16iK3rxaUcy4cCz0e_7KMgU4YZgFXo74W';
-var SPREADSHEET_ID = '1bLkziGS9hO_jc_2HVFuhBNPMqciD6q3zJ3LkjzqT5us';
-var FORM_ID = ''; // createSurvey001Form() 실행 후 폼 ID 입력
+var SPREADSHEET_ID = '1kL62Ki2DCGk-OJYjtF5B8Yp30FkzuZmrvBAADBKv4hA';
+var FORM_ID = '1LMrfooF-L0MbB5tPkH9uw-QeU6yozct5LUmA8o1X890';
 
 function createSurvey001Form() {
   // ── 폼 생성 ──
@@ -227,8 +227,9 @@ function setupFormTrigger() {
     }
   }
 
+  var form = FormApp.openById(FORM_ID);
   ScriptApp.newTrigger('onSurvey001FormSubmit')
-    .forForm(FORM_ID)
+    .forForm(form)
     .onFormSubmit()
     .create();
 

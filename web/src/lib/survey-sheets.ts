@@ -101,6 +101,21 @@ export async function markAsGenerated(
   await row.save();
 }
 
+export async function checkDuplicateResponse(
+  config: SurveyConfig,
+  dong: string,
+  ho: string,
+): Promise<boolean> {
+  const doc = await getSurveyDoc(config);
+  const sheet = getUnifiedSheet(doc);
+  const rows = await sheet.getRows();
+  return rows.some(
+    (row) =>
+      String(row.get('동') || '') === dong &&
+      String(row.get('호') || '') === ho,
+  );
+}
+
 /**
  * 웹 폼에서 설문 응답을 시트에 직접 추가
  */

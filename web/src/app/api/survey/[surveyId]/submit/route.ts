@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSurveyConfig } from '@/lib/surveys/registry';
-import { addSurveyResponse } from '@/lib/survey-sheets';
+import { addSurveyResponse, checkDuplicateResponse } from '@/lib/survey-sheets';
 
 export async function POST(
   req: NextRequest,
@@ -9,7 +9,7 @@ export async function POST(
   try {
     const { surveyId } = await params;
     const config = getSurveyConfig(surveyId);
-    const { basicInfo, answers } = await req.json();
+    const { basicInfo, answers, forceSubmit } = await req.json();
 
     // 필수 필드 검증
     for (const field of config.basicInfoFields) {
@@ -27,6 +27,18 @@ export async function POST(
           { error: `"${q.label}" 항목을 선택해 주세요.` },
           { status: 400 },
         );
+      }
+    }
+
+    // 중복 체크 (forceSubmit이 아닐 때만)
+    if (!forceSubmit) {
+      const dong = basicInfo?.dong || '';
+      const ho = basicInfo?.ho || '';
+      if (dong && ho) {
+        const isDuplicate = await checkDuplicateResponse(config, dong, ho);
+        if (isDuplicate) {
+          return NextResponse.json({ duplicate: true }, { status: 409 });
+        }
       }
     }
 

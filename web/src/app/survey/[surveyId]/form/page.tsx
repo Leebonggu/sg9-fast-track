@@ -37,6 +37,7 @@ export default function SurveyFormPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
 
   const [basicInfo, setBasicInfo] = useState<Record<string, string>>({});
   const [selectedDong, setSelectedDong] = useState('');
@@ -47,6 +48,17 @@ export default function SurveyFormPage() {
     loadConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveyId]);
+
+  // 제출 완료 후 뒤로가기 차단
+  useEffect(() => {
+    if (!submitted) return;
+    window.history.pushState(null, '', window.location.href);
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [submitted]);
 
   async function loadConfig() {
     try {
@@ -100,22 +112,31 @@ export default function SurveyFormPage() {
     setAnswers((prev) => ({ ...prev, [questionId]: option }));
   }
 
-  async function handleSubmit() {
+  async function doSubmit(forceSubmit = false) {
     setError('');
     setSubmitting(true);
     try {
       const res = await fetch(`/api/survey/${surveyId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ basicInfo, answers }),
+        body: JSON.stringify({ basicInfo, answers, forceSubmit }),
       });
       const data = await res.json();
+      if (res.status === 409 && data.duplicate) {
+        setShowDuplicateWarning(true);
+        setSubmitting(false);
+        return;
+      }
       if (data.error) throw new Error(data.error);
       setSubmitted(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : '제출에 실패했습니다.');
     }
     setSubmitting(false);
+  }
+
+  function handleSubmit() {
+    doSubmit(false);
   }
 
   if (loading) {
@@ -332,6 +353,33 @@ export default function SurveyFormPage() {
           {submitting ? '제출 중...' : '제출하기'}
         </button>
       </div>
+
+      {/* 중복 경고 모달 */}
+      {showDuplicateWarning && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <p className="text-lg font-bold text-gray-800 mb-2">이미 제출된 호수입니다</p>
+            <p className="text-sm text-gray-500 mb-5">
+              {basicInfo.dong} {basicInfo.ho}호는 이미 응답 이력이 있습니다.{'\n'}
+              그래도 제출하시겠습니까?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDuplicateWarning(false)}
+                className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-base font-semibold text-gray-600 active:bg-gray-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => { setShowDuplicateWarning(false); doSubmit(true); }}
+                className="flex-1 py-3 bg-[#2F5496] text-white rounded-xl text-base font-semibold active:bg-[#1e3a6e]"
+              >
+                그래도 제출
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -84,7 +84,7 @@ export const SURVEY_001_CONFIG: SurveyConfig = {
       options: ['희망한다', '희망하지 않는다'],
     },
   ],
-  // closedAt: '2025-04-30',  // 마감일 설정 시 주석 해제
+  closedAt: '2026-12-31',
   envKeys: {
     spreadsheetId: 'SURVEY_001_SPREADSHEET_ID',
     templateDocId: 'SURVEY_001_TEMPLATE_DOC_ID',

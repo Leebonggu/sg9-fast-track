@@ -23,13 +23,13 @@ export type SurveyConfig = {
   organizer: string;
   intro: string;
   notice: string;
+  closedAt?: string;  // 'YYYY-MM-DD' 형식, 설정 시 해당 날짜부터 마감
   basicInfoFields: BasicInfoField[];
   questions: SurveyQuestion[];
   envKeys: {
     spreadsheetId: string;
     templateDocId: string;
     pdfFolderId: string;
-    closedAt?: string;
   };
 };
 

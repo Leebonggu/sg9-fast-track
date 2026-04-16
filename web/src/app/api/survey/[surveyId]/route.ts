@@ -15,8 +15,7 @@ export async function GET(
       getSurveyResponses(config),
     ]);
 
-    const closedAtEnvKey = config.envKeys.closedAt;
-    const closedAt = closedAtEnvKey ? (process.env[closedAtEnvKey] || '') : '';
+    const closedAt = config.closedAt || '';
     const isClosed = !!closedAt && new Date() >= new Date(closedAt);
 
     return NextResponse.json({

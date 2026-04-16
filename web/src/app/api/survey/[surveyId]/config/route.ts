@@ -9,8 +9,7 @@ export async function GET(
     const { surveyId } = await params;
     const config = getSurveyConfig(surveyId);
 
-    const closedAtEnvKey = config.envKeys.closedAt;
-    const closedAt = closedAtEnvKey ? (process.env[closedAtEnvKey] || '') : '';
+    const closedAt = config.closedAt || '';
     const isClosed = !!closedAt && new Date() >= new Date(closedAt);
 
     return NextResponse.json({

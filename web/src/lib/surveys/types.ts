@@ -37,6 +37,7 @@ export type SurveyResponse = {
   timestamp: string;
   basicInfo: Record<string, string>;
   answers: Record<string, string>;
+  entryPath: string;
   pdfGenerated: boolean;
   pdfLink: string;
 };

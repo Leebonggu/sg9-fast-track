@@ -10,7 +10,7 @@
  *   - 빈 설문지 시: 기본정보 → 밑줄, 모든 선택지 → ☐ (태그 제거)
  */
 
-var TARGET_FOLDER_ID = '1UdJbtCDGQrIYcZ7CkigWBMqaAx7u3T5X';
+var TARGET_FOLDER_ID = '16iK3rxaUcy4cCz0e_7KMgU4YZgFXo74W';
 
 function createSurvey001Template() {
   var doc = DocumentApp.create('상계9단지 1차 간단 설문');
@@ -102,7 +102,7 @@ function createSurvey001Template() {
     },
     {
       num: 4, id: 'Q4',
-      label: '상계주공 9단지가 서울시 복합정비구역으로 지정·고시되어\n고층 개발(약 60층 수준)이 가능하다는 점을 알고 계셨습니까?',
+      label: '상계주공 9단지가 서울시 복합정비구역으로 지정·고시되어 고층 개발(약 60층 수준)이 가능하다는 점을 알고 계셨습니까?',
       options: ['알고 있다', '처음 알았다']
     },
     {
@@ -116,8 +116,8 @@ function createSurvey001Template() {
     var q = questions[i];
 
     var qTitle = body.appendParagraph(q.num + '. ' + q.label);
-    qTitle.setAttributes(makeStyle(FONT, 11, true));
-    qTitle.setSpacingBefore(6);
+    qTitle.setAttributes(makeStyle(FONT, 10, true));
+    qTitle.setSpacingBefore(5);
     qTitle.setSpacingAfter(1);
 
     if (q.description) {
@@ -128,23 +128,12 @@ function createSurvey001Template() {
       desc.setSpacingAfter(1);
     }
 
-    // 선택지 — Q2는 세로 배치 (텍스트가 길어서), 나머지는 가로
-    if (q.id === 'Q2') {
-      for (var j = 0; j < q.options.length; j++) {
-        var optLine = body.appendParagraph('    ☐{{' + q.id + '_' + q.options[j] + '}} ' + q.options[j]);
-        optLine.setAttributes(makeStyle(FONT, 10, false));
-        optLine.setSpacingBefore(1);
-        optLine.setSpacingAfter(0);
-      }
-    } else {
-      var optionParts = [];
-      for (var j = 0; j < q.options.length; j++) {
-        optionParts.push('☐{{' + q.id + '_' + q.options[j] + '}} ' + q.options[j]);
-      }
-      var optionLine = body.appendParagraph('    ' + optionParts.join('      '));
-      optionLine.setAttributes(makeStyle(FONT, 11, false));
-      optionLine.setSpacingBefore(1);
-      optionLine.setSpacingAfter(0);
+    // 선택지 — 모두 세로 배치 (텍스트 잘림/줄바꿈 방지)
+    for (var j = 0; j < q.options.length; j++) {
+      var optLine = body.appendParagraph('    ☐{{' + q.id + '_' + q.options[j] + '}} ' + q.options[j]);
+      optLine.setAttributes(makeStyle(FONT, 10, false));
+      optLine.setSpacingBefore(1);
+      optLine.setSpacingAfter(0);
     }
   }
 

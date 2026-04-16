@@ -20,13 +20,19 @@ async function getSurveyDoc(config: SurveyConfig): Promise<GoogleSpreadsheet> {
   return doc;
 }
 
-function getResponseSheet(doc: GoogleSpreadsheet) {
-  return doc.sheetsByIndex[0];
+function getUnifiedSheet(doc: GoogleSpreadsheet) {
+  const sheet = doc.sheetsByTitle['통합응답'];
+  if (!sheet) {
+    throw new Error(
+      '통합응답 시트가 없습니다. Apps Script에서 setupUnifiedSheet()를 실행해 주세요.',
+    );
+  }
+  return sheet;
 }
 
 export async function getSurveyStats(config: SurveyConfig): Promise<SurveyStats> {
   const doc = await getSurveyDoc(config);
-  const sheet = getResponseSheet(doc);
+  const sheet = getUnifiedSheet(doc);
   const rows = await sheet.getRows();
 
   let generated = 0;
@@ -45,7 +51,7 @@ export async function getSurveyStats(config: SurveyConfig): Promise<SurveyStats>
 
 export async function getSurveyResponses(config: SurveyConfig): Promise<SurveyResponse[]> {
   const doc = await getSurveyDoc(config);
-  const sheet = getResponseSheet(doc);
+  const sheet = getUnifiedSheet(doc);
   const rows = await sheet.getRows();
 
   return rows.map((row, index) => {
@@ -64,6 +70,7 @@ export async function getSurveyResponses(config: SurveyConfig): Promise<SurveyRe
       timestamp: String(row.get('타임스탬프') || ''),
       basicInfo,
       answers,
+      entryPath: String(row.get('입력경로') || ''),
       pdfGenerated: String(row.get('PDF생성여부') || '') === 'TRUE',
       pdfLink: String(row.get('PDF링크') || ''),
     };
@@ -84,7 +91,7 @@ export async function markAsGenerated(
   driveLink: string,
 ): Promise<void> {
   const doc = await getSurveyDoc(config);
-  const sheet = getResponseSheet(doc);
+  const sheet = getUnifiedSheet(doc);
   const rows = await sheet.getRows();
   const row = rows[rowIndex];
   if (!row) throw new Error('해당 행 없음: ' + rowIndex);
@@ -101,9 +108,10 @@ export async function addSurveyResponse(
   config: SurveyConfig,
   basicInfo: Record<string, string>,
   answers: Record<string, string>,
+  entryPath: string = '온라인(웹)',
 ): Promise<void> {
   const doc = await getSurveyDoc(config);
-  const sheet = getResponseSheet(doc);
+  const sheet = getUnifiedSheet(doc);
 
   const rowData: Record<string, string> = {
     타임스탬프: new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }),
@@ -116,6 +124,10 @@ export async function addSurveyResponse(
   for (const q of config.questions) {
     rowData[q.label] = answers[q.id] || '';
   }
+
+  rowData['입력경로'] = entryPath;
+  rowData['PDF생성여부'] = 'FALSE';
+  rowData['PDF링크'] = '';
 
   await sheet.addRow(rowData);
 }

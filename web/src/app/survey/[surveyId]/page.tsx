@@ -14,6 +14,7 @@ type SurveyResponse = {
   timestamp: string;
   basicInfo: Record<string, string>;
   answers: Record<string, string>;
+  entryPath: string;
   pdfGenerated: boolean;
   pdfLink: string;
 };
@@ -235,6 +236,7 @@ export default function SurveyDetailPage() {
                       {f.label}
                     </th>
                   ))}
+                  <th className="p-2 text-left">입력경로</th>
                   <th className="p-2 text-left">시간</th>
                   <th className="p-2 text-center">상태</th>
                   <th className="p-2 text-center">액션</th>
@@ -244,7 +246,7 @@ export default function SurveyDetailPage() {
                 {responses.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5 + extraFields.length}
+                      colSpan={6 + extraFields.length}
                       className="p-8 text-center text-gray-400 text-sm"
                     >
                       응답이 없습니다
@@ -260,6 +262,15 @@ export default function SurveyDetailPage() {
                         {r.basicInfo[f.key] || ''}
                       </td>
                     ))}
+                    <td className="p-2 text-xs">
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${
+                        r.entryPath === '온라인(구글)' ? 'bg-blue-100 text-blue-700' :
+                        r.entryPath === '온라인(웹)' ? 'bg-purple-100 text-purple-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {r.entryPath || '수동'}
+                      </span>
+                    </td>
                     <td className="p-2 text-xs text-gray-400">{r.timestamp}</td>
                     <td className="p-2 text-center">
                       {r.pdfGenerated ? (

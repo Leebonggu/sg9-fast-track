@@ -28,6 +28,8 @@ type SurveyConfigMeta = {
   notice: string;
   basicInfoFields: BasicInfoFieldMeta[];
   questions: SurveyQuestion[];
+  isClosed: boolean;
+  closedAt: string;
 };
 
 export default function SurveyFormPage() {
@@ -152,6 +154,25 @@ export default function SurveyFormPage() {
       <div className="min-h-screen bg-[#2F5496] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-8 text-center max-w-sm">
           <p className="text-red-500">{error || '설문을 찾을 수 없습니다.'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (config.isClosed) {
+    return (
+      <div className="min-h-screen bg-[#2F5496] flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-10 text-center max-w-sm shadow-2xl">
+          <div className="text-5xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">설문이 마감되었습니다</h2>
+          <p className="text-gray-500 text-sm">
+            {config.title}
+          </p>
+          {config.closedAt && (
+            <p className="text-xs text-gray-400 mt-2">
+              마감일: {new Date(config.closedAt).toLocaleDateString('ko-KR')}
+            </p>
+          )}
         </div>
       </div>
     );

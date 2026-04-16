@@ -25,6 +25,8 @@ type SurveyConfigMeta = {
   title: string;
   basicInfoFields: BasicInfoFieldMeta[];
   questions: SurveyQuestion[];
+  isClosed: boolean;
+  closedAt: string;
 };
 
 export default function SurveyDetailPage() {
@@ -182,6 +184,9 @@ export default function SurveyDetailPage() {
           ←
         </Link>
         <span className="font-semibold flex-1 truncate">{config?.title || '설문 관리'}</span>
+        {config?.isClosed && (
+          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full mr-2">마감</span>
+        )}
         <button
           onClick={() => setShowQr(true)}
           className="bg-white/20 px-3 py-1.5 rounded-lg text-sm mr-2"

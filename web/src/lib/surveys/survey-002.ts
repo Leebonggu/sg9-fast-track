@@ -88,5 +88,6 @@ export const SURVEY_002_CONFIG: SurveyConfig = {
     spreadsheetId: 'SURVEY_002_SPREADSHEET_ID',
     templateDocId: 'SURVEY_002_TEMPLATE_DOC_ID',
     pdfFolderId: 'SURVEY_002_PDF_FOLDER_ID',
+    closedAt: 'SURVEY_002_CLOSED_AT',
   },
 };

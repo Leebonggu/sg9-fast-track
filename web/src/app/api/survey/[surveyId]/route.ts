@@ -15,6 +15,10 @@ export async function GET(
       getSurveyResponses(config),
     ]);
 
+    const closedAtEnvKey = config.envKeys.closedAt;
+    const closedAt = closedAtEnvKey ? (process.env[closedAtEnvKey] || '') : '';
+    const isClosed = !!closedAt && new Date() >= new Date(closedAt);
+
     return NextResponse.json({
       stats,
       responses,
@@ -26,6 +30,8 @@ export async function GET(
         notice: config.notice,
         basicInfoFields: config.basicInfoFields,
         questions: config.questions,
+        isClosed,
+        closedAt,
       },
     });
   } catch (e: unknown) {

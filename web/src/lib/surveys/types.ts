@@ -29,6 +29,7 @@ export type SurveyConfig = {
     spreadsheetId: string;
     templateDocId: string;
     pdfFolderId: string;
+    closedAt?: string;
   };
 };
 

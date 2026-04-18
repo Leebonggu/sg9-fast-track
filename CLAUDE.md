@@ -49,6 +49,8 @@ Plan → Work → Review → Compound
 
 ## 프로젝트 구조
 
+이 repo는 **단순 모노레포**(D1: colocation, workspaces 없음)로 두 개의 앱을 포함한다.
+
 ```
 sg9/
   src/apps-script/       # Google Apps Script 코드 (시트 바인딩용)
@@ -59,12 +61,19 @@ sg9/
     webapp.gs            # Apps Script 웹앱 (느려서 Next.js로 전환)
     webapp.html          # Apps Script 웹앱 HTML
     building_data.js     # 동별 호수 데이터 (참고용)
-  web/                   # Next.js 웹 UI (메인 개발)
+  web/                   # [앱 1] 사전동의 Next.js 웹 UI
     src/app/             # 페이지 및 API 라우트
     src/lib/sheets.ts    # Google Sheets 연동 로직
     .env.local           # 환경변수 (서비스 계정 키, 시트 ID, 비밀번호)
+  recon-sim/             # [앱 2] 재건축 분담금 시뮬레이터 (Next.js)
+    app/                 # 페이지 (setup, simulator, scenario, slides)
+    lib/                 # calculator.ts(계산 공식 집중), types, defaults
+    tests/regression.ts  # 중계주공5단지 PDF 회귀 테스트 (npm test)
+    CLAUDE.md            # 이 앱 전용 규칙 (수치 모델 수정 시 npm test 필수 등)
   docs/                  # 기획서, 스펙 문서
 ```
+
+두 앱은 **서로 독립된 `package.json`** 을 가지며, 각자 자체 의존성으로 동작한다. 나중에 공유 유틸이 생기면 npm workspaces로 승격 가능.
 
 ## 문서 컨벤션
 
@@ -80,9 +89,10 @@ sg9/
 ## 기술 스택
 
 - **v2 시스템**: Google Forms + Google Sheets + Apps Script
-- **웹 UI**: Next.js (TypeScript, Tailwind) + Google Sheets API (google-spreadsheet 패키지)
-- **인증**: 서비스 계정 (rebuild@rebuild-492516.iam.gserviceaccount.com)
-- **배포**: 로컬 개발 중, Vercel 배포 예정
+- **web/ (사전동의)**: Next.js (TypeScript, Tailwind) + Google Sheets API (google-spreadsheet 패키지)
+- **recon-sim/ (분담금 시뮬레이터)**: Next.js 16 (TypeScript, Tailwind v4) + localStorage (서버 없음)
+- **인증**: 서비스 계정 (rebuild@rebuild-492516.iam.gserviceaccount.com) — web/에서만 사용
+- **배포**: Vercel 두 프로젝트로 예정 (각자 Root Directory = `web` / `recon-sim`)
 
 ## 데이터 흐름
 

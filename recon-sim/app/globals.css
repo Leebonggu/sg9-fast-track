@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+body {
+  background: #f9fafb;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+}
+
+@media print {
+  nav { display: none !important; }
+}

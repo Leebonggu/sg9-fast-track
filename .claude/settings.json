@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"const i=JSON.parse(process.env.CLAUDE_TOOL_INPUT||'{}');const p=i.file_path||'';if(/setup_v2\\.gs|setup_v2_master\\.gs/.test(p)){console.error('[하네스 가드레일] v2 라이브 파일 수정 시도: '+p);console.error('구조 변경은 금지입니다. hook 1줄 추가만 허용됩니다.');process.exit(2);}\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Compound Step] 세션 종료 전: 이번 작업에서 새 패턴/규칙/오류 원인을 발견했다면 memory에 기록하세요. 틀린 memory가 있다면 교정하세요.'"
+          }
+        ]
+      }
+    ]
+  }
+}

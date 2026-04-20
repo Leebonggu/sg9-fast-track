@@ -94,6 +94,12 @@ function createSurvey001Form() {
     .setChoiceValues(['희망한다', '희망하지 않는다'])
     .setRequired(true);
 
+  // Q6. 선호평형
+  form.addMultipleChoiceItem()
+    .setTitle('재건축 후 선호하는 평형대는 어떻게 됩니까?')
+    .setChoiceValues(['10평대', '20평대', '30평대', '40평대 이상'])
+    .setRequired(true);
+
   // ── 응답 시트 연결 ──
   var ss = SpreadsheetApp.create('설문응답_상계9단지_1차간단설문');
   form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
@@ -177,6 +183,7 @@ function setupUnifiedSheet() {
     '마들역 인근 단지(임광, 마들대림, 상계주공10·11단지, 상계보람 등)가 재건축 안전진단 완료 및 신속통합기획 접수를 진행 중인 사실을 알고 계셨습니까?',
     '상계주공 9단지가 서울시 복합정비구역으로 지정·고시되어 고층 개발(약 60층 수준)이 가능하다는 점을 알고 계셨습니까?',
     '향후 재건축 관련 정보 안내를 받아보시겠습니까?',
+    '재건축 후 선호하는 평형대는 어떻게 됩니까?',
     '입력경로',
     'PDF생성여부',
     'PDF링크'

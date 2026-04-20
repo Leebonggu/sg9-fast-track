@@ -83,6 +83,11 @@ export const SURVEY_001_CONFIG: SurveyConfig = {
       label: '향후 재건축 관련 정보 안내를 받아보시겠습니까?',
       options: ['희망한다', '희망하지 않는다'],
     },
+    {
+      id: 'Q6',
+      label: '재건축 후 선호하는 평형대는 어떻게 됩니까?',
+      options: ['10평대', '20평대', '30평대', '40평대 이상'],
+    },
   ],
   closedAt: '2026-12-31',
   envKeys: {

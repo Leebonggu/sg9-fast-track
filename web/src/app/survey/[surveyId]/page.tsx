@@ -96,18 +96,38 @@ export default function SurveyDetailPage() {
     setGenerating(key);
     setMessage('');
     try {
-      const res = await fetch(`/api/survey/${surveyId}/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode, rowIndex }),
-      });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (mode === 'blank') {
-        setMessage('빈 설문지 생성 완료');
-        if (data.links?.[0]) window.open(data.links[0], '_blank');
+      if (mode === 'all') {
+        let totalDone = 0;
+        let remaining = 1;
+        while (remaining > 0) {
+          const res = await fetch(`/api/survey/${surveyId}/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mode }),
+          });
+          const data = await res.json();
+          if (data.error) throw new Error(data.error);
+          totalDone += data.count;
+          remaining = data.remaining;
+          if (remaining > 0) {
+            setMessage(`${totalDone}건 완료, ${remaining}건 남음...`);
+          }
+        }
+        setMessage(`${totalDone}건 생성 완료`);
       } else {
-        setMessage(`${data.count}건 생성 완료`);
+        const res = await fetch(`/api/survey/${surveyId}/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode, rowIndex }),
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        if (mode === 'blank') {
+          setMessage('빈 설문지 생성 완료');
+          if (data.links?.[0]) window.open(data.links[0], '_blank');
+        } else {
+          setMessage(`${data.count}건 생성 완료`);
+        }
       }
       await loadData();
     } catch (e) {
@@ -115,6 +135,19 @@ export default function SurveyDetailPage() {
     }
     setGenerating(null);
   }
+
+  const duplicateMap = useMemo(() => {
+    const countMap = new Map<string, number>();
+    for (const r of responses) {
+      const key = `${r.basicInfo.dong}_${r.basicInfo.ho}`;
+      countMap.set(key, (countMap.get(key) || 0) + 1);
+    }
+    const dupes = new Map<string, number>();
+    for (const [key, count] of countMap) {
+      if (count > 1) dupes.set(key, count);
+    }
+    return dupes;
+  }, [responses]);
 
   // 질문별 응답 통계 계산
   const questionStats = useMemo(() => {
@@ -215,6 +248,12 @@ export default function SurveyDetailPage() {
                 <p className="text-xs text-gray-400">미생성</p>
                 <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
               </div>
+              {duplicateMap.size > 0 && (
+                <div className="flex-1 text-center">
+                  <p className="text-xs text-gray-400">중복</p>
+                  <p className="text-2xl font-bold text-red-500">{duplicateMap.size}건</p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -313,9 +352,15 @@ export default function SurveyDetailPage() {
                     </td>
                   </tr>
                 )}
-                {responses.map((r) => (
-                  <tr key={r.rowIndex} className="border-t border-gray-100">
-                    <td className="p-2 text-sm font-medium">{formatDongHo(r.basicInfo)}</td>
+                {responses.map((r) => {
+                  const dupeKey = `${r.basicInfo.dong}_${r.basicInfo.ho}`;
+                  const isDupe = duplicateMap.has(dupeKey);
+                  return (
+                  <tr key={r.rowIndex} className={`border-t ${isDupe ? 'bg-red-50 border-l-4 border-l-red-400' : 'border-gray-100'}`}>
+                    <td className="p-2 text-sm font-medium">
+                      {formatDongHo(r.basicInfo)}
+                      {isDupe && <span className="ml-1 px-1.5 py-0.5 bg-red-100 text-red-600 rounded text-[10px] font-semibold">중복</span>}
+                    </td>
                     <td className="p-2 text-sm">{r.basicInfo.name || ''}</td>
                     {extraFields.map((f) => (
                       <td key={f.key} className="p-2 text-sm text-gray-600">{r.basicInfo[f.key] || ''}</td>
@@ -352,7 +397,8 @@ export default function SurveyDetailPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

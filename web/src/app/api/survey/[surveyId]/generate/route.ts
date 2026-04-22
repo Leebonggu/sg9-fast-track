@@ -28,6 +28,7 @@ export async function POST(
     }
 
     if (mode === 'all') {
+      const BATCH_SIZE = 5;
       const responses = await getSurveyResponses(config);
       const pending = responses.filter((r) => !r.pdfGenerated);
 
@@ -35,19 +36,22 @@ export async function POST(
         return NextResponse.json({
           success: true,
           count: 0,
+          remaining: 0,
           links: [],
           message: '생성할 항목이 없습니다.',
         });
       }
 
+      const batch = pending.slice(0, BATCH_SIZE);
       const links: string[] = [];
-      for (const response of pending) {
+      for (const response of batch) {
         const link = await generateSurveyPdf(config, response);
         await markAsGenerated(config, response.rowIndex, link);
         links.push(link);
       }
 
-      return NextResponse.json({ success: true, count: links.length, links });
+      const remaining = pending.length - batch.length;
+      return NextResponse.json({ success: true, count: links.length, remaining, links });
     }
 
     return NextResponse.json(

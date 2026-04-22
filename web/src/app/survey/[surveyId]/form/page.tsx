@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { BUILDING_CONFIG } from '@/lib/buildings';
 
@@ -40,6 +40,8 @@ export default function SurveyFormPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [duplicateHint, setDuplicateHint] = useState(false);
+  const submittingRef = useRef(false);
 
   const [basicInfo, setBasicInfo] = useState<Record<string, string>>({});
   const [selectedDong, setSelectedDong] = useState('');
@@ -104,9 +106,21 @@ export default function SurveyFormPage() {
 
   function handleHoChange(ho: string) {
     setBasicInfo((prev) => ({ ...prev, ho }));
+    setDuplicateHint(false);
+    if (selectedDong && ho) {
+      fetch(`/api/survey/${surveyId}/check-duplicate?dong=${encodeURIComponent(selectedDong)}&ho=${encodeURIComponent(ho)}`)
+        .then((res) => res.json())
+        .then((data) => { if (data.duplicate) setDuplicateHint(true); })
+        .catch(() => {});
+    }
   }
 
   function handleBasicInfoChange(key: string, value: string) {
+    if (key === 'name') {
+      value = value.slice(0, 5);
+    } else if (key === 'phone') {
+      value = value.replace(/\D/g, '').slice(0, 11);
+    }
     setBasicInfo((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -115,6 +129,8 @@ export default function SurveyFormPage() {
   }
 
   async function doSubmit(forceSubmit = false) {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setError('');
     setSubmitting(true);
     try {
@@ -126,6 +142,7 @@ export default function SurveyFormPage() {
       const data = await res.json();
       if (res.status === 409 && data.duplicate) {
         setShowDuplicateWarning(true);
+        submittingRef.current = false;
         setSubmitting(false);
         return;
       }
@@ -134,6 +151,7 @@ export default function SurveyFormPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : '제출에 실패했습니다.');
     }
+    submittingRef.current = false;
     setSubmitting(false);
   }
 
@@ -275,6 +293,12 @@ export default function SurveyFormPage() {
             </div>
           </div>
 
+          {duplicateHint && (
+            <p className="text-sm text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+              이미 응답 이력이 있는 호수입니다. 재제출 시 중복 데이터로 기록됩니다.
+            </p>
+          )}
+
           {/* 나머지 기본정보 */}
           {otherBasicFields.map((field) => (
             <div key={field.key}>
@@ -297,7 +321,8 @@ export default function SurveyFormPage() {
                   type={field.key === 'phone' ? 'tel' : 'text'}
                   value={basicInfo[field.key] || ''}
                   onChange={(e) => handleBasicInfoChange(field.key, e.target.value)}
-                  placeholder={field.key === 'phone' ? '010-0000-0000' : `${field.label} 입력`}
+                  placeholder={field.key === 'phone' ? '01012345678' : `${field.label} 입력`}
+                  maxLength={field.key === 'name' ? 5 : field.key === 'phone' ? 11 : undefined}
                   className={inputClass}
                 />
               )}

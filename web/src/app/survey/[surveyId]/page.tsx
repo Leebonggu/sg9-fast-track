@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import QRCode from 'qrcode';
+import MissingRespondents from '@/components/survey/MissingRespondents';
+import SurveyAnalytics from '@/components/survey/SurveyAnalytics';
 
 type BasicInfoFieldMeta = { key: string; label: string };
 type SurveyQuestion = { id: string; label: string; options: string[] };
@@ -43,6 +45,7 @@ export default function SurveyDetailPage() {
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [showQr, setShowQr] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const [activeTab, setActiveTab] = useState<'list' | 'missing' | 'analytics'>('list');
 
   useEffect(() => {
     if (typeof window !== 'undefined' && sessionStorage.getItem('auth') === '1') {
@@ -231,7 +234,27 @@ export default function SurveyDetailPage() {
         </button>
       </header>
 
+      <div className="sticky top-[64px] z-30 bg-white border-b border-gray-200 flex">
+        {(['list', 'missing', 'analytics'] as const).map((tab) => {
+          const labels = { list: '응답 목록', missing: '미응답', analytics: '통계 분석' };
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 text-xs font-medium whitespace-nowrap transition-colors ${
+                activeTab === tab
+                  ? 'text-[#2F5496] border-b-2 border-[#2F5496]'
+                  : 'text-gray-500'
+              }`}
+            >
+              {labels[tab]}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="p-3 space-y-3">
+        {activeTab === 'list' && (<>
         {/* 현황 카드 */}
         {stats && (
           <div className="bg-white rounded-xl p-4 shadow-sm">
@@ -403,6 +426,14 @@ export default function SurveyDetailPage() {
             </table>
           </div>
         </div>
+        </>)}
+
+        {activeTab === 'missing' && surveyId && (
+          <MissingRespondents surveyId={surveyId} />
+        )}
+        {activeTab === 'analytics' && config && (
+          <SurveyAnalytics config={config} responses={responses} />
+        )}
       </div>
 
       {/* QR 모달 */}

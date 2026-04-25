@@ -1,10 +1,8 @@
 import type { SurveyConfig } from './types';
 import { SURVEY_001_CONFIG } from './survey-001';
-import { SURVEY_002_CONFIG } from './survey-002';
 
 const SURVEY_REGISTRY: Record<string, SurveyConfig> = {
   'survey-001': SURVEY_001_CONFIG,
-  'survey-002': SURVEY_002_CONFIG,
 };
 
 export function getSurveyConfig(surveyId: string): SurveyConfig {

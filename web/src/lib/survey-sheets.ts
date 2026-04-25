@@ -101,6 +101,18 @@ export async function markAsGenerated(
   await row.save();
 }
 
+export async function deleteSurveyResponse(
+  config: SurveyConfig,
+  rowIndex: number,
+): Promise<void> {
+  const doc = await getSurveyDoc(config);
+  const sheet = getUnifiedSheet(doc);
+  const rows = await sheet.getRows();
+  const row = rows[rowIndex];
+  if (!row) throw new Error('해당 행 없음: ' + rowIndex);
+  await row.delete();
+}
+
 export async function checkDuplicateResponse(
   config: SurveyConfig,
   dong: string,

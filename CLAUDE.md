@@ -99,7 +99,23 @@ sg9/
 ```
 구글폼 제출 → v2 onFormSubmit → 동별 리스트 시트에 저장
 웹 UI 접속 → Next.js API → Google Sheets API → 동별 리스트 시트 읽기/쓰기
+
+[통합현황 시스템]
+동기화 트리거(수동/cron) → syncMasterSheet()
+  → 소유자원본 + 신속통합동의서 + 설문 응답 병렬 읽기
+  → 통합현황 마스터 시트 overwrite (sheet.clear() 1회)
+웹 UI /unified → GET /api/unified → 통합현황 시트만 읽기 (빠른 조회)
 ```
+
+## 통합현황 시스템 규칙
+
+- **마스터 시트**: `OWNER_SPREADSHEET_ID` 스프레드시트의 `통합현황` 시트
+- **원본 시트**: 같은 스프레드시트의 `원본` 시트 (소유자 2,830명)
+- **신속통합동의서 = 사전동의** — 동일 시스템, `동의서수거여부 === 'TRUE'`인 행만 완료
+- **`SurveyConfig.displayId`**: 시트 컬럼명 = UI 표시명 (그대로 일치). `id`는 URL 경로용으로만 사용
+  - 예: `id: 'survey-001'` (URL: /survey/survey-001), `displayId: '2026_04_기본조사_제출_완료'` (시트/UI)
+- **설문 컬럼 추가 시**: `SurveyConfig`에 `displayId` 추가 → sync 후 자동으로 컬럼 생성
+- **코드 변경 후** 반드시 동기화 1회 실행 (마스터 시트 재작성)
 
 ## 동별 구조 (2,830세대)
 
@@ -112,8 +128,10 @@ sg9/
 ```
 GOOGLE_SERVICE_ACCOUNT_EMAIL=서비스계정이메일
 GOOGLE_PRIVATE_KEY=서비스계정키
-SPREADSHEET_ID=v2스프레드시트ID
+SPREADSHEET_ID=v2스프레드시트ID (신속통합동의서)
 APP_PASSWORD=웹접속비밀번호
+OWNER_SPREADSHEET_ID=소유자원본+통합현황마스터시트ID
+SURVEY_001_SPREADSHEET_ID=2026_04_기본조사설문시트ID
 ```
 
 ## v2 시트 컬럼 구조 (동별 시트)

@@ -13,9 +13,12 @@ interface Props {
 export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Props) {
   const filters: { key: FilterType; label: string }[] = [
     { key: 'all', label: '전체' },
-    { key: 'incomplete', label: '미완료' },
-    { key: 'no-consent', label: '동의 미완료' },
-    ...surveyIds.map((id) => ({ key: `no-${id}` as FilterType, label: `${id} 미완료` })),
+    { key: 'incomplete', label: '하나라도 미완료' },
+    { key: 'no-consent', label: '동의서 미제출' },
+    ...surveyIds.map((id) => ({
+      key: `no-${id}` as FilterType,
+      label: `${id.replace(/_완료$/, '')} 미완료`,
+    })),
   ];
 
   return (

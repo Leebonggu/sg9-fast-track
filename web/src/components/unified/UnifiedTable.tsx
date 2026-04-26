@@ -9,9 +9,9 @@ interface Props {
 
 const Check = ({ value }: { value: boolean }) =>
   value ? (
-    <span className="text-green-600 font-bold">✓</span>
+    <span className="text-green-600 font-bold text-sm">✓</span>
   ) : (
-    <span className="text-gray-200">—</span>
+    <span className="text-red-300 text-sm">✗</span>
   );
 
 export default function UnifiedTable({ rows, surveyIds, showDong }: Props) {
@@ -35,13 +35,15 @@ export default function UnifiedTable({ rows, surveyIds, showDong }: Props) {
         </thead>
         <tbody>
           {rows.map((row) => {
-            const allDone = row.consent && surveyIds.every((id) => row.surveys[id]);
+            const doneCount = (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
+            const totalCount = 1 + surveyIds.length;
+            const allDone = doneCount === totalCount;
+            const noneDone = doneCount === 0;
+            const rowBg = allDone ? '' : noneDone ? 'bg-red-50' : 'bg-amber-50';
             return (
               <tr
                 key={`${row.dong}-${row.ho}`}
-                className={`border-b border-gray-100 hover:bg-gray-50 ${
-                  !allDone ? 'bg-red-50' : ''
-                }`}
+                className={`border-b border-gray-100 hover:bg-gray-50 ${rowBg}`}
               >
                 {showDong && (
                   <td className="py-2 px-3 text-gray-400 text-xs">{row.dong}</td>

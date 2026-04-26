@@ -20,14 +20,15 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       ...surveyConfigs.map((c) => getSurveyKeyset(c)),
     ]);
 
-  const surveyIds = surveyConfigs.map((c) => c.id);
+  // displayId가 있으면 마스터 시트 컬럼명으로 사용, 없으면 id 사용
+  const surveyDisplayIds = surveyConfigs.map((c) => c.displayId || c.id);
 
   // 2. Join
   const rows: UnifiedRow[] = owners.map((owner) => {
     const key = `${owner.dong}-${owner.ho}`;
     const surveys: Record<string, boolean> = {};
-    surveyIds.forEach((id, i) => {
-      surveys[id] = surveyKeysets[i].has(key);
+    surveyDisplayIds.forEach((displayId, i) => {
+      surveys[displayId] = surveyKeysets[i].has(key);
     });
     return {
       ...owner,
@@ -39,7 +40,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
   });
 
   // 3. 마스터 시트 overwrite
-  await writeMasterRows(rows, surveyIds);
+  await writeMasterRows(rows, surveyDisplayIds);
 
   const result: SyncResult = {
     syncedAt,

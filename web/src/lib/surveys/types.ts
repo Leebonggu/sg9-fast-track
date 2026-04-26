@@ -19,6 +19,7 @@ export type BasicInfoField = {
 
 export type SurveyConfig = {
   id: string;
+  displayId?: string; // 통합현황 컬럼 표시용 (없으면 id 사용)
   title: string;
   organizer: string;
   intro: string;

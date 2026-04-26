@@ -24,8 +24,15 @@ export async function getOwners(): Promise<OwnerRow[]> {
     .map((row) => ({
       dong: String(row.get('동') || '').trim(),
       ho: String(row.get('호수') || '').trim(),
-      ownerName: ['소유자1 (성명)', '소유자2 (성명)', '소유자3 (성명)', '소유자4 (성명)', '소유자5 (성명)']
-        .map((col) => String(row.get(col) || '').trim())
+      ownerName: [1, 2, 3, 4, 5]
+        .map((n) => {
+          // 컬럼명이 줄바꿈 포함("소유자N\n(성명)") 또는 공백("소유자N (성명)") 두 형식 모두 시도
+          return (
+            String(row.get(`소유자${n}\n(성명)`) || '').trim() ||
+            String(row.get(`소유자${n} \n(성명)`) || '').trim() ||
+            String(row.get(`소유자${n} (성명)`) || '').trim()
+          );
+        })
         .filter(Boolean)
         .join(', '),
       residency: String(row.get('실거주여부') || '').trim(),
@@ -69,14 +76,9 @@ export async function writeMasterRows(
     '메모', '마지막_동기화',
   ];
 
-  // 헤더 설정
+  // 시트 전체 클리어 후 헤더 재설정 (단일 API 호출 — 행별 삭제 대신)
+  await sheet.clear();
   await sheet.setHeaderRow(headers);
-
-  // 기존 데이터 행 전체 삭제
-  const existingRows = await sheet.getRows();
-  for (let i = existingRows.length - 1; i >= 0; i--) {
-    await existingRows[i].delete();
-  }
 
   // 새 데이터 500행씩 배치 추가
   const data = rows.map((r) => ({

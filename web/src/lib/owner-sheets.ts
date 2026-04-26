@@ -24,7 +24,10 @@ export async function getOwners(): Promise<OwnerRow[]> {
     .map((row) => ({
       dong: String(row.get('동') || '').trim(),
       ho: String(row.get('호수') || '').trim(),
-      ownerName: String(row.get('소유자1 (성명)') || '').trim(),
+      ownerName: ['소유자1 (성명)', '소유자2 (성명)', '소유자3 (성명)', '소유자4 (성명)', '소유자5 (성명)']
+        .map((col) => String(row.get(col) || '').trim())
+        .filter(Boolean)
+        .join(', '),
       residency: String(row.get('실거주여부') || '').trim(),
     }))
     .filter((r) => r.dong && r.ho);

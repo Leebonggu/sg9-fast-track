@@ -248,7 +248,8 @@ export async function getConsentKeyset(): Promise<Set<string>> {
     const rows = await sheet.getRows();
     for (const row of rows) {
       const ho = String(row.get('호수') || '').trim();
-      if (ho) result.add(`${dongNum}-${ho}`);
+      const collected = String(row.get('동의서수거여부') || '').trim();
+      if (ho && collected === 'TRUE') result.add(`${dongNum}-${ho}`);
     }
   }
 

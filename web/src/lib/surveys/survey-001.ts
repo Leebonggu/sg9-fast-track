@@ -3,7 +3,7 @@ import type { SurveyConfig } from './types';
 const DONG_OPTIONS = Array.from({ length: 23 }, (_, i) => `${901 + i}동`);
 
 export const SURVEY_001_CONFIG: SurveyConfig = {
-  id: 'survey-001',
+  id: '2026_04_기본조사',
   title: '상계9단지 재건축 관련 간단 설문 (1차)',
   organizer: '상계주공9단지아파트 재건축추진준비위원회',
   intro:

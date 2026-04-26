@@ -32,6 +32,14 @@ export default function AdminNav() {
       >
         설문
       </Link>
+      <Link
+        href="/unified"
+        className={`flex-1 py-3 text-xs font-medium text-center transition-colors ${
+          pathname.startsWith('/unified') ? 'text-[#2F5496]' : 'text-gray-400'
+        }`}
+      >
+        통합현황
+      </Link>
     </nav>
   );
 }

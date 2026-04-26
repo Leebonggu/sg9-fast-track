@@ -158,3 +158,19 @@ export async function addSurveyResponse(
 
   await sheet.addRow(rowData);
 }
+
+// 특정 설문 완료 세대 키셋 반환: Set<"901-101">
+// 통합응답 시트: 동 컬럼 "동" (값: "901동"), 호 컬럼 "호"
+export async function getSurveyKeyset(config: SurveyConfig): Promise<Set<string>> {
+  const doc = await getSurveyDoc(config);
+  const sheet = getUnifiedSheet(doc);
+  const rows = await sheet.getRows();
+  const result = new Set<string>();
+  for (const row of rows) {
+    const dongRaw = String(row.get('동') || '').trim();
+    const dongNum = dongRaw.replace('동', ''); // "901동" → "901", "901" → "901"
+    const ho = String(row.get('호') || '').trim();
+    if (dongNum && ho) result.add(`${dongNum}-${ho}`);
+  }
+  return result;
+}

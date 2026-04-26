@@ -234,3 +234,23 @@ export async function toggleCollected(building: string, unit: string) {
   }
   throw new Error('해당 호수 데이터 없음');
 }
+
+// 사전동의 완료 세대 키셋 반환: Set<"901-101">
+export async function getConsentKeyset(): Promise<Set<string>> {
+  const doc = await getDoc();
+  const dongs = Object.keys(BUILDING_CONFIG); // ["901동", "902동", ...]
+  const result = new Set<string>();
+
+  for (const dongKey of dongs) {
+    const dongNum = dongKey.replace('동', ''); // "901동" → "901"
+    const sheet = doc.sheetsByTitle[dongKey];
+    if (!sheet) continue;
+    const rows = await sheet.getRows();
+    for (const row of rows) {
+      const ho = String(row.get('호수') || '').trim();
+      if (ho) result.add(`${dongNum}-${ho}`);
+    }
+  }
+
+  return result;
+}

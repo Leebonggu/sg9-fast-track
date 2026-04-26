@@ -44,7 +44,10 @@ export default function UnifiedPage() {
           ) : (
             <>
               <UnifiedSummary rows={rows} surveyIds={surveyIds} />
-              <UnifiedFilters active={filter} surveyIds={surveyIds} onChange={setFilter} />
+              <UnifiedFilters active={filter} rows={rows} surveyIds={surveyIds} onChange={setFilter} />
+              <div className="text-xs text-gray-400 mb-2">
+                {filtered.length.toLocaleString()}세대 표시 중 / 전체 {rows.length.toLocaleString()}세대
+              </div>
               <UnifiedTable rows={filtered} surveyIds={surveyIds} showDong={true} />
             </>
           )}

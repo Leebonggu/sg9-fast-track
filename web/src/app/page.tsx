@@ -13,6 +13,13 @@ export default function AdminHome() {
         </header>
         <div className="p-4 space-y-3 pt-6">
           <Link
+            href="/unified"
+            className="block bg-white rounded-xl p-5 shadow-sm border border-gray-100 active:bg-gray-50"
+          >
+            <h2 className="font-semibold text-[#2F5496] text-lg">통합 현황</h2>
+            <p className="text-sm text-gray-400 mt-1">전체 2,830세대 동의·설문 참여 현황</p>
+          </Link>
+          <Link
             href="/consent"
             className="block bg-white rounded-xl p-5 shadow-sm border border-gray-100 active:bg-gray-50"
           >
@@ -25,13 +32,6 @@ export default function AdminHome() {
           >
             <h2 className="font-semibold text-[#2F5496] text-lg">설문 관리</h2>
             <p className="text-sm text-gray-400 mt-1">설문 응답 수집 및 PDF 생성</p>
-          </Link>
-          <Link
-            href="/unified"
-            className="block bg-white rounded-xl p-5 shadow-sm border border-gray-100 active:bg-gray-50"
-          >
-            <h2 className="font-semibold text-[#2F5496] text-lg">통합 현황</h2>
-            <p className="text-sm text-gray-400 mt-1">전체 2,830세대 동의·설문 참여 현황</p>
           </Link>
         </div>
       </div>

@@ -1,6 +1,5 @@
 // web/src/lib/unified-sync.ts
 import { getOwners, getMemoMap, writeMasterRows } from './owner-sheets';
-import { getSinsongKeyset } from './sinsong-sheets';
 import { getConsentKeyset } from './sheets';
 import { getSurveyKeyset } from './survey-sheets';
 import { getAllSurveyConfigs } from './surveys/registry';
@@ -13,11 +12,10 @@ export async function syncMasterSheet(): Promise<SyncResult> {
 
   // 1. 소스 시트들 병렬 읽기
   const surveyConfigs = getAllSurveyConfigs();
-  const [owners, memoMap, sinsongKeys, consentKeys, ...surveyKeysets] =
+  const [owners, memoMap, consentKeys, ...surveyKeysets] =
     await Promise.all([
       getOwners(),
       getMemoMap(),
-      getSinsongKeyset(),
       getConsentKeyset(),
       ...surveyConfigs.map((c) => getSurveyKeyset(c)),
     ]);
@@ -33,7 +31,6 @@ export async function syncMasterSheet(): Promise<SyncResult> {
     });
     return {
       ...owner,
-      sinsong: sinsongKeys.has(key),
       consent: consentKeys.has(key),
       surveys,
       memo: memoMap.get(key) || '',

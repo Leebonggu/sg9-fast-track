@@ -8,7 +8,6 @@ export interface OwnerRow {
 }
 
 export interface UnifiedRow extends OwnerRow {
-  sinsong: boolean
   consent: boolean
   surveys: Record<string, boolean>  // { 'survey-001': true }
   memo: string
@@ -26,4 +25,4 @@ export interface SyncNotifier {
   notify(result: SyncResult): Promise<void>
 }
 
-export type FilterType = 'all' | 'incomplete' | 'no-sinsong' | 'no-consent' | string
+export type FilterType = 'all' | 'incomplete' | 'no-consent' | string

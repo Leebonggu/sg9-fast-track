@@ -56,7 +56,7 @@ export async function writeMasterRows(
 
   const headers = [
     '동', '호수', '소유자명', '실거주여부',
-    '신통접수_완료', '사전동의_완료',
+    '사전동의_완료',
     ...surveyIds.map((id) => `${id}_완료`),
     '메모', '마지막_동기화',
   ];
@@ -76,7 +76,6 @@ export async function writeMasterRows(
     호수: r.ho,
     소유자명: r.ownerName,
     실거주여부: r.residency,
-    신통접수_완료: r.sinsong ? 'TRUE' : 'FALSE',
     사전동의_완료: r.consent ? 'TRUE' : 'FALSE',
     ...Object.fromEntries(
       surveyIds.map((id) => [`${id}_완료`, r.surveys[id] ? 'TRUE' : 'FALSE']),
@@ -122,7 +121,6 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     ho: String(row.get('호수') || ''),
     ownerName: String(row.get('소유자명') || ''),
     residency: String(row.get('실거주여부') || ''),
-    sinsong: row.get('신통접수_완료') === 'TRUE',
     consent: row.get('사전동의_완료') === 'TRUE',
     surveys: Object.fromEntries(
       surveyIds.map((id) => [id, row.get(`${id}_완료`) === 'TRUE']),

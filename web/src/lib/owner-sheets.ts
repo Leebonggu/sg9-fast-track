@@ -35,14 +35,19 @@ export async function getMemoMap(): Promise<Map<string, string>> {
   const doc = await getOwnerDoc();
   const sheet = doc.sheetsByTitle['통합현황'];
   if (!sheet) return new Map();
-  const rows = await sheet.getRows();
-  const map = new Map<string, string>();
-  for (const row of rows) {
-    const key = `${row.get('동')}-${row.get('호수')}`;
-    const memo = String(row.get('메모') || '');
-    if (memo) map.set(key, memo);
+  try {
+    const rows = await sheet.getRows();
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      const key = `${row.get('동')}-${row.get('호수')}`;
+      const memo = String(row.get('메모') || '');
+      if (memo) map.set(key, memo);
+    }
+    return map;
+  } catch {
+    // 빈 시트(헤더 없음)인 경우 — 첫 sync 전 정상 상태
+    return new Map();
   }
-  return map;
 }
 
 // 마스터 시트("통합현황") 전체 overwrite

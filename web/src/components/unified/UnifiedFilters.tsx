@@ -14,7 +14,7 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
   const filters: { key: FilterType; label: string }[] = [
     { key: 'all', label: '전체' },
     { key: 'incomplete', label: '하나라도 미완료' },
-    { key: 'no-consent', label: '동의서 미제출' },
+    { key: 'no-consent', label: '신속통합동의서 미제출' },
     ...surveyIds.map((id) => ({
       key: `no-${id}` as FilterType,
       label: `${id.replace(/_완료$/, '')} 미완료`,

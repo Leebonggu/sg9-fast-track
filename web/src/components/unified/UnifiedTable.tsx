@@ -24,7 +24,7 @@ export default function UnifiedTable({ rows, surveyIds, showDong }: Props) {
             <th className="text-left py-2 px-3 font-medium">호수</th>
             <th className="text-left py-2 px-3 font-medium">소유자</th>
             <th className="text-center py-2 px-3 font-medium">실거주</th>
-            <th className="text-center py-2 px-3 font-medium">사전동의</th>
+            <th className="text-center py-2 px-3 font-medium">신속통합동의서_제출</th>
             {surveyIds.map((id) => (
               <th key={id} className="text-center py-2 px-3 font-medium">
                 {id}

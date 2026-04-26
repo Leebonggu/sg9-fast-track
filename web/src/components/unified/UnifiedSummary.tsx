@@ -22,7 +22,7 @@ export default function UnifiedSummary({ rows, surveyIds }: Props) {
         <div className="text-lg font-bold text-gray-800">{total.toLocaleString()}</div>
       </div>
       <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 min-w-[90px]">
-        <div className="text-xs text-gray-400">사전동의</div>
+        <div className="text-xs text-gray-400">신속통합동의서_제출</div>
         <div className="text-lg font-bold text-amber-500">
           {consentCount.toLocaleString()}
           <span className="text-xs text-gray-400 ml-1">{pct(consentCount)}%</span>

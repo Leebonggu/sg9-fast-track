@@ -71,7 +71,7 @@ export async function writeMasterRows(
 
   const headers = [
     '동', '호수', '소유자명', '실거주여부',
-    '사전동의_완료',
+    '신속통합동의서_제출_완료',
     ...surveyIds.map((id) => `${id}_완료`),
     '메모', '마지막_동기화',
   ];
@@ -86,7 +86,7 @@ export async function writeMasterRows(
     호수: r.ho,
     소유자명: r.ownerName,
     실거주여부: r.residency,
-    사전동의_완료: r.consent ? 'TRUE' : 'FALSE',
+    신속통합동의서_제출_완료: r.consent ? 'TRUE' : 'FALSE',
     ...Object.fromEntries(
       surveyIds.map((id) => [`${id}_완료`, r.surveys[id] ? 'TRUE' : 'FALSE']),
     ),
@@ -121,8 +121,9 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
 
   await sheet.loadHeaderRow();
   const headers = sheet.headerValues;
+  const fixedCols = new Set(['동', '호수', '소유자명', '실거주여부', '신속통합동의서_제출_완료', '메모', '마지막_동기화']);
   const surveyIds = headers
-    .filter((h) => h.endsWith('_완료') && h.startsWith('survey-'))
+    .filter((h) => h.endsWith('_완료') && !fixedCols.has(h))
     .map((h) => h.replace('_완료', ''));
 
   const sheetRows = await sheet.getRows();
@@ -131,7 +132,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     ho: String(row.get('호수') || ''),
     ownerName: String(row.get('소유자명') || ''),
     residency: String(row.get('실거주여부') || ''),
-    consent: row.get('사전동의_완료') === 'TRUE',
+    consent: row.get('신속통합동의서_제출_완료') === 'TRUE',
     surveys: Object.fromEntries(
       surveyIds.map((id) => [id, row.get(`${id}_완료`) === 'TRUE']),
     ),

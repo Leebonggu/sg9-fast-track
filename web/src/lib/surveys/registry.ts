@@ -2,7 +2,7 @@ import type { SurveyConfig } from './types';
 import { SURVEY_001_CONFIG } from './survey-001';
 
 const SURVEY_REGISTRY: Record<string, SurveyConfig> = {
-  '2026_04_기본조사': SURVEY_001_CONFIG,
+  '2026_04_기본조사_제출': SURVEY_001_CONFIG,
 };
 
 export function getSurveyConfig(surveyId: string): SurveyConfig {

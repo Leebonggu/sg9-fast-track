@@ -37,7 +37,8 @@ export async function getSurveyStats(config: SurveyConfig): Promise<SurveyStats>
 
   let generated = 0;
   for (const row of rows) {
-    if (String(row.get('PDF생성여부') || '') === 'TRUE') {
+    const pdfStatus = String(row.get('PDF생성여부') || '');
+    if (pdfStatus === 'TRUE' || pdfStatus === '해당없음') {
       generated++;
     }
   }
@@ -65,13 +66,15 @@ export async function getSurveyResponses(config: SurveyConfig): Promise<SurveyRe
       answers[q.id] = String(row.get(q.label) || '');
     }
 
+    const pdfStatus = String(row.get('PDF생성여부') || '');
     return {
       rowIndex: index,
       timestamp: String(row.get('타임스탬프') || ''),
       basicInfo,
       answers,
       entryPath: String(row.get('입력경로') || ''),
-      pdfGenerated: String(row.get('PDF생성여부') || '') === 'TRUE',
+      operatorName: String(row.get('입력자') || ''),
+      pdfGenerated: pdfStatus === 'TRUE' || pdfStatus === '해당없음',
       pdfLink: String(row.get('PDF링크') || ''),
     };
   });
@@ -136,6 +139,8 @@ export async function addSurveyResponse(
   basicInfo: Record<string, string>,
   answers: Record<string, string>,
   entryPath: string = '온라인(웹)',
+  operatorName: string = '',
+  isManual: boolean = false,
 ): Promise<void> {
   const doc = await getSurveyDoc(config);
   const sheet = getUnifiedSheet(doc);
@@ -153,7 +158,8 @@ export async function addSurveyResponse(
   }
 
   rowData['입력경로'] = entryPath;
-  rowData['PDF생성여부'] = 'FALSE';
+  rowData['입력자'] = operatorName;
+  rowData['PDF생성여부'] = isManual ? '해당없음' : 'FALSE';
   rowData['PDF링크'] = '';
 
   await sheet.addRow(rowData);

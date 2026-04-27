@@ -9,7 +9,7 @@ export async function POST(
   try {
     const { surveyId } = await params;
     const config = getSurveyConfig(surveyId);
-    const { basicInfo, answers, forceSubmit } = await req.json();
+    const { basicInfo, answers, forceSubmit, operatorName = '', isManual = false } = await req.json();
 
     // 필수 필드 검증
     for (const field of config.basicInfoFields) {
@@ -42,7 +42,8 @@ export async function POST(
       }
     }
 
-    await addSurveyResponse(config, basicInfo, answers);
+    const entryPath = isManual ? '수동입력(웹)' : '온라인(웹)';
+    await addSurveyResponse(config, basicInfo, answers, entryPath, operatorName, isManual);
 
     return NextResponse.json({ success: true });
   } catch (e: unknown) {

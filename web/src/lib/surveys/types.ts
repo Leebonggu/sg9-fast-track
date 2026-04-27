@@ -40,6 +40,7 @@ export type SurveyResponse = {
   basicInfo: Record<string, string>;
   answers: Record<string, string>;
   entryPath: string;
+  operatorName: string;
   pdfGenerated: boolean;
   pdfLink: string;
 };

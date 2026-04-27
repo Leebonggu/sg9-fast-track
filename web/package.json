@@ -9,12 +9,17 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.91.1",
+    "fabric": "^7.3.1",
     "google-auth-library": "^10.6.2",
     "google-spreadsheet": "^5.2.0",
     "googleapis": "^171.4.0",
     "html2canvas-pro": "^2.0.2",
+    "jszip": "^3.10.1",
     "next": "16.2.2",
+    "openai": "^6.34.0",
     "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -22,6 +27,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",

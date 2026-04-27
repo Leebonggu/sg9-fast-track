@@ -1,24 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { BUILDING_CONFIG } from '@/lib/buildings';
-
-type SurveyQuestion = {
-  id: string;
-  label: string;
-  description?: string;
-  options: string[];
-};
-
-type BasicInfoFieldMeta = {
-  key: string;
-  sheetColumn: string;
-  label: string;
-  type: 'text' | 'select';
-  options?: string[];
-  required: boolean;
-};
+import { useBuildingSelector } from '@/hooks/useBuildingSelector';
+import { BuildingSelector } from '@/components/survey/BuildingSelector';
+import { SurveyQuestionList } from '@/components/survey/SurveyQuestionList';
+import { DuplicateWarningModal } from '@/components/survey/DuplicateWarningModal';
+import type { SurveyQuestion, BasicInfoField } from '@/lib/surveys/types';
 
 type SurveyConfigMeta = {
   id: string;
@@ -26,7 +14,7 @@ type SurveyConfigMeta = {
   organizer: string;
   intro: string;
   notice: string;
-  basicInfoFields: BasicInfoFieldMeta[];
+  basicInfoFields: BasicInfoField[];
   questions: SurveyQuestion[];
   isClosed: boolean;
   closedAt: string;
@@ -44,16 +32,24 @@ export default function SurveyFormPage() {
   const submittingRef = useRef(false);
 
   const [basicInfo, setBasicInfo] = useState<Record<string, string>>({});
-  const [selectedDong, setSelectedDong] = useState('');
-  const [selectedFloor, setSelectedFloor] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  const {
+    selectedDong,
+    selectedFloor,
+    dongList,
+    floorList,
+    hoList,
+    handleDongChange,
+    handleFloorChange,
+    handleHoChange: baseHandleHoChange,
+  } = useBuildingSelector(setBasicInfo);
 
   useEffect(() => {
     loadConfig();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveyId]);
 
-  // 제출 완료 후 뒤로가기 차단
   useEffect(() => {
     if (!submitted) return;
     window.history.pushState(null, '', window.location.href);
@@ -76,36 +72,8 @@ export default function SurveyFormPage() {
     setLoading(false);
   }
 
-  const dongList = useMemo(() => Object.keys(BUILDING_CONFIG), []);
-
-  const floorList = useMemo(() => {
-    if (!selectedDong || !BUILDING_CONFIG[selectedDong]) return [];
-    const { floors } = BUILDING_CONFIG[selectedDong];
-    return Array.from({ length: floors }, (_, i) => i + 1);
-  }, [selectedDong]);
-
-  const hoList = useMemo(() => {
-    if (!selectedDong || !selectedFloor || !BUILDING_CONFIG[selectedDong]) return [];
-    const { units, excludedUnits } = BUILDING_CONFIG[selectedDong];
-    const floor = parseInt(selectedFloor, 10);
-    return units
-      .map((u) => `${floor}${String(u).padStart(2, '0')}`)
-      .filter((ho) => !excludedUnits?.includes(ho));
-  }, [selectedDong, selectedFloor]);
-
-  function handleDongChange(dong: string) {
-    setSelectedDong(dong);
-    setSelectedFloor('');
-    setBasicInfo((prev) => ({ ...prev, dong, ho: '' }));
-  }
-
-  function handleFloorChange(floor: string) {
-    setSelectedFloor(floor);
-    setBasicInfo((prev) => ({ ...prev, ho: '' }));
-  }
-
   function handleHoChange(ho: string) {
-    setBasicInfo((prev) => ({ ...prev, ho }));
+    baseHandleHoChange(ho);
     setDuplicateHint(false);
     if (selectedDong && ho) {
       fetch(`/api/survey/${surveyId}/check-duplicate?dong=${encodeURIComponent(selectedDong)}&ho=${encodeURIComponent(ho)}`)
@@ -116,16 +84,8 @@ export default function SurveyFormPage() {
   }
 
   function handleBasicInfoChange(key: string, value: string) {
-    if (key === 'name') {
-      value = value.slice(0, 5);
-    } else if (key === 'phone') {
-      value = value.replace(/\D/g, '').slice(0, 11);
-    }
+    if (key === 'phone') value = value.replace(/\D/g, '').slice(0, 11);
     setBasicInfo((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function handleAnswerChange(questionId: string, option: string) {
-    setAnswers((prev) => ({ ...prev, [questionId]: option }));
   }
 
   async function doSubmit(forceSubmit = false) {
@@ -155,10 +115,6 @@ export default function SurveyFormPage() {
     setSubmitting(false);
   }
 
-  function handleSubmit() {
-    doSubmit(false);
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-[#2F5496] flex items-center justify-center">
@@ -183,9 +139,7 @@ export default function SurveyFormPage() {
         <div className="bg-white rounded-2xl p-10 text-center max-w-sm shadow-2xl">
           <div className="text-5xl mb-4">🔒</div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">설문이 마감되었습니다</h2>
-          <p className="text-gray-500 text-sm">
-            {config.title}
-          </p>
+          <p className="text-gray-500 text-sm">{config.title}</p>
           {config.closedAt && (
             <p className="text-xs text-gray-400 mt-2">
               마감일: {new Date(config.closedAt).toLocaleDateString('ko-KR')}
@@ -208,10 +162,7 @@ export default function SurveyFormPage() {
     );
   }
 
-  const otherBasicFields = config.basicInfoFields.filter(
-    (f) => !['dong', 'ho'].includes(f.key),
-  );
-
+  const otherBasicFields = config.basicInfoFields.filter((f) => !['dong', 'ho'].includes(f.key));
   const selectClass =
     'w-full p-3.5 border border-gray-200 rounded-xl text-base outline-none focus:border-[#2F5496] bg-white appearance-none';
   const inputClass =
@@ -220,14 +171,12 @@ export default function SurveyFormPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* 헤더 */}
       <header className="bg-[#2F5496] text-white px-4 py-5 text-center">
         <h1 className="text-xl font-bold leading-snug">{config.title}</h1>
         <p className="text-sm text-white/70 mt-1">{config.organizer}</p>
       </header>
 
       <div className="max-w-xl mx-auto p-4 space-y-4 pb-10">
-        {/* 안내문 */}
         {config.intro && (
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <p className="text-base text-gray-600 leading-relaxed whitespace-pre-line">
@@ -236,62 +185,20 @@ export default function SurveyFormPage() {
           </div>
         )}
 
-        {/* 기본정보 */}
         <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
           <h2 className="font-bold text-[#2F5496] text-base">기본정보</h2>
 
-          {/* 동/층/호 — 3개 나란히 */}
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className={labelClass}>
-                동 <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={selectedDong}
-                onChange={(e) => handleDongChange(e.target.value)}
-                className={selectClass}
-              >
-                <option value="">동 선택</option>
-                {dongList.map((d) => (
-                  <option key={d} value={d}>{d}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className={labelClass}>
-                층 <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={selectedFloor}
-                onChange={(e) => handleFloorChange(e.target.value)}
-                disabled={!selectedDong}
-                className={selectClass + ((!selectedDong) ? ' opacity-40' : '')}
-              >
-                <option value="">층 선택</option>
-                {floorList.map((f) => (
-                  <option key={f} value={String(f)}>{f}층</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className={labelClass}>
-                호수 <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={basicInfo.ho || ''}
-                onChange={(e) => handleHoChange(e.target.value)}
-                disabled={!selectedFloor}
-                className={selectClass + ((!selectedFloor) ? ' opacity-40' : '')}
-              >
-                <option value="">호 선택</option>
-                {hoList.map((h) => (
-                  <option key={h} value={h}>{h}호</option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <BuildingSelector
+            selectedDong={selectedDong}
+            selectedFloor={selectedFloor}
+            selectedHo={basicInfo.ho || ''}
+            dongList={dongList}
+            floorList={floorList}
+            hoList={hoList}
+            onDongChange={handleDongChange}
+            onFloorChange={handleFloorChange}
+            onHoChange={handleHoChange}
+          />
 
           {duplicateHint && (
             <p className="text-sm text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
@@ -299,7 +206,6 @@ export default function SurveyFormPage() {
             </p>
           )}
 
-          {/* 나머지 기본정보 */}
           {otherBasicFields.map((field) => (
             <div key={field.key}>
               <label className={labelClass}>
@@ -317,82 +223,44 @@ export default function SurveyFormPage() {
                   ))}
                 </select>
               ) : (
-                <input
-                  type={field.key === 'phone' ? 'tel' : 'text'}
-                  value={basicInfo[field.key] || ''}
-                  onChange={(e) => handleBasicInfoChange(field.key, e.target.value)}
-                  placeholder={field.key === 'phone' ? '01012345678' : `${field.label} 입력`}
-                  maxLength={field.key === 'name' ? 5 : field.key === 'phone' ? 11 : undefined}
-                  className={inputClass}
-                />
+                <div>
+                  <input
+                    type={field.key === 'phone' ? 'tel' : 'text'}
+                    value={basicInfo[field.key] || ''}
+                    onChange={(e) => handleBasicInfoChange(field.key, e.target.value)}
+                    placeholder={field.key === 'phone' ? '01012345678' : `${field.label} 입력`}
+                    maxLength={field.key === 'phone' ? 11 : undefined}
+                    className={inputClass}
+                  />
+                  {field.key === 'name' && (basicInfo.name?.length ?? 0) > 5 && (
+                    <p className="text-sm text-red-500 mt-1">이름은 5자 이내로 입력해 주세요.</p>
+                  )}
+                </div>
               )}
             </div>
           ))}
         </div>
 
-        {/* 질문 */}
-        {config.questions.map((q, qi) => (
-          <div key={q.id} className="bg-white rounded-2xl p-5 shadow-sm">
-            <p className="font-bold text-base text-gray-800 leading-snug mb-1">
-              {qi + 1}. {q.label}
-              <span className="text-red-400 ml-1">*</span>
-            </p>
-            {q.description && (
-              <p className="text-sm text-gray-400 mb-3 whitespace-pre-line leading-relaxed">
-                {q.description}
-              </p>
-            )}
-            <div className="space-y-2 mt-3">
-              {q.options.map((opt) => (
-                <label
-                  key={opt}
-                  className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    answers[q.id] === opt
-                      ? 'border-[#2F5496] bg-[#2F5496]/5'
-                      : 'border-gray-100 bg-gray-50 active:bg-gray-100'
-                  }`}
-                >
-                  <div
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 shrink-0 transition-colors ${
-                      answers[q.id] === opt ? 'border-[#2F5496]' : 'border-gray-300'
-                    }`}
-                  >
-                    {answers[q.id] === opt && (
-                      <div className="w-3 h-3 rounded-full bg-[#2F5496]" />
-                    )}
-                  </div>
-                  <span className="text-base leading-snug">{opt}</span>
-                  <input
-                    type="radio"
-                    name={q.id}
-                    value={opt}
-                    checked={answers[q.id] === opt}
-                    onChange={() => handleAnswerChange(q.id, opt)}
-                    className="hidden"
-                  />
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
+        <SurveyQuestionList
+          questions={config.questions}
+          answers={answers}
+          onChange={(id, opt) => setAnswers((prev) => ({ ...prev, [id]: opt }))}
+        />
 
-        {/* 하단 안내 */}
         {config.notice && (
           <p className="text-sm text-gray-400 text-center whitespace-pre-line leading-relaxed px-2">
             {config.notice}
           </p>
         )}
 
-        {/* 에러 */}
         {error && (
           <div className="p-4 rounded-xl bg-red-50 text-red-600 text-base text-center">
             {error}
           </div>
         )}
 
-        {/* 제출 버튼 */}
         <button
-          onClick={handleSubmit}
+          onClick={() => doSubmit(false)}
           disabled={submitting}
           className="w-full py-4 bg-[#2F5496] text-white rounded-2xl text-lg font-bold disabled:opacity-50 active:bg-[#1e3a6e] transition-colors"
         >
@@ -400,31 +268,14 @@ export default function SurveyFormPage() {
         </button>
       </div>
 
-      {/* 중복 경고 모달 */}
       {showDuplicateWarning && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-            <p className="text-lg font-bold text-gray-800 mb-2">이미 제출된 호수입니다</p>
-            <p className="text-sm text-gray-500 mb-5">
-              {basicInfo.dong} {basicInfo.ho}호는 이미 응답 이력이 있습니다.{'\n'}
-              그래도 제출하시겠습니까?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDuplicateWarning(false)}
-                className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-base font-semibold text-gray-600 active:bg-gray-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={() => { setShowDuplicateWarning(false); doSubmit(true); }}
-                className="flex-1 py-3 bg-[#2F5496] text-white rounded-xl text-base font-semibold active:bg-[#1e3a6e]"
-              >
-                그래도 제출
-              </button>
-            </div>
-          </div>
-        </div>
+        <DuplicateWarningModal
+          dong={basicInfo.dong}
+          ho={basicInfo.ho}
+          confirmLabel="그래도 제출"
+          onCancel={() => setShowDuplicateWarning(false)}
+          onConfirm={() => { setShowDuplicateWarning(false); doSubmit(true); }}
+        />
       )}
     </div>
   );

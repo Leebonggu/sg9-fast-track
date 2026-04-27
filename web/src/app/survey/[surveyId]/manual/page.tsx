@@ -1,32 +1,20 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { BUILDING_CONFIG } from '@/lib/buildings';
 import AdminLayout from '@/components/AdminLayout';
-
-type SurveyQuestion = {
-  id: string;
-  label: string;
-  description?: string;
-  options: string[];
-};
-
-type BasicInfoFieldMeta = {
-  key: string;
-  sheetColumn: string;
-  label: string;
-  type: 'text' | 'select';
-  options?: string[];
-  required: boolean;
-};
+import { useBuildingSelector } from '@/hooks/useBuildingSelector';
+import { BuildingSelector } from '@/components/survey/BuildingSelector';
+import { SurveyQuestionList } from '@/components/survey/SurveyQuestionList';
+import { DuplicateWarningModal } from '@/components/survey/DuplicateWarningModal';
+import type { SurveyQuestion, BasicInfoField } from '@/lib/surveys/types';
 
 type SurveyConfigMeta = {
   id: string;
   title: string;
   organizer: string;
-  basicInfoFields: BasicInfoFieldMeta[];
+  basicInfoFields: BasicInfoField[];
   questions: SurveyQuestion[];
 };
 
@@ -43,9 +31,19 @@ export default function ManualInputPage() {
   const submittingRef = useRef(false);
 
   const [basicInfo, setBasicInfo] = useState<Record<string, string>>({});
-  const [selectedDong, setSelectedDong] = useState('');
-  const [selectedFloor, setSelectedFloor] = useState('');
   const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  const {
+    selectedDong,
+    selectedFloor,
+    dongList,
+    floorList,
+    hoList,
+    handleDongChange,
+    handleFloorChange,
+    handleHoChange,
+    reset,
+  } = useBuildingSelector(setBasicInfo);
 
   useEffect(() => {
     const stored = sessionStorage.getItem('operatorName') || '';
@@ -65,51 +63,14 @@ export default function ManualInputPage() {
     }
   }
 
-  const dongList = useMemo(() => Object.keys(BUILDING_CONFIG), []);
-
-  const floorList = useMemo(() => {
-    if (!selectedDong || !BUILDING_CONFIG[selectedDong]) return [];
-    const { floors } = BUILDING_CONFIG[selectedDong];
-    return Array.from({ length: floors }, (_, i) => i + 1);
-  }, [selectedDong]);
-
-  const hoList = useMemo(() => {
-    if (!selectedDong || !selectedFloor || !BUILDING_CONFIG[selectedDong]) return [];
-    const { units, excludedUnits } = BUILDING_CONFIG[selectedDong];
-    const floor = parseInt(selectedFloor, 10);
-    return units
-      .map((u) => `${floor}${String(u).padStart(2, '0')}`)
-      .filter((ho) => !excludedUnits?.includes(ho));
-  }, [selectedDong, selectedFloor]);
-
-  function handleDongChange(dong: string) {
-    setSelectedDong(dong);
-    setSelectedFloor('');
-    setBasicInfo((prev) => ({ ...prev, dong, ho: '' }));
-  }
-
-  function handleFloorChange(floor: string) {
-    setSelectedFloor(floor);
-    setBasicInfo((prev) => ({ ...prev, ho: '' }));
-  }
-
-  function handleHoChange(ho: string) {
-    setBasicInfo((prev) => ({ ...prev, ho }));
-  }
-
   function handleBasicInfoChange(key: string, value: string) {
     if (key === 'phone') value = value.replace(/\D/g, '').slice(0, 11);
     setBasicInfo((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleAnswerChange(questionId: string, option: string) {
-    setAnswers((prev) => ({ ...prev, [questionId]: option }));
-  }
-
   function resetForm() {
     setBasicInfo({});
-    setSelectedDong('');
-    setSelectedFloor('');
+    reset();
     setAnswers({});
     setError('');
     setSubmitted(false);
@@ -222,55 +183,20 @@ export default function ManualInputPage() {
           </div>
         ) : (
           <div className="max-w-xl mx-auto p-4 space-y-4">
-            {/* 기본정보 */}
             <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
               <h2 className="font-bold text-[#2F5496] text-base">기본정보</h2>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className={labelClass}>동 <span className="text-red-400">*</span></label>
-                  <select
-                    value={selectedDong}
-                    onChange={(e) => handleDongChange(e.target.value)}
-                    className={selectClass}
-                  >
-                    <option value="">동 선택</option>
-                    {dongList.map((d) => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={labelClass}>층 <span className="text-red-400">*</span></label>
-                  <select
-                    value={selectedFloor}
-                    onChange={(e) => handleFloorChange(e.target.value)}
-                    disabled={!selectedDong}
-                    className={selectClass + (!selectedDong ? ' opacity-40' : '')}
-                  >
-                    <option value="">층 선택</option>
-                    {floorList.map((f) => (
-                      <option key={f} value={String(f)}>{f}층</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className={labelClass}>호수 <span className="text-red-400">*</span></label>
-                  <select
-                    value={basicInfo.ho || ''}
-                    onChange={(e) => handleHoChange(e.target.value)}
-                    disabled={!selectedFloor}
-                    className={selectClass + (!selectedFloor ? ' opacity-40' : '')}
-                  >
-                    <option value="">호 선택</option>
-                    {hoList.map((h) => (
-                      <option key={h} value={h}>{h}호</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+              <BuildingSelector
+                selectedDong={selectedDong}
+                selectedFloor={selectedFloor}
+                selectedHo={basicInfo.ho || ''}
+                dongList={dongList}
+                floorList={floorList}
+                hoList={hoList}
+                onDongChange={handleDongChange}
+                onFloorChange={handleFloorChange}
+                onHoChange={handleHoChange}
+              />
 
               {otherBasicFields.map((field) => (
                 <div key={field.key}>
@@ -302,51 +228,11 @@ export default function ManualInputPage() {
               ))}
             </div>
 
-            {/* 질문 */}
-            {config.questions.map((q, qi) => (
-              <div key={q.id} className="bg-white rounded-2xl p-5 shadow-sm">
-                <p className="font-bold text-base text-gray-800 leading-snug mb-1">
-                  {qi + 1}. {q.label}
-                  <span className="text-red-400 ml-1">*</span>
-                </p>
-                {q.description && (
-                  <p className="text-sm text-gray-400 mb-3 whitespace-pre-line leading-relaxed">
-                    {q.description}
-                  </p>
-                )}
-                <div className="space-y-2 mt-3">
-                  {q.options.map((opt) => (
-                    <label
-                      key={opt}
-                      className={`flex items-center p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                        answers[q.id] === opt
-                          ? 'border-[#2F5496] bg-[#2F5496]/5'
-                          : 'border-gray-100 bg-gray-50 active:bg-gray-100'
-                      }`}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mr-3 shrink-0 transition-colors ${
-                          answers[q.id] === opt ? 'border-[#2F5496]' : 'border-gray-300'
-                        }`}
-                      >
-                        {answers[q.id] === opt && (
-                          <div className="w-3 h-3 rounded-full bg-[#2F5496]" />
-                        )}
-                      </div>
-                      <span className="text-base leading-snug">{opt}</span>
-                      <input
-                        type="radio"
-                        name={q.id}
-                        value={opt}
-                        checked={answers[q.id] === opt}
-                        onChange={() => handleAnswerChange(q.id, opt)}
-                        className="hidden"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
+            <SurveyQuestionList
+              questions={config.questions}
+              answers={answers}
+              onChange={(id, opt) => setAnswers((prev) => ({ ...prev, [id]: opt }))}
+            />
 
             {error && (
               <div className="p-4 rounded-xl bg-red-50 text-red-600 text-base text-center">
@@ -365,29 +251,13 @@ export default function ManualInputPage() {
         )}
 
         {showDuplicateWarning && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-              <p className="text-lg font-bold text-gray-800 mb-2">이미 제출된 호수입니다</p>
-              <p className="text-sm text-gray-500 mb-5">
-                {basicInfo.dong} {basicInfo.ho}호는 이미 응답 이력이 있습니다.{'\n'}
-                그래도 저장하시겠습니까?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDuplicateWarning(false)}
-                  className="flex-1 py-3 border-2 border-gray-200 rounded-xl text-base font-semibold text-gray-600"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={() => { setShowDuplicateWarning(false); doSubmit(true); }}
-                  className="flex-1 py-3 bg-[#2F5496] text-white rounded-xl text-base font-semibold"
-                >
-                  그래도 저장
-                </button>
-              </div>
-            </div>
-          </div>
+          <DuplicateWarningModal
+            dong={basicInfo.dong}
+            ho={basicInfo.ho}
+            confirmLabel="그래도 저장"
+            onCancel={() => setShowDuplicateWarning(false)}
+            onConfirm={() => { setShowDuplicateWarning(false); doSubmit(true); }}
+          />
         )}
       </div>
     </AdminLayout>

@@ -98,8 +98,7 @@ export default function ManualInputPage() {
   }
 
   function handleBasicInfoChange(key: string, value: string) {
-    if (key === 'name') value = value.slice(0, 5);
-    else if (key === 'phone') value = value.replace(/\D/g, '').slice(0, 11);
+    if (key === 'phone') value = value.replace(/\D/g, '').slice(0, 11);
     setBasicInfo((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -295,7 +294,7 @@ export default function ManualInputPage() {
                       value={basicInfo[field.key] || ''}
                       onChange={(e) => handleBasicInfoChange(field.key, e.target.value)}
                       placeholder={field.key === 'phone' ? '01012345678' : `${field.label} 입력`}
-                      maxLength={field.key === 'name' ? 5 : field.key === 'phone' ? 11 : undefined}
+                      maxLength={field.key === 'phone' ? 11 : undefined}
                       className={inputClass}
                     />
                   )}

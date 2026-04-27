@@ -84,7 +84,8 @@ export default function SurveyFormPage() {
   }
 
   function handleBasicInfoChange(key: string, value: string) {
-    if (key === 'phone') value = value.replace(/\D/g, '').slice(0, 11);
+    if (key === 'name') value = value.slice(0, 5);
+    else if (key === 'phone') value = value.replace(/\D/g, '').slice(0, 11);
     setBasicInfo((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -229,11 +230,11 @@ export default function SurveyFormPage() {
                     value={basicInfo[field.key] || ''}
                     onChange={(e) => handleBasicInfoChange(field.key, e.target.value)}
                     placeholder={field.key === 'phone' ? '01012345678' : `${field.label} 입력`}
-                    maxLength={field.key === 'phone' ? 11 : undefined}
+                    maxLength={field.key === 'name' ? 5 : field.key === 'phone' ? 11 : undefined}
                     className={inputClass}
                   />
-                  {field.key === 'name' && (basicInfo.name?.length ?? 0) > 5 && (
-                    <p className="text-sm text-red-500 mt-1">이름은 5자 이내로 입력해 주세요.</p>
+                  {field.key === 'name' && (basicInfo.name?.length ?? 0) >= 5 && (
+                    <p className="text-sm text-red-500 mt-1">이름은 최대 5자까지 입력할 수 있습니다.</p>
                   )}
                 </div>
               )}

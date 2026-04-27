@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const data = await res.json();
     if (data.ok) {
       sessionStorage.setItem('auth', '1');
+      if (name.trim()) sessionStorage.setItem('operatorName', name.trim());
       setAuthed(true);
     } else {
       setLoginError('비밀번호가 올바르지 않습니다.');
@@ -42,6 +44,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="bg-white rounded-2xl p-10 w-full max-w-sm text-center shadow-2xl">
           <h1 className="text-xl font-bold text-[#2F5496]">상계주공 9단지</h1>
           <p className="text-sm text-gray-400 mb-6">관리 시스템</p>
+          <input
+            type="text"
+            className="w-full p-3.5 border-2 border-gray-200 rounded-xl text-center text-lg outline-none focus:border-[#2F5496] mb-2"
+            placeholder="이름 (선택)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && doLogin()}
+          />
           <input
             type="password"
             className="w-full p-3.5 border-2 border-gray-200 rounded-xl text-center text-lg outline-none focus:border-[#2F5496]"

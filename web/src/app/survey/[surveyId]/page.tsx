@@ -17,6 +17,7 @@ type SurveyResponse = {
   basicInfo: Record<string, string>;
   answers: Record<string, string>;
   entryPath: string;
+  operatorName: string;
   pdfGenerated: boolean;
   pdfLink: string;
 };
@@ -159,6 +160,7 @@ export default function SurveyDetailPage() {
   const extraFields = (config?.basicInfoFields || []).filter(
     (f) => !['dong', 'ho', 'name'].includes(f.key),
   );
+  const hasOperatorName = responses.some((r) => r.operatorName);
   const formUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/survey/${surveyId}/form`
     : '';
@@ -239,6 +241,12 @@ export default function SurveyDetailPage() {
               {generating === 'blank' ? '생성 중...' : '빈 설문지'}
             </button>
           </div>
+          <Link
+            href={`/survey/${surveyId}/manual`}
+            className="block w-full p-3 border-2 border-orange-300 text-orange-600 rounded-xl font-semibold text-sm text-center active:bg-orange-50"
+          >
+            오프라인 응답 입력
+          </Link>
 
           {message && (
             <div className={`p-3 rounded-xl text-sm ${message.includes('실패') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
@@ -257,6 +265,7 @@ export default function SurveyDetailPage() {
                       <th key={f.key} className="p-2 text-left">{f.label}</th>
                     ))}
                     <th className="p-2 text-left">입력경로</th>
+                    {hasOperatorName && <th className="p-2 text-left">입력자</th>}
                     <th className="p-2 text-left">시간</th>
                     <th className="p-2 text-center">상태</th>
                     <th className="p-2 text-center">액션</th>
@@ -287,11 +296,15 @@ export default function SurveyDetailPage() {
                         <span className={`px-1.5 py-0.5 rounded text-xs ${
                           r.entryPath === '온라인(구글)' ? 'bg-blue-100 text-blue-700' :
                           r.entryPath === '온라인(웹)' ? 'bg-purple-100 text-purple-700' :
+                          r.entryPath.startsWith('수동입력') ? 'bg-orange-100 text-orange-700' :
                           'bg-gray-100 text-gray-600'
                         }`}>
                           {r.entryPath || '수동'}
                         </span>
                       </td>
+                      {hasOperatorName && (
+                        <td className="p-2 text-xs text-gray-500">{r.operatorName || ''}</td>
+                      )}
                       <td className="p-2 text-xs text-gray-400">{r.timestamp}</td>
                       <td className="p-2 text-center">
                         {r.pdfGenerated ? (

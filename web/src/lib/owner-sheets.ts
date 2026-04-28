@@ -25,14 +25,12 @@ export async function getOwners(): Promise<OwnerRow[]> {
       dong: String(row.get('동') || '').trim(),
       ho: String(row.get('호수') || '').trim(),
       ownerName: [1, 2, 3, 4, 5]
-        .map((n) => {
-          // 컬럼명이 줄바꿈 포함("소유자N\n(성명)") 또는 공백("소유자N (성명)") 두 형식 모두 시도
-          return (
-            String(row.get(`소유자${n}\n(성명)`) || '').trim() ||
-            String(row.get(`소유자${n} \n(성명)`) || '').trim() ||
-            String(row.get(`소유자${n} (성명)`) || '').trim()
-          );
-        })
+        .map((n) => (
+          String(row.get(`소유자${n}(성명)`) || '').trim() ||
+          String(row.get(`소유자${n}\n(성명)`) || '').trim() ||
+          String(row.get(`소유자${n} \n(성명)`) || '').trim() ||
+          String(row.get(`소유자${n} (성명)`) || '').trim()
+        ))
         .filter(Boolean)
         .join(', '),
       postalCode:

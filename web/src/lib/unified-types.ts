@@ -4,6 +4,8 @@ export interface OwnerRow {
   dong: string      // "901" (동 숫자만, "동" 접미사 없음)
   ho: string        // "101"
   ownerName: string
+  postalCode: string // 소유자1(우편번호)
+  address: string    // 소유자1(주소)
   residency: string // "실거주" | "임대"
 }
 

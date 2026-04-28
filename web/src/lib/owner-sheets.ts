@@ -35,6 +35,16 @@ export async function getOwners(): Promise<OwnerRow[]> {
         })
         .filter(Boolean)
         .join(', '),
+      postalCode:
+        String(row.get('소유자1(우편번호)') || '').trim() ||
+        String(row.get('소유자1\n(우편번호)') || '').trim() ||
+        String(row.get('소유자1 (우편번호)') || '').trim() ||
+        String(row.get('소유자1 \n(우편번호)') || '').trim(),
+      address:
+        String(row.get('소유자1(주소)') || '').trim() ||
+        String(row.get('소유자1\n(주소)') || '').trim() ||
+        String(row.get('소유자1 (주소)') || '').trim() ||
+        String(row.get('소유자1 \n(주소)') || '').trim(),
       residency: String(row.get('실거주여부') || '').trim(),
     }))
     .filter((r) => r.dong && r.ho);
@@ -70,7 +80,7 @@ export async function writeMasterRows(
   if (!sheet) throw new Error('통합현황 시트를 찾을 수 없습니다.');
 
   const headers = [
-    '동', '호수', '소유자명', '실거주여부',
+    '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
     '신속통합동의서_제출_완료',
     ...surveyIds,
     '메모', '마지막_동기화',
@@ -85,6 +95,8 @@ export async function writeMasterRows(
     동: r.dong,
     호수: r.ho,
     소유자명: r.ownerName,
+    우편번호: r.postalCode,
+    대표주소: r.address,
     실거주여부: r.residency,
     신속통합동의서_제출_완료: r.consent ? 'TRUE' : 'FALSE',
     ...Object.fromEntries(
@@ -121,7 +133,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
 
   await sheet.loadHeaderRow();
   const headers = sheet.headerValues;
-  const fixedCols = new Set(['동', '호수', '소유자명', '실거주여부', '신속통합동의서_제출_완료', '메모', '마지막_동기화']);
+  const fixedCols = new Set(['동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부', '신속통합동의서_제출_완료', '메모', '마지막_동기화']);
   const surveyIds = headers.filter((h) => !fixedCols.has(h));
 
   const sheetRows = await sheet.getRows();
@@ -129,6 +141,8 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     dong: String(row.get('동') || ''),
     ho: String(row.get('호수') || ''),
     ownerName: String(row.get('소유자명') || ''),
+    postalCode: String(row.get('우편번호') || ''),
+    address: String(row.get('대표주소') || ''),
     residency: String(row.get('실거주여부') || ''),
     consent: row.get('신속통합동의서_제출_완료') === 'TRUE',
     surveys: Object.fromEntries(

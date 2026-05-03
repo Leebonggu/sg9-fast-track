@@ -40,6 +40,8 @@ export function applyFilter(
   if (filter === 'no-consent') return rows.filter((r) => !r.consent);
 
   if (filter === 'rental') return rows.filter(isRental);
+  if (filter === 'rental-incomplete')
+    return rows.filter((r) => isRental(r) && (!r.consent || surveyIds.some((id) => !r.surveys[id])));
   if (filter === 'rental-no-consent')
     return rows.filter((r) => isRental(r) && !r.consent);
 

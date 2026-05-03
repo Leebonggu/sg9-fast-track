@@ -165,6 +165,57 @@ export async function addSurveyResponse(
   await sheet.addRow(rowData);
 }
 
+export async function updateSurveyResponse(
+  config: SurveyConfig,
+  rowIndex: number,
+  basicInfo: Record<string, string>,
+  answers: Record<string, string>,
+  editorName: string,
+): Promise<void> {
+  const doc = await getSurveyDoc(config);
+  const sheet = getUnifiedSheet(doc);
+
+  await sheet.loadHeaderRow();
+  if (!sheet.headerValues.includes('비고')) {
+    await sheet.setHeaderRow([...sheet.headerValues, '비고']);
+  }
+
+  const rows = await sheet.getRows();
+  const row = rows[rowIndex];
+  if (!row) throw new Error('해당 행 없음: ' + rowIndex);
+
+  const diffs: string[] = [];
+
+  for (const field of config.basicInfoFields) {
+    const oldVal = String(row.get(field.sheetColumn) || '');
+    const newVal = basicInfo[field.key] ?? oldVal;
+    if (newVal !== oldVal) {
+      diffs.push(`${field.label}: ${oldVal}→${newVal}`);
+      row.set(field.sheetColumn, newVal);
+    }
+  }
+
+  for (const q of config.questions) {
+    const oldVal = String(row.get(q.label) || '');
+    const newVal = answers[q.id] ?? oldVal;
+    if (newVal !== oldVal) {
+      diffs.push(`${q.id}: ${oldVal}→${newVal}`);
+      row.set(q.label, newVal);
+    }
+  }
+
+  if (diffs.length === 0) return;
+
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const dateStr = kst.toISOString().slice(0, 10);
+  const newEntry = `[${dateStr} ${editorName}] ${diffs.join(', ')}`;
+  const existing = String(row.get('비고') || '');
+  row.set('비고', existing ? `${existing} | ${newEntry}` : newEntry);
+
+  await row.save();
+}
+
 // 특정 설문 완료 세대 키셋 반환: Set<"901-101">
 // 통합응답 시트: 동 컬럼 "동" (값: "901동"), 호 컬럼 "호"
 export async function getSurveyKeyset(config: SurveyConfig): Promise<Set<string>> {

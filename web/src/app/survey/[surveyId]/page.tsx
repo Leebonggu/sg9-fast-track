@@ -8,7 +8,7 @@ import SurveyDetailTabs from '@/components/survey/SurveyDetailTabs';
 import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
 
-type BasicInfoFieldMeta = { key: string; label: string };
+type BasicInfoFieldMeta = { key: string; label: string; type: 'text' | 'select'; options?: string[] };
 type SurveyQuestion = { id: string; label: string; options: string[] };
 
 type SurveyResponse = {
@@ -46,6 +46,11 @@ export default function SurveyDetailPage() {
   const [deleteTarget, setDeleteTarget] = useState<SurveyResponse | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [editTarget, setEditTarget] = useState<SurveyResponse | null>(null);
+  const [editBasicInfo, setEditBasicInfo] = useState<Record<string, string>>({});
+  const [editAnswers, setEditAnswers] = useState<Record<string, string>>({});
+  const [editEditorName, setEditEditorName] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -116,6 +121,33 @@ export default function SurveyDetailPage() {
       setMessage('생성 실패: ' + (e instanceof Error ? e.message : String(e)));
     }
     setGenerating(null);
+  }
+
+  async function doEdit() {
+    if (!editTarget || !editEditorName.trim()) return;
+    setEditSaving(true);
+    setMessage('');
+    try {
+      const res = await fetch(`/api/survey/${surveyId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rowIndex: editTarget.rowIndex,
+          basicInfo: editBasicInfo,
+          answers: editAnswers,
+          editorName: editEditorName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setEditTarget(null);
+      setMessage('수정 완료');
+      await loadData();
+    } catch (e) {
+      setMessage('수정 실패: ' + (e instanceof Error ? e.message : String(e)));
+      setEditTarget(null);
+    }
+    setEditSaving(false);
   }
 
   async function doDelete() {
@@ -328,6 +360,13 @@ export default function SurveyDetailPage() {
                             </button>
                           )}
                           <button
+                            onClick={() => { setEditTarget(r); setEditBasicInfo({...r.basicInfo}); setEditAnswers({...r.answers}); setEditEditorName(''); }}
+                            disabled={generating !== null || deleting}
+                            className="px-2.5 py-1 border border-[#2F5496] text-[#2F5496] rounded text-xs hover:bg-blue-50 disabled:opacity-30"
+                          >
+                            수정
+                          </button>
+                          <button
                             onClick={() => { setDeleteTarget(r); setDeleteConfirm(''); }}
                             disabled={generating !== null || deleting}
                             className="px-2 py-1 border border-red-200 text-red-400 rounded text-xs hover:bg-red-50 disabled:opacity-30"
@@ -344,6 +383,80 @@ export default function SurveyDetailPage() {
             </div>
           </div>
         </div>
+
+        {editTarget && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl flex flex-col max-h-[90vh]">
+              <div className="p-5 pb-3 border-b border-gray-100">
+                <p className="font-bold text-gray-800">응답 수정</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {formatDongHo(editTarget.basicInfo)} · {editTarget.basicInfo.name || '이름없음'}
+                </p>
+              </div>
+              <div className="overflow-y-auto flex-1 p-5 space-y-3">
+                {config?.basicInfoFields.map((f) => (
+                  <div key={f.key}>
+                    <label className="block text-xs text-gray-500 mb-1">{f.label}</label>
+                    {f.type === 'select' && f.options ? (
+                      <select
+                        value={editBasicInfo[f.key] ?? ''}
+                        onChange={(e) => setEditBasicInfo((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2F5496]"
+                      >
+                        {f.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={editBasicInfo[f.key] ?? ''}
+                        onChange={(e) => setEditBasicInfo((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2F5496]"
+                      />
+                    )}
+                  </div>
+                ))}
+                {config?.questions.map((q) => (
+                  <div key={q.id}>
+                    <label className="block text-xs text-gray-500 mb-1">{q.id}. {q.label}</label>
+                    <select
+                      value={editAnswers[q.id] ?? ''}
+                      onChange={(e) => setEditAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2F5496]"
+                    >
+                      <option value="">선택 안함</option>
+                      {q.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                ))}
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">수정자 이름 <span className="text-red-400">*</span></label>
+                  <input
+                    type="text"
+                    value={editEditorName}
+                    onChange={(e) => setEditEditorName(e.target.value)}
+                    placeholder="이름 입력"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#2F5496]"
+                  />
+                </div>
+              </div>
+              <div className="p-5 pt-3 border-t border-gray-100 space-y-2">
+                <button
+                  onClick={doEdit}
+                  disabled={!editEditorName.trim() || editSaving}
+                  className="w-full py-2.5 bg-[#2F5496] text-white rounded-xl text-sm font-semibold disabled:opacity-40"
+                >
+                  {editSaving ? '저장 중...' : '저장'}
+                </button>
+                <button
+                  onClick={() => setEditTarget(null)}
+                  className="w-full py-2.5 border border-gray-200 rounded-xl text-sm text-gray-500"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {deleteTarget && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">

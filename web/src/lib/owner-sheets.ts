@@ -152,3 +152,24 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
 
   return { rows, surveyIds };
 }
+
+export async function getOwnersByDongHo(dong: string, ho: string): Promise<string[]> {
+  const doc = await getOwnerDoc();
+  const sheet = doc.sheetsByTitle['원본'];
+  if (!sheet) throw new Error('원본 시트를 찾을 수 없습니다.');
+  const rows = await sheet.getRows();
+  const row = rows.find(
+    (r) => String(r.get('동') || '').trim() === dong && String(r.get('호수') || '').trim() === ho,
+  );
+  if (!row) return [];
+  const owners: string[] = [];
+  for (let n = 1; n <= 5; n++) {
+    const name =
+      String(row.get(`소유자${n}(성명)`) || '').trim() ||
+      String(row.get(`소유자${n}\n(성명)`) || '').trim() ||
+      String(row.get(`소유자${n} \n(성명)`) || '').trim() ||
+      String(row.get(`소유자${n} (성명)`) || '').trim();
+    if (name) owners.push(name);
+  }
+  return owners;
+}

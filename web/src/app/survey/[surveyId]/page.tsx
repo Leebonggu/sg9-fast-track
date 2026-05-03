@@ -360,7 +360,7 @@ export default function SurveyDetailPage() {
                             </button>
                           )}
                           <button
-                            onClick={() => { setEditTarget(r); setEditBasicInfo({...r.basicInfo}); setEditAnswers({...r.answers}); setEditEditorName(''); }}
+                            onClick={() => { setEditTarget(r); setEditBasicInfo({...r.basicInfo}); setEditAnswers({...r.answers}); setEditEditorName(sessionStorage.getItem('operatorName') || ''); }}
                             disabled={generating !== null || deleting}
                             className="px-2.5 py-1 border border-[#2F5496] text-[#2F5496] rounded text-xs hover:bg-blue-50 disabled:opacity-30"
                           >

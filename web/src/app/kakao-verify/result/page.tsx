@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { verifyToken } from '@/lib/kakao-verify';
+import { ProtectedContent } from './ProtectedContent';
 
 export default async function KakaoVerifyResultPage({
   searchParams,
@@ -27,33 +28,12 @@ export default async function KakaoVerifyResultPage({
   return (
     <div className="min-h-screen bg-[#2F5496] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
-        <div className="text-5xl mb-3">✓</div>
-        <h2 className="text-xl font-bold text-[#2F5496] mb-1">소유자 인증 완료</h2>
-        <p className="text-sm text-gray-500 mb-6">
-          {result.dong}동 {result.ho}호 소유자로 확인되었습니다.
-        </p>
-
-        {kakaoPassword && (
-          <div className="bg-gray-50 rounded-xl p-4 mb-4 text-left">
-            <p className="text-xs text-gray-400 mb-1">단톡방 입장 비밀번호</p>
-            <p className="text-3xl font-bold tracking-widest text-[#2F5496]">
-              {kakaoPassword}
-            </p>
-          </div>
-        )}
-
-        {kakaoLink ? (
-          <a
-            href={kakaoLink}
-            className="block w-full py-4 bg-[#FEE500] text-[#3C1E1E] rounded-2xl text-base font-bold active:opacity-80"
-          >
-            카카오톡 단톡방 입장하기
-          </a>
-        ) : (
-          <p className="text-sm text-gray-400">링크가 아직 설정되지 않았습니다.</p>
-        )}
-
-        <p className="text-xs text-gray-400 mt-4">이 페이지는 30분간 유효합니다.</p>
+        <ProtectedContent
+          password={kakaoPassword}
+          link={kakaoLink}
+          dong={result.dong}
+          ho={result.ho}
+        />
       </div>
     </div>
   );

@@ -38,12 +38,14 @@ function rowBg(result: string) {
   return 'border-b border-gray-50';
 }
 
+type Tab = 'logs' | 'link';
+
 export default function KakaoVerifyLogsPage() {
+  const [tab, setTab] = useState<Tab>('logs');
   const [logs, setLogs] = useState<VerifyLogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // 어드민 링크 생성 상태
   const [basicInfo, setBasicInfo] = useState<Record<string, string>>({});
   const [generating, setGenerating] = useState(false);
   const [generatedUrl, setGeneratedUrl] = useState('');
@@ -79,6 +81,7 @@ export default function KakaoVerifyLogsPage() {
     if (!basicInfo.dong || !basicInfo.ho) return;
     setGenerating(true);
     setGeneratedUrl('');
+    setCopied(false);
     try {
       const res = await fetch('/api/admin/kakao-link', {
         method: 'POST',
@@ -108,103 +111,126 @@ export default function KakaoVerifyLogsPage() {
 
   const counts = todayCounts(logs);
 
+  const tabClass = (t: Tab) =>
+    `flex-1 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
+      tab === t
+        ? 'border-[#2F5496] text-[#2F5496]'
+        : 'border-transparent text-gray-400'
+    }`;
+
   return (
     <AdminLayout>
-      <div className="p-4 max-w-5xl mx-auto pb-16">
-        <h1 className="text-xl font-bold text-[#2F5496] mb-4">카카오톡 인증 관리</h1>
+      <div className="min-h-screen bg-gray-50 pb-16">
+        <header className="bg-[#2F5496] text-white p-3.5 sticky top-0 z-40">
+          <span className="font-semibold">카카오톡 인증 관리</span>
+        </header>
 
-        {/* 어드민 링크 생성 */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
-          <h2 className="text-sm font-semibold text-gray-600 mb-3">세대별 링크 직접 생성 (30분 유효)</h2>
-          <BuildingSelector
-            selectedDong={selectedDong}
-            selectedFloor={selectedFloor}
-            selectedHo={basicInfo.ho || ''}
-            dongList={dongList}
-            floorList={floorList}
-            hoList={hoList}
-            onDongChange={handleDongChange}
-            onFloorChange={handleFloorChange}
-            onHoChange={handleHoChange}
-          />
-          <button
-            onClick={handleGenerate}
-            disabled={!basicInfo.dong || !basicInfo.ho || generating}
-            className="mt-3 w-full py-3 bg-[#2F5496] text-white rounded-xl text-sm font-semibold disabled:opacity-40"
-          >
-            {generating ? '생성 중...' : '링크 생성'}
-          </button>
+        <div className="flex bg-white border-b border-gray-100 sticky top-[52px] z-30">
+          <button className={tabClass('logs')} onClick={() => setTab('logs')}>인증 로그</button>
+          <button className={tabClass('link')} onClick={() => setTab('link')}>링크 생성</button>
+        </div>
 
-          {generatedUrl && (
-            <div className="mt-3 bg-gray-50 rounded-xl p-3">
-              <p className="text-xs text-gray-400 mb-1">생성된 링크 (30분 유효)</p>
-              <p className="text-xs text-gray-700 break-all mb-2">{generatedUrl}</p>
+        <div className="p-4 max-w-5xl mx-auto">
+          {tab === 'logs' && (
+            <>
+              <div className="grid grid-cols-3 gap-3 mb-5">
+                <div className="bg-green-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-gray-500 mb-1">오늘 성공</p>
+                  <p className="text-3xl font-bold text-green-600">{counts.success}</p>
+                </div>
+                <div className="bg-red-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-gray-500 mb-1">오늘 실패</p>
+                  <p className="text-3xl font-bold text-red-500">{counts.fail}</p>
+                </div>
+                <div className="bg-blue-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-gray-500 mb-1">어드민발급</p>
+                  <p className="text-3xl font-bold text-blue-500">{counts.admin}</p>
+                </div>
+              </div>
+
+              {loading && <p className="text-gray-400 text-center py-10">로딩 중...</p>}
+              {error && <p className="text-red-500 text-center py-4">{error}</p>}
+
+              {!loading && !error && (
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-500 text-xs">
+                      <tr>
+                        <th className="py-3 px-3 text-left">시각</th>
+                        <th className="py-3 px-3 text-left">동</th>
+                        <th className="py-3 px-3 text-left">호수</th>
+                        <th className="py-3 px-3 text-left">이름</th>
+                        <th className="py-3 px-3 text-left">결과</th>
+                        <th className="py-3 px-3 text-left">IP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-10 text-center text-gray-400">
+                            기록이 없습니다.
+                          </td>
+                        </tr>
+                      )}
+                      {logs.map((log, i) => (
+                        <tr key={i} className={rowBg(log.result)}>
+                          <td className="py-2 px-3 text-gray-600 whitespace-nowrap">
+                            {formatTs(log.timestamp)}
+                          </td>
+                          <td className="py-2 px-3 text-gray-700">{log.dong}</td>
+                          <td className="py-2 px-3 text-gray-700">{log.ho}</td>
+                          <td className="py-2 px-3 text-gray-700">{log.name || '-'}</td>
+                          <td className="py-2 px-3">{resultBadge(log.result)}</td>
+                          <td className="py-2 px-3 text-gray-400 text-xs font-mono">{log.ip}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {tab === 'link' && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
+              <h2 className="text-sm font-semibold text-gray-600 mb-1">세대별 인증 링크 생성</h2>
+              <p className="text-xs text-gray-400 mb-4">링크는 발급 후 30분간 유효합니다.</p>
+
+              <BuildingSelector
+                selectedDong={selectedDong}
+                selectedFloor={selectedFloor}
+                selectedHo={basicInfo.ho || ''}
+                dongList={dongList}
+                floorList={floorList}
+                hoList={hoList}
+                onDongChange={handleDongChange}
+                onFloorChange={handleFloorChange}
+                onHoChange={handleHoChange}
+              />
+
               <button
-                onClick={handleCopy}
-                className="w-full py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600"
+                onClick={handleGenerate}
+                disabled={!basicInfo.dong || !basicInfo.ho || generating}
+                className="mt-4 w-full py-3.5 bg-[#2F5496] text-white rounded-xl text-sm font-semibold disabled:opacity-40"
               >
-                {copied ? '✓ 복사됨' : '링크 복사'}
+                {generating ? '생성 중...' : '링크 생성'}
               </button>
+
+              {generatedUrl && (
+                <div className="mt-4 bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs text-gray-400 mb-2">생성된 링크</p>
+                  <p className="text-xs text-gray-700 break-all mb-3">{generatedUrl}</p>
+                  <button
+                    onClick={handleCopy}
+                    className="w-full py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 font-medium"
+                  >
+                    {copied ? '✓ 복사됨' : '링크 복사'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
-
-        {/* 오늘 요약 */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          <div className="bg-green-50 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">오늘 성공</p>
-            <p className="text-3xl font-bold text-green-600">{counts.success}</p>
-          </div>
-          <div className="bg-red-50 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">오늘 실패</p>
-            <p className="text-3xl font-bold text-red-500">{counts.fail}</p>
-          </div>
-          <div className="bg-blue-50 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">오늘 어드민발급</p>
-            <p className="text-3xl font-bold text-blue-500">{counts.admin}</p>
-          </div>
-        </div>
-
-        {loading && <p className="text-gray-400 text-center py-10">로딩 중...</p>}
-        {error && <p className="text-red-500 text-center py-4">{error}</p>}
-
-        {!loading && !error && (
-          <div className="overflow-x-auto rounded-xl border border-gray-100">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 text-gray-500 text-xs">
-                <tr>
-                  <th className="py-3 px-3 text-left">시각</th>
-                  <th className="py-3 px-3 text-left">동</th>
-                  <th className="py-3 px-3 text-left">호수</th>
-                  <th className="py-3 px-3 text-left">이름</th>
-                  <th className="py-3 px-3 text-left">결과</th>
-                  <th className="py-3 px-3 text-left">IP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {logs.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-10 text-center text-gray-400">
-                      기록이 없습니다.
-                    </td>
-                  </tr>
-                )}
-                {logs.map((log, i) => (
-                  <tr key={i} className={rowBg(log.result)}>
-                    <td className="py-2 px-3 text-gray-600 whitespace-nowrap">
-                      {formatTs(log.timestamp)}
-                    </td>
-                    <td className="py-2 px-3 text-gray-700">{log.dong}</td>
-                    <td className="py-2 px-3 text-gray-700">{log.ho}</td>
-                    <td className="py-2 px-3 text-gray-700">{log.name || '-'}</td>
-                    <td className="py-2 px-3">{resultBadge(log.result)}</td>
-                    <td className="py-2 px-3 text-gray-400 text-xs font-mono">{log.ip}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </AdminLayout>
   );

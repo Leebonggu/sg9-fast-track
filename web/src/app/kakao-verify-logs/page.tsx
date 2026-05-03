@@ -100,7 +100,17 @@ export default function KakaoVerifyLogsPage() {
   return (
     <AdminLayout>
       <div className="p-4 max-w-5xl mx-auto pb-16 space-y-5">
-        <h1 className="text-xl font-bold text-[#2F5496] pt-2">카카오톡 인증 관리</h1>
+        <div className="flex items-center justify-between pt-2">
+          <h1 className="text-xl font-bold text-[#2F5496]">카카오톡 인증 관리</h1>
+          <a
+            href="/kakao-verify"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-[#2F5496] border border-[#2F5496] rounded-lg px-3 py-1.5 font-medium"
+          >
+            인증 페이지 →
+          </a>
+        </div>
 
         {/* 링크 생성 */}
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">

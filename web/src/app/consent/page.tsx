@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { BUILDINGS } from '@/lib/buildings';
 import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
+import DongHeatmap from '@/components/DongHeatmap';
 
 type BuildingInfo = {
   building: string;
@@ -58,6 +59,9 @@ export default function ConsentPage() {
   const [modalName, setModalName] = useState('');
   const [modalCollected, setModalCollected] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
+  const [selectedHeatmapDong, setSelectedHeatmapDong] = useState<string | null>(null);
+  const [heatmapBuildingData, setHeatmapBuildingData] = useState<BuildingData | null>(null);
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
 
   useEffect(() => {
     loadDashboard();
@@ -167,6 +171,23 @@ export default function ConsentPage() {
     }
   }
 
+  async function loadHeatmapBuilding(building: string) {
+    if (selectedHeatmapDong === building) {
+      setSelectedHeatmapDong(null);
+      setHeatmapBuildingData(null);
+      return;
+    }
+    setSelectedHeatmapDong(building);
+    setHeatmapBuildingData(null);
+    setHeatmapLoading(true);
+    try {
+      const res = await fetch(`/api/building/${encodeURIComponent(building)}`);
+      const data = await res.json();
+      setHeatmapBuildingData(data);
+    } catch { /* silent */ }
+    setHeatmapLoading(false);
+  }
+
   function downloadCSV() {
     if (!buildingData) return;
     const { building, grid } = buildingData;
@@ -213,6 +234,20 @@ export default function ConsentPage() {
       <span className="text-gray-500">로딩 중...</span>
     </div>
   );
+
+  const missingUnits = heatmapBuildingData
+    ? (() => {
+        const { floors, units, excludedUnits, grid } = heatmapBuildingData;
+        const missing: { unitNum: string }[] = [];
+        for (let floor = 1; floor <= floors; floor++) {
+          for (const u of units) {
+            const unitNum = String(floor * 100 + u);
+            if (!excludedUnits.includes(unitNum) && !grid[unitNum]) missing.push({ unitNum });
+          }
+        }
+        return missing.sort((a, b) => Number(a.unitNum) - Number(b.unitNum));
+      })()
+    : [];
 
   let mainContent: React.ReactNode;
 
@@ -490,52 +525,48 @@ export default function ConsentPage() {
         {loadingOverlay}
         <header className="bg-[#2F5496] text-white p-3.5 flex items-center sticky top-0 z-40">
           <button onClick={() => loadDashboard()} className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/20 active:bg-white/30 mr-2 text-lg">←</button>
-          <span className="font-semibold">전체 현황</span>
+          <span className="font-semibold flex-1">동별 동의율 현황</span>
         </header>
 
-        <div className="p-3">
-          <div className="bg-white p-4 rounded-xl shadow-sm mb-3">
-            <div className="flex gap-4">
-              <div className="flex-1 text-center">
-                <p className="text-xs text-gray-400">접수</p>
-                <p className="text-2xl font-bold text-[#2F5496]">{dashboard.totalReceived}</p>
-                <p className="text-xs text-gray-400">{dashboard.receivedRate}%</p>
-              </div>
-              <div className="flex-1 text-center">
-                <p className="text-xs text-gray-400">수거완료</p>
-                <p className="text-2xl font-bold text-green-600">{dashboard.totalCollected}</p>
-                <p className="text-xs text-gray-400">{dashboard.collectedRate}%</p>
-              </div>
-              <div className="flex-1 text-center">
-                <p className="text-xs text-gray-400">총세대</p>
-                <p className="text-2xl font-bold text-gray-600">{dashboard.totalUnits}</p>
-              </div>
+        {/* 전체 요약 */}
+        <div className="mx-3 mt-3 bg-white rounded-xl shadow-sm p-4">
+          <div className="flex gap-4 mb-3">
+            <div className="flex-1 text-center">
+              <p className="text-xs text-gray-400">접수</p>
+              <p className="text-2xl font-bold text-[#2F5496]">{dashboard.totalReceived}</p>
+              <p className="text-xs text-gray-400">{dashboard.receivedRate}%</p>
+            </div>
+            <div className="flex-1 text-center">
+              <p className="text-xs text-gray-400">수거완료</p>
+              <p className="text-2xl font-bold text-green-600">{dashboard.totalCollected}</p>
+              <p className="text-xs text-gray-400">{dashboard.collectedRate}%</p>
+            </div>
+            <div className="flex-1 text-center">
+              <p className="text-xs text-gray-400">총세대</p>
+              <p className="text-2xl font-bold text-gray-600">{dashboard.totalUnits}</p>
             </div>
           </div>
-
-          <table className="w-full bg-white rounded-xl overflow-hidden shadow-sm">
-            <thead>
-              <tr className="bg-[#2F5496] text-white">
-                <th className="p-2 text-xs">동</th>
-                <th className="p-2 text-xs">접수</th>
-                <th className="p-2 text-xs">수거</th>
-                <th className="p-2 text-xs">세대</th>
-                <th className="p-2 text-xs">접수율</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dashboard.buildings.map((b) => (
-                <tr key={b.building} className="border-b border-gray-100">
-                  <td className="p-2 text-xs text-center">{b.building}</td>
-                  <td className="p-2 text-xs text-center font-semibold text-[#2F5496]">{b.received}</td>
-                  <td className="p-2 text-xs text-center font-semibold text-green-600">{b.collected}</td>
-                  <td className="p-2 text-xs text-center text-gray-500">{b.total}</td>
-                  <td className="p-2 text-xs text-center">{b.receivedRate}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-full bg-[#2F5496] rounded-full" style={{ width: `${dashboard.receivedRate}%` }} />
+          </div>
         </div>
+
+        <DongHeatmap
+          stats={dashboard.buildings.map((b) => ({
+            building: b.building,
+            count: b.received,
+            total: b.total,
+            rate: b.receivedRate,
+          }))}
+          selectedDong={selectedHeatmapDong}
+          onSelectDong={loadHeatmapBuilding}
+          missingUnits={missingUnits}
+          missingLoading={heatmapLoading}
+          missingLabel="미접수 세대"
+          countLabel="접수"
+          onViewDetail={loadBuilding}
+          detailButtonLabel="그리드 보기 →"
+        />
       </div>
     );
   } else {

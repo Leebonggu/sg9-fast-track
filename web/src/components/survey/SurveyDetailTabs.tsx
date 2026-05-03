@@ -13,6 +13,7 @@ export default function SurveyDetailTabs({ surveyId }: Props) {
     { href: base, label: '응답 목록', exact: true },
     { href: `${base}/missing`, label: '미응답', exact: false },
     { href: `${base}/analytics`, label: '통계 분석', exact: false },
+    { href: `${base}/dong`, label: '동별 현황', exact: false },
   ];
 
   return (

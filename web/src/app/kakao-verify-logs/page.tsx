@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import AdminLayout from '@/components/AdminLayout';
+import { useBuildingSelector } from '@/hooks/useBuildingSelector';
+import { BuildingSelector } from '@/components/survey/BuildingSelector';
 import type { VerifyLogRow } from '@/lib/kakao-verify-log';
 
 function formatTs(iso: string): string {
@@ -18,7 +20,22 @@ function todayCounts(logs: VerifyLogRow[]) {
   return {
     success: today.filter((l) => l.result === '성공').length,
     fail: today.filter((l) => l.result === '실패').length,
+    admin: today.filter((l) => l.result === '어드민발급').length,
   };
+}
+
+function resultBadge(result: string) {
+  if (result === '성공') return <span className="text-green-600 font-medium">성공</span>;
+  if (result === '실패') return <span className="text-red-500 font-medium">실패</span>;
+  if (result === '어드민발급') return <span className="text-blue-500 font-medium">어드민발급</span>;
+  return <span className="text-gray-400">{result}</span>;
+}
+
+function rowBg(result: string) {
+  if (result === '성공') return 'bg-green-50/40 border-b border-gray-50';
+  if (result === '실패') return 'bg-red-50/40 border-b border-gray-50';
+  if (result === '어드민발급') return 'bg-blue-50/40 border-b border-gray-50';
+  return 'border-b border-gray-50';
 }
 
 export default function KakaoVerifyLogsPage() {
@@ -26,7 +43,26 @@ export default function KakaoVerifyLogsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  // 어드민 링크 생성 상태
+  const [basicInfo, setBasicInfo] = useState<Record<string, string>>({});
+  const [generating, setGenerating] = useState(false);
+  const [generatedUrl, setGeneratedUrl] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const {
+    selectedDong,
+    selectedFloor,
+    dongList,
+    floorList,
+    hoList,
+    handleDongChange,
+    handleFloorChange,
+    handleHoChange,
+    reset,
+  } = useBuildingSelector(setBasicInfo);
+
+  function fetchLogs() {
+    setLoading(true);
     fetch('/api/kakao-verify-logs')
       .then((r) => r.json())
       .then((d) => {
@@ -35,23 +71,97 @@ export default function KakaoVerifyLogsPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => { fetchLogs(); }, []);
+
+  async function handleGenerate() {
+    if (!basicInfo.dong || !basicInfo.ho) return;
+    setGenerating(true);
+    setGeneratedUrl('');
+    try {
+      const res = await fetch('/api/admin/kakao-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong: basicInfo.dong, ho: basicInfo.ho }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      const url = `${window.location.origin}/kakao-verify/result?t=${encodeURIComponent(data.token)}`;
+      setGeneratedUrl(url);
+      reset();
+      setBasicInfo({});
+      fetchLogs();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '오류가 발생했습니다.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(generatedUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   const counts = todayCounts(logs);
 
   return (
     <AdminLayout>
-      <div className="p-4 max-w-5xl mx-auto">
-        <h1 className="text-xl font-bold text-[#2F5496] mb-4">카카오톡 인증 로그</h1>
+      <div className="p-4 max-w-5xl mx-auto pb-16">
+        <h1 className="text-xl font-bold text-[#2F5496] mb-4">카카오톡 인증 관리</h1>
 
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        {/* 어드민 링크 생성 */}
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
+          <h2 className="text-sm font-semibold text-gray-600 mb-3">세대별 링크 직접 생성 (30분 유효)</h2>
+          <BuildingSelector
+            selectedDong={selectedDong}
+            selectedFloor={selectedFloor}
+            selectedHo={basicInfo.ho || ''}
+            dongList={dongList}
+            floorList={floorList}
+            hoList={hoList}
+            onDongChange={handleDongChange}
+            onFloorChange={handleFloorChange}
+            onHoChange={handleHoChange}
+          />
+          <button
+            onClick={handleGenerate}
+            disabled={!basicInfo.dong || !basicInfo.ho || generating}
+            className="mt-3 w-full py-3 bg-[#2F5496] text-white rounded-xl text-sm font-semibold disabled:opacity-40"
+          >
+            {generating ? '생성 중...' : '링크 생성'}
+          </button>
+
+          {generatedUrl && (
+            <div className="mt-3 bg-gray-50 rounded-xl p-3">
+              <p className="text-xs text-gray-400 mb-1">생성된 링크 (30분 유효)</p>
+              <p className="text-xs text-gray-700 break-all mb-2">{generatedUrl}</p>
+              <button
+                onClick={handleCopy}
+                className="w-full py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600"
+              >
+                {copied ? '✓ 복사됨' : '링크 복사'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 오늘 요약 */}
+        <div className="grid grid-cols-3 gap-3 mb-5">
           <div className="bg-green-50 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">오늘 인증 성공</p>
+            <p className="text-xs text-gray-500 mb-1">오늘 성공</p>
             <p className="text-3xl font-bold text-green-600">{counts.success}</p>
           </div>
           <div className="bg-red-50 rounded-xl p-4 text-center">
-            <p className="text-xs text-gray-500 mb-1">오늘 인증 실패</p>
+            <p className="text-xs text-gray-500 mb-1">오늘 실패</p>
             <p className="text-3xl font-bold text-red-500">{counts.fail}</p>
+          </div>
+          <div className="bg-blue-50 rounded-xl p-4 text-center">
+            <p className="text-xs text-gray-500 mb-1">오늘 어드민발급</p>
+            <p className="text-3xl font-bold text-blue-500">{counts.admin}</p>
           </div>
         </div>
 
@@ -80,31 +190,14 @@ export default function KakaoVerifyLogsPage() {
                   </tr>
                 )}
                 {logs.map((log, i) => (
-                  <tr
-                    key={i}
-                    className={
-                      log.result === '성공'
-                        ? 'bg-green-50/40 border-b border-gray-50'
-                        : 'bg-red-50/40 border-b border-gray-50'
-                    }
-                  >
+                  <tr key={i} className={rowBg(log.result)}>
                     <td className="py-2 px-3 text-gray-600 whitespace-nowrap">
                       {formatTs(log.timestamp)}
                     </td>
                     <td className="py-2 px-3 text-gray-700">{log.dong}</td>
                     <td className="py-2 px-3 text-gray-700">{log.ho}</td>
-                    <td className="py-2 px-3 text-gray-700">{log.name}</td>
-                    <td className="py-2 px-3">
-                      <span
-                        className={
-                          log.result === '성공'
-                            ? 'text-green-600 font-medium'
-                            : 'text-red-500 font-medium'
-                        }
-                      >
-                        {log.result}
-                      </span>
-                    </td>
+                    <td className="py-2 px-3 text-gray-700">{log.name || '-'}</td>
+                    <td className="py-2 px-3">{resultBadge(log.result)}</td>
                     <td className="py-2 px-3 text-gray-400 text-xs font-mono">{log.ip}</td>
                   </tr>
                 ))}

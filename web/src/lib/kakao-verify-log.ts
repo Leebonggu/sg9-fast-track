@@ -53,7 +53,7 @@ export async function appendVerifyLog(
   dong: string,
   ho: string,
   name: string,
-  result: '성공' | '실패',
+  result: '성공' | '실패' | '어드민발급',
   ip: string,
 ): Promise<void> {
   try {

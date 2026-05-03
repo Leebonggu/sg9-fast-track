@@ -33,6 +33,13 @@ export default function AdminHome() {
             <h2 className="font-semibold text-[#2F5496] text-lg">설문 관리</h2>
             <p className="text-sm text-gray-400 mt-1">설문 응답 수집 및 PDF 생성</p>
           </Link>
+          <Link
+            href="/kakao-verify-logs"
+            className="block bg-white rounded-xl p-5 shadow-sm border border-gray-100 active:bg-gray-50"
+          >
+            <h2 className="font-semibold text-[#2F5496] text-lg">카카오톡 인증 로그</h2>
+            <p className="text-sm text-gray-400 mt-1">소유자 인증 시도 기록 조회</p>
+          </Link>
         </div>
       </div>
       <AdminNav />

@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual } from 'crypto';
 const TOKEN_TTL_MS = 30 * 60 * 1000;
 
 function getSecret(): string {
-  const s = process.env.VERIFY_SECRET;
+  const s = process.env.KAKAO_VERIFY_SECRET;
   if (!s) throw new Error('VERIFY_SECRET 환경변수가 설정되지 않았습니다.');
   return s;
 }

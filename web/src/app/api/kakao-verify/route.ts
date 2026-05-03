@@ -32,22 +32,15 @@ export async function POST(req: NextRequest) {
 
     const owners = await getOwnersByDongHo(dong, ho);
 
-    if (owners.length === 0) {
+    const notFound = owners.length === 0;
+    const matched =
+      !notFound &&
+      owners.some((o) => o.replace(/\s/g, '') === name.replace(/\s/g, ''));
+
+    if (notFound || !matched) {
       await appendVerifyLog(dong, ho, name, '실패', ip);
       return NextResponse.json(
-        { error: '해당 동/호수 정보를 찾을 수 없습니다. 동과 호수를 다시 확인해 주세요.' },
-        { status: 404 },
-      );
-    }
-
-    const matched = owners.some(
-      (o) => o.replace(/\s/g, '') === name.replace(/\s/g, ''),
-    );
-
-    if (!matched) {
-      await appendVerifyLog(dong, ho, name, '실패', ip);
-      return NextResponse.json(
-        { error: '이름이 일치하지 않습니다. 등기부상 소유자 성명을 입력해 주세요.' },
+        { error: '동/호수 또는 이름이 일치하지 않습니다. 다시 확인해 주세요.' },
         { status: 403 },
       );
     }

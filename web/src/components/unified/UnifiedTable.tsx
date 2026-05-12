@@ -16,21 +16,21 @@ const Check = ({ value }: { value: boolean }) =>
 
 export default function UnifiedTable({ rows, surveyIds, showDong }: Props) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto -mx-4 sm:mx-0">
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b border-gray-200 text-xs text-gray-400">
-            {showDong && <th className="text-left py-2 px-3 font-medium">동</th>}
-            <th className="text-left py-2 px-3 font-medium">호수</th>
-            <th className="text-left py-2 px-3 font-medium">소유자</th>
-            <th className="text-center py-2 px-3 font-medium">실거주</th>
-            <th className="text-center py-2 px-3 font-medium">신속통합동의서_제출</th>
+            {showDong && <th className="text-left py-2 px-2 sm:px-3 font-medium pl-4 sm:pl-3">동</th>}
+            <th className={`text-left py-2 px-2 sm:px-3 font-medium ${!showDong ? 'pl-4 sm:pl-3' : ''}`}>호수</th>
+            <th className="text-left py-2 px-2 sm:px-3 font-medium">소유자</th>
+            <th className="text-center py-2 px-2 sm:px-3 font-medium">실거주</th>
+            <th className="text-center py-2 px-2 sm:px-3 font-medium">신속통합동의서_제출</th>
             {surveyIds.map((id) => (
-              <th key={id} className="text-center py-2 px-3 font-medium">
+              <th key={id} className="text-center py-2 px-2 sm:px-3 font-medium">
                 {id}
               </th>
             ))}
-            <th className="text-left py-2 px-3 font-medium">메모</th>
+            <th className="text-left py-2 px-2 sm:px-3 font-medium pr-4 sm:pr-3">메모</th>
           </tr>
         </thead>
         <tbody>
@@ -46,22 +46,22 @@ export default function UnifiedTable({ rows, surveyIds, showDong }: Props) {
                 className={`border-b border-gray-100 hover:bg-gray-50 ${rowBg}`}
               >
                 {showDong && (
-                  <td className="py-2 px-3 text-gray-400 text-xs">{row.dong}</td>
+                  <td className="py-2 px-2 sm:px-3 text-gray-400 text-xs pl-4 sm:pl-3">{row.dong}</td>
                 )}
-                <td className="py-2 px-3 font-medium">{row.ho}</td>
-                <td className="py-2 px-3 text-gray-700">{row.ownerName}</td>
-                <td className="py-2 px-3 text-center text-xs text-gray-400">
+                <td className={`py-2 px-2 sm:px-3 font-medium ${!showDong ? 'pl-4 sm:pl-3' : ''}`}>{row.ho}</td>
+                <td className="py-2 px-2 sm:px-3 text-gray-700">{row.ownerName}</td>
+                <td className="py-2 px-2 sm:px-3 text-center text-xs text-gray-400">
                   {row.residency}
                 </td>
-                <td className="py-2 px-3 text-center">
+                <td className="py-2 px-2 sm:px-3 text-center">
                   <Check value={row.consent} />
                 </td>
                 {surveyIds.map((id) => (
-                  <td key={id} className="py-2 px-3 text-center">
+                  <td key={id} className="py-2 px-2 sm:px-3 text-center">
                     <Check value={row.surveys[id] ?? false} />
                   </td>
                 ))}
-                <td className="py-2 px-3 min-w-[120px]">
+                <td className="py-2 px-2 sm:px-3 min-w-[100px] pr-4 sm:pr-3">
                   <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
                 </td>
               </tr>

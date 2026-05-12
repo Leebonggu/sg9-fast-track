@@ -32,7 +32,7 @@ export default function SyncButton({ lastSynced, onSynced }: Props) {
       {toast && (
         <span className="text-xs text-green-600 bg-green-50 px-3 py-1 rounded-full">{toast}</span>
       )}
-      <span className="text-xs text-gray-400">마지막 동기화: {formattedTime}</span>
+      <span className="hidden sm:inline text-xs text-gray-400">마지막 동기화: {formattedTime}</span>
       <button
         onClick={handleSync}
         disabled={syncing}

@@ -16,12 +16,12 @@ export default function UnifiedSummary({ rows, surveyIds }: Props) {
   }));
 
   return (
-    <div className="flex gap-3 flex-wrap mb-4">
-      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 min-w-[90px]">
+    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mb-4">
+      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
         <div className="text-xs text-gray-400">전체</div>
         <div className="text-lg font-bold text-gray-800">{total.toLocaleString()}</div>
       </div>
-      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 min-w-[90px]">
+      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
         <div className="text-xs text-gray-400">신속통합동의서_제출</div>
         <div className="text-lg font-bold text-amber-500">
           {consentCount.toLocaleString()}
@@ -29,7 +29,7 @@ export default function UnifiedSummary({ rows, surveyIds }: Props) {
         </div>
       </div>
       {surveyCounts.map(({ id, count }) => (
-        <div key={id} className="bg-white border border-gray-200 rounded-lg px-4 py-3 min-w-[90px]">
+        <div key={id} className="bg-white border border-gray-200 rounded-lg px-4 py-3">
           <div className="text-xs text-gray-400">{id}</div>
           <div className="text-lg font-bold text-blue-500">
             {count.toLocaleString()}

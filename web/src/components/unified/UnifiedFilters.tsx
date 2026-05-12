@@ -80,48 +80,54 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
 
   return (
     <div className="flex flex-col gap-2 mb-2">
-      <div className="flex gap-2 flex-wrap">
-        {baseFilters.map(({ key, label }) => (
-          <FilterButton
-            key={key}
-            filterKey={key}
-            label={label}
-            active={active}
-            rows={rows}
-            surveyIds={surveyIds}
-            onChange={onChange}
-          />
-        ))}
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div className="flex gap-2 px-4 sm:px-0 min-w-max pb-0.5">
+          {baseFilters.map(({ key, label }) => (
+            <FilterButton
+              key={key}
+              filterKey={key}
+              label={label}
+              active={active}
+              rows={rows}
+              surveyIds={surveyIds}
+              onChange={onChange}
+            />
+          ))}
+        </div>
       </div>
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-xs text-orange-500 font-medium shrink-0">임대</span>
-        {rentalFilters.map(({ key, label }) => (
-          <FilterButton
-            key={key}
-            filterKey={key}
-            label={label}
-            active={active}
-            rows={rows}
-            surveyIds={surveyIds}
-            onChange={onChange}
-            variant="orange"
-          />
-        ))}
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div className="flex gap-2 items-center px-4 sm:px-0 min-w-max pb-0.5">
+          <span className="text-xs text-orange-500 font-medium">임대</span>
+          {rentalFilters.map(({ key, label }) => (
+            <FilterButton
+              key={key}
+              filterKey={key}
+              label={label}
+              active={active}
+              rows={rows}
+              surveyIds={surveyIds}
+              onChange={onChange}
+              variant="orange"
+            />
+          ))}
+        </div>
       </div>
-      <div className="flex gap-2 flex-wrap items-center">
-        <span className="text-xs text-green-600 font-medium shrink-0">실거주</span>
-        {residentFilters.map(({ key, label }) => (
-          <FilterButton
-            key={key}
-            filterKey={key}
-            label={label}
-            active={active}
-            rows={rows}
-            surveyIds={surveyIds}
-            onChange={onChange}
-            variant="green"
-          />
-        ))}
+      <div className="overflow-x-auto -mx-4 sm:mx-0">
+        <div className="flex gap-2 items-center px-4 sm:px-0 min-w-max pb-0.5">
+          <span className="text-xs text-green-600 font-medium">실거주</span>
+          {residentFilters.map(({ key, label }) => (
+            <FilterButton
+              key={key}
+              filterKey={key}
+              label={label}
+              active={active}
+              rows={rows}
+              surveyIds={surveyIds}
+              onChange={onChange}
+              variant="green"
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

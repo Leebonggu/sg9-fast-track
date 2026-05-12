@@ -32,7 +32,7 @@ export default function UnifiedPage() {
 
   return (
     <AdminLayout>
-      <div className="flex h-full">
+      <div className="flex flex-col sm:flex-row h-full">
         <UnifiedSidebar selectedDong={null} />
         <div className="flex-1 min-w-0 p-4 overflow-y-auto pb-20">
           <div className="flex items-center justify-between mb-4">

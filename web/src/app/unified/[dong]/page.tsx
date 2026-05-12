@@ -35,7 +35,7 @@ export default function UnifiedDongPage() {
 
   return (
     <AdminLayout>
-      <div className="flex h-full">
+      <div className="flex flex-col sm:flex-row h-full">
         <UnifiedSidebar selectedDong={dong} />
         <div className="flex-1 min-w-0 p-4 overflow-y-auto pb-20">
           <div className="flex items-center justify-between mb-4">

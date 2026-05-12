@@ -26,6 +26,7 @@ export function downloadAsCsv(rows: UnifiedRow[], surveyIds: string[], filename:
 }
 
 const isRental = (r: UnifiedRow) => r.residency === '임대';
+const isResident = (r: UnifiedRow) => r.residency === '실거주';
 
 export function applyFilter(
   rows: UnifiedRow[],
@@ -45,12 +46,22 @@ export function applyFilter(
   if (filter === 'rental-no-consent')
     return rows.filter((r) => isRental(r) && !r.consent);
 
+  if (filter === 'resident') return rows.filter(isResident);
+  if (filter === 'resident-incomplete')
+    return rows.filter((r) => isResident(r) && (!r.consent || surveyIds.some((id) => !r.surveys[id])));
+  if (filter === 'resident-no-consent')
+    return rows.filter((r) => isResident(r) && !r.consent);
+
   const matchedSurveyId = surveyIds.find((id) => filter === `no-${id}`);
   if (matchedSurveyId) return rows.filter((r) => !r.surveys[matchedSurveyId]);
 
   const rentalSurveyId = surveyIds.find((id) => filter === `rental-no-${id}`);
   if (rentalSurveyId)
     return rows.filter((r) => isRental(r) && !r.surveys[rentalSurveyId]);
+
+  const residentSurveyId = surveyIds.find((id) => filter === `resident-no-${id}`);
+  if (residentSurveyId)
+    return rows.filter((r) => isResident(r) && !r.surveys[residentSurveyId]);
 
   return rows;
 }

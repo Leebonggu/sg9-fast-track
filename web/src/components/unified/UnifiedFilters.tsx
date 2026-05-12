@@ -25,14 +25,16 @@ function FilterButton({
   rows: UnifiedRow[];
   surveyIds: string[];
   onChange: (f: FilterType) => void;
-  variant?: 'blue' | 'orange';
+  variant?: 'blue' | 'orange' | 'green';
 }) {
   const count = applyFilter(rows, filterKey, surveyIds).length;
   const isActive = active === filterKey;
   const activeClass =
     variant === 'orange'
       ? 'bg-orange-500 text-white border-orange-500'
-      : 'bg-[#2F5496] text-white border-[#2F5496]';
+      : variant === 'green'
+        ? 'bg-green-600 text-white border-green-600'
+        : 'bg-[#2F5496] text-white border-[#2F5496]';
   return (
     <button
       onClick={() => onChange(filterKey)}
@@ -58,10 +60,21 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
 
   const rentalFilters: { key: FilterType; label: string }[] = [
     { key: 'rental', label: '임대 전체' },
+    { key: 'rental-incomplete', label: '임대 + 하나라도 미완료' },
     { key: 'rental-no-consent', label: '임대 + 동의서 미제출' },
     ...surveyIds.map((id) => ({
       key: `rental-no-${id}` as FilterType,
       label: `임대 + ${id.replace(/_완료$/, '')} 미완료`,
+    })),
+  ];
+
+  const residentFilters: { key: FilterType; label: string }[] = [
+    { key: 'resident', label: '실거주 전체' },
+    { key: 'resident-incomplete', label: '실거주 + 하나라도 미완료' },
+    { key: 'resident-no-consent', label: '실거주 + 동의서 미제출' },
+    ...surveyIds.map((id) => ({
+      key: `resident-no-${id}` as FilterType,
+      label: `실거주 + ${id.replace(/_완료$/, '')} 미완료`,
     })),
   ];
 
@@ -92,6 +105,21 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
             surveyIds={surveyIds}
             onChange={onChange}
             variant="orange"
+          />
+        ))}
+      </div>
+      <div className="flex gap-2 flex-wrap items-center">
+        <span className="text-xs text-green-600 font-medium shrink-0">실거주</span>
+        {residentFilters.map(({ key, label }) => (
+          <FilterButton
+            key={key}
+            filterKey={key}
+            label={label}
+            active={active}
+            rows={rows}
+            surveyIds={surveyIds}
+            onChange={onChange}
+            variant="green"
           />
         ))}
       </div>

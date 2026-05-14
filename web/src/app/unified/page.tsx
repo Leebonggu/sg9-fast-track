@@ -7,7 +7,7 @@ import UnifiedSummary from '@/components/unified/UnifiedSummary';
 import UnifiedFilters from '@/components/unified/UnifiedFilters';
 import UnifiedTable from '@/components/unified/UnifiedTable';
 import SyncButton from '@/components/unified/SyncButton';
-import { applyFilter, downloadAsCsv } from '@/lib/unified-utils';
+import { applyFilter, downloadAsXlsx } from '@/lib/unified-utils';
 import type { UnifiedRow, FilterType } from '@/lib/unified-types';
 
 export default function UnifiedPage() {
@@ -52,7 +52,7 @@ export default function UnifiedPage() {
                 <button
                   onClick={() => {
                     const date = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '').replace('.', '');
-                    downloadAsCsv(filtered, surveyIds, `통합현황_${filter}_${date}.csv`);
+                    downloadAsXlsx(filtered, surveyIds, `통합현황_${filter}_${date}.xlsx`);
                   }}
                   className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
                 >

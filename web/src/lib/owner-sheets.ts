@@ -3,6 +3,13 @@ import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { getServiceAccountAuth } from './google-auth';
 import type { OwnerRow, UnifiedRow } from './unified-types';
 
+// 한국 우편번호는 5자리 — 시트가 숫자 포맷이면 leading-zero가 사라지므로 보정
+function normalizePostalCode(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.length < 5 ? digits.padStart(5, '0') : digits;
+}
+
 let ownerDocCache: GoogleSpreadsheet | null = null;
 
 async function getOwnerDoc(): Promise<GoogleSpreadsheet> {
@@ -33,11 +40,12 @@ export async function getOwners(): Promise<OwnerRow[]> {
         ))
         .filter(Boolean)
         .join(', '),
-      postalCode:
+      postalCode: normalizePostalCode(
         String(row.get('소유자1(우편번호)') || '').trim() ||
         String(row.get('소유자1\n(우편번호)') || '').trim() ||
         String(row.get('소유자1 (우편번호)') || '').trim() ||
         String(row.get('소유자1 \n(우편번호)') || '').trim(),
+      ),
       address:
         String(row.get('소유자1(주소)') || '').trim() ||
         String(row.get('소유자1\n(주소)') || '').trim() ||
@@ -139,7 +147,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     dong: String(row.get('동') || ''),
     ho: String(row.get('호수') || ''),
     ownerName: String(row.get('소유자명') || ''),
-    postalCode: String(row.get('우편번호') || ''),
+    postalCode: normalizePostalCode(String(row.get('우편번호') || '')),
     address: String(row.get('대표주소') || ''),
     residency: String(row.get('실거주여부') || ''),
     consent: row.get('신속통합동의서_제출_완료') === 'TRUE',

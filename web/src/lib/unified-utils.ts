@@ -1,6 +1,7 @@
+import * as XLSX from 'xlsx';
 import type { UnifiedRow, FilterType } from './unified-types';
 
-export function downloadAsCsv(rows: UnifiedRow[], surveyIds: string[], filename: string) {
+export function downloadAsXlsx(rows: UnifiedRow[], surveyIds: string[], filename: string) {
   const headers = ['동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부', '신속통합동의서_제출', ...surveyIds, '메모'];
   const dataRows = rows.map((r) => [
     r.dong,
@@ -13,16 +14,22 @@ export function downloadAsCsv(rows: UnifiedRow[], surveyIds: string[], filename:
     ...surveyIds.map((id) => (r.surveys[id] ? 'O' : 'X')),
     r.memo,
   ]);
-  const csv = [headers, ...dataRows]
-    .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-    .join('\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+  // 모든 데이터 셀을 명시적 텍스트 타입으로 지정 → 우편번호 등 leading-zero 유지
+  const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1');
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (cell && cell.v != null) {
+        cell.t = 's';
+        cell.v = String(cell.v);
+      }
+    }
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '통합현황');
+  XLSX.writeFile(wb, filename);
 }
 
 const isRental = (r: UnifiedRow) => r.residency === '임대';

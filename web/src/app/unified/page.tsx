@@ -45,19 +45,32 @@ export default function UnifiedPage() {
             <>
               <UnifiedSummary rows={rows} surveyIds={surveyIds} />
               <UnifiedFilters active={filter} rows={rows} surveyIds={surveyIds} onChange={setFilter} />
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2 gap-2">
                 <span className="text-xs text-gray-400">
                   {filtered.length.toLocaleString()}세대 표시 중 / 전체 {rows.length.toLocaleString()}세대
                 </span>
-                <button
-                  onClick={() => {
-                    const date = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '').replace('.', '');
-                    downloadAsXlsx(filtered, surveyIds, `통합현황_${filter}_${date}.xlsx`);
-                  }}
-                  className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
-                >
-                  엑셀 다운로드 ({filtered.length.toLocaleString()})
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      window.open(
+                        `/unified/labels?filter=${encodeURIComponent(filter)}`,
+                        '_blank',
+                      );
+                    }}
+                    className="text-xs px-3 py-1.5 rounded border border-[#2F5496] text-[#2F5496] hover:bg-[#2F5496]/5 transition-colors"
+                  >
+                    라벨 인쇄 ({filtered.length.toLocaleString()})
+                  </button>
+                  <button
+                    onClick={() => {
+                      const date = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '').replace('.', '');
+                      downloadAsXlsx(filtered, surveyIds, `통합현황_${filter}_${date}.xlsx`);
+                    }}
+                    className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    엑셀 다운로드 ({filtered.length.toLocaleString()})
+                  </button>
+                </div>
               </div>
               <UnifiedTable rows={filtered} surveyIds={surveyIds} showDong={true} />
             </>

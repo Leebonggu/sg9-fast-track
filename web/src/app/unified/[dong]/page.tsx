@@ -8,6 +8,7 @@ import UnifiedSummary from '@/components/unified/UnifiedSummary';
 import UnifiedFilters from '@/components/unified/UnifiedFilters';
 import UnifiedTable from '@/components/unified/UnifiedTable';
 import SyncButton from '@/components/unified/SyncButton';
+import EditRowModal from '@/components/unified/EditRowModal';
 import { applyFilter } from '@/lib/unified-utils';
 import type { UnifiedRow, FilterType } from '@/lib/unified-types';
 
@@ -18,6 +19,7 @@ export default function UnifiedDongPage() {
   const [surveyIds, setSurveyIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<UnifiedRow | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -51,11 +53,23 @@ export default function UnifiedDongPage() {
               <div className="text-xs text-gray-400 mb-2">
                 {filtered.length.toLocaleString()}세대 표시 중 / 전체 {rows.length.toLocaleString()}세대
               </div>
-              <UnifiedTable rows={filtered} surveyIds={surveyIds} showDong={false} />
+              <UnifiedTable
+                rows={filtered}
+                surveyIds={surveyIds}
+                showDong={false}
+                onRowClick={setEditing}
+              />
             </>
           )}
         </div>
       </div>
+      {editing && (
+        <EditRowModal
+          row={editing}
+          onClose={() => setEditing(null)}
+          onSaved={fetchData}
+        />
+      )}
     </AdminLayout>
   );
 }

@@ -16,6 +16,14 @@ export interface UnifiedRow extends OwnerRow {
   lastSynced: string
 }
 
+// 위원이 모달에서 수정하는 4필드 — 원본 시트에 직접 적용 + 변경로그 기록
+export interface UnifiedRowOverrides {
+  ownerName?: string
+  postalCode?: string
+  address?: string
+  residency?: string
+}
+
 export interface SyncResult {
   syncedAt: string
   totalRows: number

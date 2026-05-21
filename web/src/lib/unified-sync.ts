@@ -10,7 +10,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
   const startedAt = Date.now();
   const syncedAt = new Date().toISOString();
 
-  // 1. 소스 시트들 병렬 읽기
+  // 1. 소스 시트들 병렬 읽기 — 메모는 sync 시 보존, 4필드는 원본에 직접 갱신되므로 보존 불필요
   const surveyConfigs = getAllSurveyConfigs();
   const [owners, memoMap, consentKeys, ...surveyKeysets] =
     await Promise.all([

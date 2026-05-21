@@ -1,7 +1,10 @@
 // web/src/lib/owner-sheets.ts
-import { GoogleSpreadsheet } from 'google-spreadsheet';
+import {
+  GoogleSpreadsheet,
+  type GoogleSpreadsheetRow,
+} from 'google-spreadsheet';
 import { getServiceAccountAuth } from './google-auth';
-import type { OwnerRow, UnifiedRow } from './unified-types';
+import type { OwnerRow, UnifiedRow, UnifiedRowOverrides } from './unified-types';
 
 // 한국 우편번호는 5자리 — 시트가 숫자 포맷이면 leading-zero가 사라지므로 보정
 function normalizePostalCode(raw: string): string {
@@ -21,6 +24,33 @@ async function getOwnerDoc(): Promise<GoogleSpreadsheet> {
   return doc;
 }
 
+// 원본 시트는 헤더 변형이 다양 (\n, 공백) → 후보 중 실제 존재하는 키를 선택
+function pickExistingKey(row: GoogleSpreadsheetRow, candidates: string[]): string {
+  for (const c of candidates) {
+    if (row.get(c) !== undefined) return c;
+  }
+  return candidates[0];
+}
+
+const ownerNameVariants = (n: number) => [
+  `소유자${n}(성명)`,
+  `소유자${n}\n(성명)`,
+  `소유자${n} \n(성명)`,
+  `소유자${n} (성명)`,
+];
+const postalVariants = [
+  '소유자1(우편번호)',
+  '소유자1\n(우편번호)',
+  '소유자1 \n(우편번호)',
+  '소유자1 (우편번호)',
+];
+const addressVariants = [
+  '소유자1(주소)',
+  '소유자1\n(주소)',
+  '소유자1 \n(주소)',
+  '소유자1 (주소)',
+];
+
 // 소유자 원본 시트("원본")에서 2,830행 읽기
 export async function getOwners(): Promise<OwnerRow[]> {
   const doc = await getOwnerDoc();
@@ -32,25 +62,18 @@ export async function getOwners(): Promise<OwnerRow[]> {
       dong: String(row.get('동') || '').trim(),
       ho: String(row.get('호수') || '').trim(),
       ownerName: [1, 2, 3, 4, 5]
-        .map((n) => (
-          String(row.get(`소유자${n}(성명)`) || '').trim() ||
-          String(row.get(`소유자${n}\n(성명)`) || '').trim() ||
-          String(row.get(`소유자${n} \n(성명)`) || '').trim() ||
-          String(row.get(`소유자${n} (성명)`) || '').trim()
-        ))
+        .map((n) =>
+          ownerNameVariants(n)
+            .map((k) => String(row.get(k) || '').trim())
+            .find(Boolean) || '',
+        )
         .filter(Boolean)
         .join(', '),
       postalCode: normalizePostalCode(
-        String(row.get('소유자1(우편번호)') || '').trim() ||
-        String(row.get('소유자1\n(우편번호)') || '').trim() ||
-        String(row.get('소유자1 (우편번호)') || '').trim() ||
-        String(row.get('소유자1 \n(우편번호)') || '').trim(),
+        postalVariants.map((k) => String(row.get(k) || '').trim()).find(Boolean) || '',
       ),
       address:
-        String(row.get('소유자1(주소)') || '').trim() ||
-        String(row.get('소유자1\n(주소)') || '').trim() ||
-        String(row.get('소유자1 (주소)') || '').trim() ||
-        String(row.get('소유자1 \n(주소)') || '').trim(),
+        addressVariants.map((k) => String(row.get(k) || '').trim()).find(Boolean) || '',
       residency: String(row.get('실거주여부') || '').trim(),
     }))
     .filter((r) => r.dong && r.ho);
@@ -71,7 +94,6 @@ export async function getMemoMap(): Promise<Map<string, string>> {
     }
     return map;
   } catch {
-    // 빈 시트(헤더 없음)인 경우 — 첫 sync 전 정상 상태
     return new Map();
   }
 }
@@ -92,11 +114,9 @@ export async function writeMasterRows(
     '메모', '마지막_동기화',
   ];
 
-  // 시트 전체 클리어 후 헤더 재설정 (단일 API 호출 — 행별 삭제 대신)
   await sheet.clear();
   await sheet.setHeaderRow(headers);
 
-  // 새 데이터 500행씩 배치 추가
   const data = rows.map((r) => ({
     동: r.dong,
     호수: r.ho,
@@ -117,7 +137,7 @@ export async function writeMasterRows(
   }
 }
 
-// 특정 세대 메모만 업데이트
+// 특정 세대 메모만 업데이트 (통합현황 시트)
 export async function updateMemo(dong: string, ho: string, memo: string): Promise<void> {
   const doc = await getOwnerDoc();
   const sheet = doc.sheetsByTitle['통합현황'];
@@ -131,6 +151,151 @@ export async function updateMemo(dong: string, ho: string, memo: string): Promis
   await row.save();
 }
 
+interface ChangeLogEntry {
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+const CHANGE_LOG_HEADERS = ['시각', '동', '호수', '필드', '이전값', '새값', '수정자'];
+
+async function logChanges(
+  doc: GoogleSpreadsheet,
+  dong: string,
+  ho: string,
+  changes: ChangeLogEntry[],
+  operator: string,
+): Promise<void> {
+  if (changes.length === 0) return;
+  let sheet = doc.sheetsByTitle['변경로그'];
+  if (!sheet) {
+    sheet = await doc.addSheet({ title: '변경로그', headerValues: CHANGE_LOG_HEADERS });
+  } else {
+    // 기존 시트에 새 컬럼(수정자 등)이 없으면 자동 추가
+    await sheet.loadHeaderRow();
+    const missing = CHANGE_LOG_HEADERS.filter((h) => !sheet!.headerValues.includes(h));
+    if (missing.length > 0) {
+      await sheet.setHeaderRow([...sheet.headerValues, ...missing]);
+    }
+  }
+  const now = new Date().toISOString();
+  await sheet.addRows(
+    changes.map((c) => ({
+      시각: now,
+      동: dong,
+      호수: ho,
+      필드: c.field,
+      이전값: c.oldValue,
+      새값: c.newValue,
+      수정자: operator,
+    })),
+  );
+}
+
+// 위원이 모달에서 수정한 4필드를 원본 시트에 직접 반영 + 변경로그 append
+export async function updateOwnerRecord(
+  dong: string,
+  ho: string,
+  overrides: UnifiedRowOverrides,
+  operator: string,
+): Promise<{ changes: ChangeLogEntry[] }> {
+  const doc = await getOwnerDoc();
+  const sheet = doc.sheetsByTitle['원본'];
+  if (!sheet) throw new Error('원본 시트를 찾을 수 없습니다.');
+  const rows = await sheet.getRows();
+  const row = rows.find(
+    (r) =>
+      String(r.get('동') || '').trim() === dong &&
+      String(r.get('호수') || '').trim() === ho,
+  );
+  if (!row) throw new Error(`원본 시트에 ${dong}동 ${ho}호가 없습니다.`);
+
+  const changes: ChangeLogEntry[] = [];
+
+  // 소유자명 — 콤마 구분 → 1~5에 분배 (6명 이상은 잘림)
+  if (overrides.ownerName !== undefined) {
+    const names = overrides.ownerName.split(/,\s*/).map((s) => s.trim());
+    for (let n = 1; n <= 5; n++) {
+      const key = pickExistingKey(row, ownerNameVariants(n));
+      const oldValue = String(row.get(key) || '').trim();
+      const newValue = names[n - 1] || '';
+      if (oldValue !== newValue) {
+        row.set(key, newValue);
+        changes.push({ field: key, oldValue, newValue });
+      }
+    }
+  }
+
+  // 우편번호 (소유자1)
+  if (overrides.postalCode !== undefined) {
+    const key = pickExistingKey(row, postalVariants);
+    const oldValue = String(row.get(key) || '').trim();
+    const newValue = normalizePostalCode(overrides.postalCode);
+    if (oldValue !== newValue) {
+      row.set(key, newValue);
+      changes.push({ field: key, oldValue, newValue });
+    }
+  }
+
+  // 주소 (소유자1)
+  if (overrides.address !== undefined) {
+    const key = pickExistingKey(row, addressVariants);
+    const oldValue = String(row.get(key) || '').trim();
+    const newValue = overrides.address.trim();
+    if (oldValue !== newValue) {
+      row.set(key, newValue);
+      changes.push({ field: key, oldValue, newValue });
+    }
+  }
+
+  // 실거주여부
+  if (overrides.residency !== undefined) {
+    const oldValue = String(row.get('실거주여부') || '').trim();
+    const newValue = overrides.residency.trim();
+    if (oldValue !== newValue) {
+      row.set('실거주여부', newValue);
+      changes.push({ field: '실거주여부', oldValue, newValue });
+    }
+  }
+
+  if (changes.length === 0) return { changes };
+
+  await row.save();
+  await logChanges(doc, dong, ho, changes, operator);
+  // 통합현황 시트의 해당 행도 즉시 동기화 (전체 sync 없이 바로 반영)
+  await updateMasterRowFields(doc, dong, ho, overrides);
+  return { changes };
+}
+
+async function updateMasterRowFields(
+  doc: GoogleSpreadsheet,
+  dong: string,
+  ho: string,
+  overrides: UnifiedRowOverrides,
+): Promise<void> {
+  const sheet = doc.sheetsByTitle['통합현황'];
+  if (!sheet) return;
+  let rows;
+  try {
+    rows = await sheet.getRows();
+  } catch {
+    return; // 빈 시트(헤더 없음) — 첫 sync 전 정상
+  }
+  const row = rows.find(
+    (r) =>
+      String(r.get('동') || '').trim() === dong &&
+      String(r.get('호수') || '').trim() === ho,
+  );
+  if (!row) return;
+  if (overrides.ownerName !== undefined) row.set('소유자명', overrides.ownerName);
+  if (overrides.postalCode !== undefined) {
+    row.set('우편번호', normalizePostalCode(overrides.postalCode));
+  }
+  if (overrides.address !== undefined) row.set('대표주소', overrides.address.trim());
+  if (overrides.residency !== undefined) row.set('실거주여부', overrides.residency.trim());
+  await row.save();
+}
+
 // 마스터 시트 전체 읽기 (API에서 사용)
 export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: string[] }> {
   const doc = await getOwnerDoc();
@@ -139,7 +304,10 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
 
   await sheet.loadHeaderRow();
   const headers = sheet.headerValues;
-  const fixedCols = new Set(['동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부', '신속통합동의서_제출_완료', '메모', '마지막_동기화']);
+  const fixedCols = new Set([
+    '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
+    '신속통합동의서_제출_완료', '메모', '마지막_동기화',
+  ]);
   const surveyIds = headers.filter((h) => !fixedCols.has(h));
 
   const sheetRows = await sheet.getRows();
@@ -173,10 +341,9 @@ export async function getOwnersByDongHo(dong: string, ho: string): Promise<strin
   const owners: string[] = [];
   for (let n = 1; n <= 5; n++) {
     const name =
-      String(row.get(`소유자${n}(성명)`) || '').trim() ||
-      String(row.get(`소유자${n}\n(성명)`) || '').trim() ||
-      String(row.get(`소유자${n} \n(성명)`) || '').trim() ||
-      String(row.get(`소유자${n} (성명)`) || '').trim();
+      ownerNameVariants(n)
+        .map((k) => String(row.get(k) || '').trim())
+        .find(Boolean) || '';
     if (name) owners.push(name);
   }
   return owners;

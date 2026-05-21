@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { FilterType, UnifiedRow } from '@/lib/unified-types';
 import { applyFilter } from '@/lib/unified-utils';
 
@@ -9,6 +10,9 @@ interface Props {
   surveyIds: string[];
   onChange: (f: FilterType) => void;
 }
+
+const shortSurveyLabel = (id: string) =>
+  id.replace(/_완료$/, '').replace(/^\d{4}_\d{2}_/, '');
 
 function FilterButton({
   filterKey,
@@ -38,8 +42,10 @@ function FilterButton({
   return (
     <button
       onClick={() => onChange(filterKey)}
-      className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-        isActive ? activeClass : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+      className={`shrink-0 px-3 py-1.5 text-xs rounded-full border transition-colors whitespace-nowrap ${
+        isActive
+          ? activeClass
+          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
       }`}
     >
       {label} <span className={isActive ? 'opacity-80' : 'text-gray-400'}>({count})</span>
@@ -48,38 +54,45 @@ function FilterButton({
 }
 
 export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Props) {
+  const [open, setOpen] = useState(false);
+
   const baseFilters: { key: FilterType; label: string }[] = [
     { key: 'all', label: '전체' },
     { key: 'incomplete', label: '하나라도 미완료' },
-    { key: 'no-consent', label: '신속통합동의서 미제출' },
+    { key: 'no-consent', label: '동의서 미제출' },
     ...surveyIds.map((id) => ({
       key: `no-${id}` as FilterType,
-      label: `${id.replace(/_완료$/, '')} 미완료`,
+      label: `${shortSurveyLabel(id)} 미완료`,
     })),
   ];
 
   const rentalFilters: { key: FilterType; label: string }[] = [
     { key: 'rental', label: '임대 전체' },
-    { key: 'rental-incomplete', label: '임대 + 하나라도 미완료' },
-    { key: 'rental-no-consent', label: '임대 + 동의서 미제출' },
+    { key: 'rental-incomplete', label: '임대·하나라도 미완료' },
+    { key: 'rental-no-consent', label: '임대·동의서 미제출' },
     ...surveyIds.map((id) => ({
       key: `rental-no-${id}` as FilterType,
-      label: `임대 + ${id.replace(/_완료$/, '')} 미완료`,
+      label: `임대·${shortSurveyLabel(id)} 미완료`,
     })),
   ];
 
   const residentFilters: { key: FilterType; label: string }[] = [
     { key: 'resident', label: '실거주 전체' },
-    { key: 'resident-incomplete', label: '실거주 + 하나라도 미완료' },
-    { key: 'resident-no-consent', label: '실거주 + 동의서 미제출' },
+    { key: 'resident-incomplete', label: '실거주·하나라도 미완료' },
+    { key: 'resident-no-consent', label: '실거주·동의서 미제출' },
     ...surveyIds.map((id) => ({
       key: `resident-no-${id}` as FilterType,
-      label: `실거주 + ${id.replace(/_완료$/, '')} 미완료`,
+      label: `실거주·${shortSurveyLabel(id)} 미완료`,
     })),
   ];
 
+  const isResidencyActive =
+    typeof active === 'string' &&
+    (active.startsWith('rental') || active.startsWith('resident'));
+  const showResidency = open || isResidencyActive;
+
   return (
-    <div className="flex flex-col gap-2 mb-2">
+    <div className="flex flex-col gap-2 mb-3">
       <div className="overflow-x-auto -mx-4 sm:mx-0">
         <div className="flex gap-2 px-4 sm:px-0 min-w-max pb-0.5">
           {baseFilters.map(({ key, label }) => (
@@ -95,38 +108,52 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
           ))}
         </div>
       </div>
-      <div className="overflow-x-auto -mx-4 sm:mx-0">
-        <div className="flex gap-2 items-center px-4 sm:px-0 min-w-max pb-0.5">
-          <span className="text-xs text-orange-500 font-medium">임대</span>
-          {rentalFilters.map(({ key, label }) => (
-            <FilterButton
-              key={key}
-              filterKey={key}
-              label={label}
-              active={active}
-              rows={rows}
-              surveyIds={surveyIds}
-              onChange={onChange}
-              variant="orange"
-            />
-          ))}
+
+      <button
+        type="button"
+        onClick={() => setOpen(!showResidency)}
+        className="sm:hidden self-start text-xs text-gray-500 px-3 py-1.5 rounded-full border border-gray-200 bg-white flex items-center gap-1"
+      >
+        <span className="text-orange-500">●</span>
+        <span className="text-green-600">●</span>
+        거주구분 필터
+        <span className="text-gray-400">{showResidency ? '▲' : '▼'}</span>
+      </button>
+
+      <div className={`${showResidency ? 'flex' : 'hidden'} sm:flex flex-col gap-2`}>
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="flex gap-2 items-center px-4 sm:px-0 min-w-max pb-0.5">
+            <span className="text-xs text-orange-500 font-medium shrink-0">임대</span>
+            {rentalFilters.map(({ key, label }) => (
+              <FilterButton
+                key={key}
+                filterKey={key}
+                label={label}
+                active={active}
+                rows={rows}
+                surveyIds={surveyIds}
+                onChange={onChange}
+                variant="orange"
+              />
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="overflow-x-auto -mx-4 sm:mx-0">
-        <div className="flex gap-2 items-center px-4 sm:px-0 min-w-max pb-0.5">
-          <span className="text-xs text-green-600 font-medium">실거주</span>
-          {residentFilters.map(({ key, label }) => (
-            <FilterButton
-              key={key}
-              filterKey={key}
-              label={label}
-              active={active}
-              rows={rows}
-              surveyIds={surveyIds}
-              onChange={onChange}
-              variant="green"
-            />
-          ))}
+        <div className="overflow-x-auto -mx-4 sm:mx-0">
+          <div className="flex gap-2 items-center px-4 sm:px-0 min-w-max pb-0.5">
+            <span className="text-xs text-green-600 font-medium shrink-0">실거주</span>
+            {residentFilters.map(({ key, label }) => (
+              <FilterButton
+                key={key}
+                filterKey={key}
+                label={label}
+                active={active}
+                rows={rows}
+                surveyIds={surveyIds}
+                onChange={onChange}
+                variant="green"
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

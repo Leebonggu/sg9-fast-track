@@ -40,6 +40,30 @@ export default function AdminHome() {
             <h2 className="font-semibold text-[#2F5496] text-lg">카카오톡 인증 관리</h2>
             <p className="text-sm text-gray-400 mt-1">로그 조회 · 링크 생성</p>
           </Link>
+
+          <div className="pt-3 pb-1">
+            <p className="text-xs font-semibold text-gray-400 px-1">주민용 페이지</p>
+          </div>
+
+          <Link
+            href="/check-submission"
+            className="block bg-white rounded-xl p-5 shadow-sm border border-gray-100 active:bg-gray-50"
+          >
+            <h2 className="font-semibold text-[#2F5496] text-lg">제출 현황 확인</h2>
+            <p className="text-sm text-gray-400 mt-1">
+              주민이 동/호/이름으로 본인 세대 동의서·설문 제출 여부 확인
+            </p>
+          </Link>
+
+          <Link
+            href="/kakao-verify"
+            className="block bg-white rounded-xl p-5 shadow-sm border border-gray-100 active:bg-gray-50"
+          >
+            <h2 className="font-semibold text-[#2F5496] text-lg">카카오톡 단톡방 인증</h2>
+            <p className="text-sm text-gray-400 mt-1">
+              주민이 본인 인증 후 단톡방 비밀번호 확인
+            </p>
+          </Link>
         </div>
       </div>
       <AdminNav />

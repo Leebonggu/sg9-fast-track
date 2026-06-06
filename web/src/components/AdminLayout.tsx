@@ -23,6 +23,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const data = await res.json();
     if (data.ok) {
       sessionStorage.setItem('auth', '1');
+      // 신분증 이미지 프록시/삭제 등 PII 보호 엔드포인트 호출용 (세션 내 보관)
+      sessionStorage.setItem('adminPw', password);
       if (name.trim()) sessionStorage.setItem('operatorName', name.trim());
       setAuthed(true);
     } else {

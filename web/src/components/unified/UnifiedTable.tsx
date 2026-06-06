@@ -36,6 +36,23 @@ function Chip({ done, label }: { done: boolean; label: string }) {
   );
 }
 
+function IdBadge({ consent, count }: { consent: boolean; count: number }) {
+  if (!consent) return <span className="text-gray-300 text-xs">-</span>;
+  if (count > 0)
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-green-50 text-green-700 border-green-200">
+        <span className="font-bold">✓</span>
+        <span className="whitespace-nowrap">{count}장</span>
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-red-50/60 text-red-400 border-red-100">
+      <span className="font-bold">✗</span>
+      <span className="whitespace-nowrap">미제출</span>
+    </span>
+  );
+}
+
 function ResidencyBadge({ value }: { value: string }) {
   if (!value) return null;
   const base =
@@ -110,7 +127,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                   <EditButton onClick={() => onRowClick(row)} />
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1 mb-2">
+              <div className="flex flex-wrap gap-1 mb-2 items-center">
                 <Chip done={row.consent} label="동의서" />
                 {surveyIds.map((id) => (
                   <Chip
@@ -119,6 +136,10 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                     label={shortSurveyLabel(id)}
                   />
                 ))}
+                <span className="inline-flex items-center gap-1">
+                  <span className="text-[10px] text-gray-400">신분증</span>
+                  <IdBadge consent={row.consent} count={row.idUploaded ?? 0} />
+                </span>
               </div>
               <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
             </div>
@@ -148,6 +169,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                   {id}
                 </th>
               ))}
+              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">신분증</th>
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">메모</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">수정</th>
             </tr>
@@ -180,6 +202,9 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                       <Check value={row.surveys[id] ?? false} />
                     </td>
                   ))}
+                  <td className="py-2 px-3 text-center">
+                    <IdBadge consent={row.consent} count={row.idUploaded ?? 0} />
+                  </td>
                   <td className="py-2 px-3 min-w-[100px]">
                     <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
                   </td>

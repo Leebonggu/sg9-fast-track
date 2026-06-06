@@ -10,6 +10,10 @@ export default function UnifiedSummary({ rows, surveyIds }: Props) {
   const pct = (n: number) => total > 0 ? Math.round((n / total) * 1000) / 10 : 0;
 
   const consentCount = rows.filter((r) => r.consent).length;
+  // 신분증: 사전동의 완료 세대 중 1장 이상 제출한 세대 수
+  const idDoneCount = rows.filter((r) => r.consent && (r.idUploaded ?? 0) > 0).length;
+  const consentPct = (n: number) =>
+    consentCount > 0 ? Math.round((n / consentCount) * 1000) / 10 : 0;
   const surveyCounts = surveyIds.map((id) => ({
     id,
     count: rows.filter((r) => r.surveys[id]).length,
@@ -37,6 +41,15 @@ export default function UnifiedSummary({ rows, surveyIds }: Props) {
           </div>
         </div>
       ))}
+      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+        <div className="text-xs text-gray-400">신분증 제출(동의세대)</div>
+        <div className="text-lg font-bold text-emerald-600">
+          {idDoneCount.toLocaleString()}
+          <span className="text-xs text-gray-400 ml-1">
+            / {consentCount.toLocaleString()} · {consentPct(idDoneCount)}%
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

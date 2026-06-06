@@ -14,6 +14,7 @@ export interface UnifiedRow extends OwnerRow {
   surveys: Record<string, boolean>  // { 'survey-001': true }
   memo: string
   lastSynced: string
+  idUploaded?: number  // 신분증 사본 업로드 장수 (파기 제외) — /api/unified에서 병합
 }
 
 // 위원이 모달에서 수정하는 4필드 — 원본 시트에 직접 적용 + 변경로그 기록

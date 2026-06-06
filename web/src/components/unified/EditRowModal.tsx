@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
+import IdUploadAdmin from './IdUploadAdmin';
 
 interface Props {
   row: UnifiedRow;
@@ -110,6 +111,8 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
             </select>
           </div>
         </div>
+
+        <IdUploadAdmin dong={row.dong} ho={row.ho} />
 
         <div className="mt-3 rounded bg-amber-50 border border-amber-200 px-2.5 py-2">
           <p className="text-[11px] text-amber-800 leading-snug">

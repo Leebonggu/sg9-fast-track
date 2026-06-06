@@ -46,6 +46,9 @@ export function applyFilter(
       (r) => !r.consent || surveyIds.some((id) => !r.surveys[id]),
     );
   if (filter === 'no-consent') return rows.filter((r) => !r.consent);
+  // 사전동의 완료 세대 중 신분증 미제출
+  if (filter === 'no-id')
+    return rows.filter((r) => r.consent && (r.idUploaded ?? 0) === 0);
 
   if (filter === 'rental') return rows.filter(isRental);
   if (filter === 'rental-incomplete')

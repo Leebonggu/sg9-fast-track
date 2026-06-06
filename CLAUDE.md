@@ -137,7 +137,19 @@ SPREADSHEET_ID=v2스프레드시트ID (신속통합동의서)
 APP_PASSWORD=웹접속비밀번호
 OWNER_SPREADSHEET_ID=소유자원본+통합현황마스터시트ID
 SURVEY_001_SPREADSHEET_ID=2026_04_기본조사설문시트ID
+SURVEY_WEBAPP_URL=범용Apps Script웹앱URL (PDF생성+신분증업로드 공용)
+ID_UPLOAD_FOLDER_ID=신분증사본저장용_비공개_Drive폴더ID
+ID_UPLOAD_SECRET=Next.js↔Apps Script웹앱_공유비밀값 (웹앱에 setIdUploadSecret로 동일값 설정)
 ```
+
+## 신분증 사본 업로드 시스템
+
+- **대상**: 사전동의(신속통합동의서) 완료 세대만 (통합현황 `consent === TRUE`)
+- **진입점**: `/check-submission` 결과 페이지 (동/호/이름 인증 후) → 소유자별 업로드 (공동소유 N개)
+- **저장**: `survey_generic_webapp.gs`의 `mode:'idUpload'` 분기 → `ID_UPLOAD_FOLDER_ID` 비공개 폴더. 기록은 `OWNER_SPREADSHEET_ID`의 `신분증업로드` 시트
+- **관리자**: `/unified` 행 모달(EditRowModal)에서 열람·폐기, `/unified/id-print`에서 인쇄. 이미지는 `/api/upload-id/image` 프록시(APP_PASSWORD 보호) 경유
+- **폐기**: 자동 파기 없음 → 관리자가 수동 폐기(시트 상태 '파기' + Drive 삭제)
+- ⚠️ **Apps Script 재배포 필요**: `survey_generic_webapp.gs` 수정 후 Apps Script 편집기에 반영 → 재배포 → `setIdUploadSecret('값')` 1회 실행
 
 ## v2 시트 컬럼 구조 (동별 시트)
 

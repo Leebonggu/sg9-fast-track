@@ -25,6 +25,11 @@ function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
 
+    // ── 신분증 사본 업로드/삭제/조회 (PDF 생성과 별개 분기) ──
+    if (data.mode === 'idUpload' || data.mode === 'idDelete' || data.mode === 'idFetch') {
+      return jsonResponse(handleIdMode(data));
+    }
+
     if (!data.templateDocId) {
       return jsonResponse({ error: 'templateDocId가 필요합니다.' });
     }
@@ -162,6 +167,56 @@ function generateCheckedPdf(data) {
   } finally {
     DriveApp.getFileById(copiedDocId).setTrashed(true);
   }
+}
+
+// ============================================================
+// 신분증 사본 업로드/삭제/조회
+//   - 비공개 폴더에 파일 저장 (별도 공유 설정 안 함 → 폴더 권한 그대로)
+//   - 공유 secret(ID_UPLOAD_SECRET) 검증으로 무단 호출 차단
+//   배포 전 1회: setIdUploadSecret('웹.env와_동일한_값') 실행
+// ============================================================
+function setIdUploadSecret(secret) {
+  PropertiesService.getScriptProperties().setProperty('ID_UPLOAD_SECRET', secret);
+  Logger.log('신분증 업로드 secret 설정 완료');
+}
+
+function checkIdSecret(data) {
+  var stored = PropertiesService.getScriptProperties().getProperty('ID_UPLOAD_SECRET');
+  return !!stored && data.secret === stored;
+}
+
+function handleIdMode(data) {
+  if (!checkIdSecret(data)) {
+    return { error: '인증 실패(secret 불일치)' };
+  }
+
+  if (data.mode === 'idUpload') {
+    if (!data.folderId) return { error: 'folderId가 필요합니다.' };
+    if (!data.base64) return { error: 'base64가 필요합니다.' };
+    var bytes = Utilities.base64Decode(data.base64);
+    var blob = Utilities.newBlob(bytes, data.mimeType || 'image/jpeg', data.fileName || 'id.jpg');
+    var file = DriveApp.getFolderById(data.folderId).createFile(blob);
+    return { success: true, fileId: file.getId(), link: file.getUrl() };
+  }
+
+  if (data.mode === 'idDelete') {
+    if (!data.fileId) return { error: 'fileId가 필요합니다.' };
+    DriveApp.getFileById(data.fileId).setTrashed(true);
+    return { success: true };
+  }
+
+  if (data.mode === 'idFetch') {
+    if (!data.fileId) return { error: 'fileId가 필요합니다.' };
+    var f = DriveApp.getFileById(data.fileId);
+    var b = f.getBlob();
+    return {
+      success: true,
+      mimeType: b.getContentType(),
+      base64: Utilities.base64Encode(b.getBytes())
+    };
+  }
+
+  return { error: 'unknown id mode' };
 }
 
 function escapeRegex(str) {

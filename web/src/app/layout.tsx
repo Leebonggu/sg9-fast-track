@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -17,7 +17,6 @@ export const metadata: Metadata = {
   description: "주민 안내 및 동의·설문 시스템",
   robots: { index: false, follow: false },
   manifest: "/manifest.json",
-  themeColor: "#2F5496",
   openGraph: {
     title: "상계주공 9단지 재건축 준비",
     description: "주민 안내 및 동의·설문 시스템",
@@ -29,6 +28,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "SG9 재건축",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2F5496",
 };
 
 export default function RootLayout({

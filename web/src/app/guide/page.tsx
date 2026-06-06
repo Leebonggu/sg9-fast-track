@@ -1,9 +1,4 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
-
-export const metadata: Metadata = {
-  title: '사용 가이드 - 상계주공 9단지 신통기획접수 관리',
-};
 
 function MockCell({ className, children }: { className: string; children: React.ReactNode }) {
   return (

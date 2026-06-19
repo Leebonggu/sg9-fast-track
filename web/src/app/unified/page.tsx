@@ -8,7 +8,7 @@ import UnifiedFilters from '@/components/unified/UnifiedFilters';
 import UnifiedTable from '@/components/unified/UnifiedTable';
 import SyncButton from '@/components/unified/SyncButton';
 import EditRowModal from '@/components/unified/EditRowModal';
-import { applyFilter, downloadAsXlsx } from '@/lib/unified-utils';
+import { applyFilter, downloadAsXlsx, downloadByDongAsXlsx } from '@/lib/unified-utils';
 import type { UnifiedRow, FilterType } from '@/lib/unified-types';
 
 export default function UnifiedPage() {
@@ -51,7 +51,18 @@ export default function UnifiedPage() {
                 <span className="text-xs text-gray-400">
                   {filtered.length.toLocaleString()}세대 표시 중 / 전체 {rows.length.toLocaleString()}세대
                 </span>
-                <div className="flex gap-2 w-full sm:w-auto">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => {
+                      window.open(
+                        `/unified/print?filter=${encodeURIComponent(filter)}`,
+                        '_blank',
+                      );
+                    }}
+                    className="flex-1 sm:flex-none text-xs px-3 py-1.5 rounded bg-[#2F5496] text-white font-semibold hover:bg-[#1e3a6e] transition-colors"
+                  >
+                    명단 인쇄 ({filtered.length.toLocaleString()})
+                  </button>
                   <button
                     onClick={() => {
                       window.open(
@@ -71,6 +82,15 @@ export default function UnifiedPage() {
                     className="flex-1 sm:flex-none text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
                   >
                     엑셀 다운로드 ({filtered.length.toLocaleString()})
+                  </button>
+                  <button
+                    onClick={() => {
+                      const date = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '').replace('.', '');
+                      downloadByDongAsXlsx(filtered, surveyIds, `통합현황_동별_${filter}_${date}.xlsx`);
+                    }}
+                    className="flex-1 sm:flex-none text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    동별 분리 ({filtered.length.toLocaleString()})
                   </button>
                 </div>
               </div>

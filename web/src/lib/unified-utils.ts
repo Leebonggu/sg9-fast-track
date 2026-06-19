@@ -1,10 +1,14 @@
 import * as XLSX from 'xlsx';
 import type { UnifiedRow, FilterType } from './unified-types';
 
-export function downloadAsXlsx(rows: UnifiedRow[], surveyIds: string[], filename: string) {
-  const headers = ['동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부', '신속통합동의서_제출', ...surveyIds, '메모'];
+// 행 배열 → 워크시트. includeDong=false면 '동' 컬럼 제외(동별 시트에서는 시트명이 동 역할).
+function buildSheet(rows: UnifiedRow[], surveyIds: string[], includeDong: boolean) {
+  const headers = [
+    ...(includeDong ? ['동'] : []),
+    '호수', '소유자명', '우편번호', '대표주소', '실거주여부', '신속통합동의서_제출', ...surveyIds, '메모',
+  ];
   const dataRows = rows.map((r) => [
-    r.dong,
+    ...(includeDong ? [r.dong] : []),
     r.ho,
     r.ownerName,
     r.postalCode,
@@ -27,8 +31,34 @@ export function downloadAsXlsx(rows: UnifiedRow[], surveyIds: string[], filename
       }
     }
   }
+  return ws;
+}
+
+export function downloadAsXlsx(rows: UnifiedRow[], surveyIds: string[], filename: string) {
+  const ws = buildSheet(rows, surveyIds, true);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '통합현황');
+  XLSX.writeFile(wb, filename);
+}
+
+// 동마다 별도 시트로 분리된 엑셀 1개 (901동, 902동…). 현재 필터 결과를 그대로 받는다.
+export function downloadByDongAsXlsx(rows: UnifiedRow[], surveyIds: string[], filename: string) {
+  if (rows.length === 0) {
+    alert('다운로드할 세대가 없습니다.');
+    return;
+  }
+  const byDong = new Map<string, UnifiedRow[]>();
+  for (const r of rows) {
+    const list = byDong.get(r.dong);
+    if (list) list.push(r);
+    else byDong.set(r.dong, [r]);
+  }
+  const dongs = Array.from(byDong.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const wb = XLSX.utils.book_new();
+  for (const dong of dongs) {
+    const ws = buildSheet(byDong.get(dong)!, surveyIds, false);
+    XLSX.utils.book_append_sheet(wb, ws, `${dong}동`);
+  }
   XLSX.writeFile(wb, filename);
 }
 

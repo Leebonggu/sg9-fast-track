@@ -1,10 +1,8 @@
 import Link from 'next/link';
 import { verifyToken } from '@/lib/kakao-verify';
-import { getMasterRows, getOwnersByDongHo } from '@/lib/owner-sheets';
-import { getIdUploads } from '@/lib/id-upload';
+import { getMasterRows } from '@/lib/owner-sheets';
 import { getAllSurveyConfigs } from '@/lib/surveys/registry';
 import type { UnifiedRow } from '@/lib/unified-types';
-import IdUploadSection from '@/components/IdUploadSection';
 
 const shortSurveyLabel = (id: string) =>
   id.replace(/_완료$/, '').replace(/^\d{4}_\d{2}_/, '');
@@ -64,31 +62,11 @@ export default async function CheckSubmissionResultPage({
   const surveyLabel = (id: string) =>
     displayIdToTitle.get(id) ?? shortSurveyLabel(id);
 
-  // 사전동의 완료 세대에만 신분증 업로드 노출 → 완료 시에만 소유자/현황 조회
-  let owners: string[] = [];
-  let uploaded: { ownerIndex: number; ownerName: string; fileName: string; timestamp: string }[] = [];
-  if (row.consent) {
-    const [o, ups] = await Promise.all([
-      getOwnersByDongHo(result.dong, result.ho),
-      getIdUploads(result.dong, result.ho),
-    ]);
-    owners = o;
-    uploaded = ups.map((u) => ({
-      ownerIndex: u.ownerIndex,
-      ownerName: u.ownerName,
-      fileName: u.fileName,
-      timestamp: u.timestamp,
-    }));
-  }
-
   return (
     <ResultView
       row={row}
       surveyIds={surveyIds}
       surveyLabel={surveyLabel}
-      token={t}
-      owners={owners}
-      uploaded={uploaded}
     />
   );
 }
@@ -97,16 +75,10 @@ function ResultView({
   row,
   surveyIds,
   surveyLabel,
-  token,
-  owners,
-  uploaded,
 }: {
   row: UnifiedRow;
   surveyIds: string[];
   surveyLabel: (id: string) => string;
-  token: string;
-  owners: string[];
-  uploaded: { ownerIndex: number; ownerName: string; fileName: string; timestamp: string }[];
 }) {
   const missingSurveys = surveyIds.filter((id) => !row.surveys[id]);
   const hasAnyMissing = !row.consent || missingSurveys.length > 0;
@@ -148,10 +120,6 @@ function ResultView({
             )}
           </div>
         </div>
-
-        {row.consent && (
-          <IdUploadSection token={token} owners={owners} initialUploaded={uploaded} />
-        )}
 
         {hasAnyMissing && (
           <p className="mt-5 text-xs text-gray-500 bg-amber-50 rounded-xl p-3 leading-relaxed">

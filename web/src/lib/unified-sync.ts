@@ -1,5 +1,5 @@
 // web/src/lib/unified-sync.ts
-import { getOwners, getMemoMap, writeMasterRows } from './owner-sheets';
+import { getOwners, getMemoMap, getOppositionMap, writeMasterRows } from './owner-sheets';
 import { getConsentKeyset } from './sheets';
 import { getSurveyKeyset } from './survey-sheets';
 import { getAllSurveyConfigs } from './surveys/registry';
@@ -12,13 +12,16 @@ export async function syncMasterSheet(): Promise<SyncResult> {
 
   // 1. 소스 시트들 병렬 읽기 — 메모는 sync 시 보존, 4필드는 원본에 직접 갱신되므로 보존 불필요
   const surveyConfigs = getAllSurveyConfigs();
-  const [owners, memoMap, consentKeys, ...surveyKeysets] =
+  const [owners, memoMap, oppositionMap, consentResult, ...surveyKeysets] =
     await Promise.all([
       getOwners(),
       getMemoMap(),
+      getOppositionMap(),
       getConsentKeyset(),
       ...surveyConfigs.map((c) => getSurveyKeyset(c)),
     ]);
+  const consentKeys = consentResult.keys;
+  const duplicates = consentResult.duplicates;
 
   // displayId가 있으면 마스터 시트 컬럼명으로 사용, 없으면 id 사용
   const surveyDisplayIds = surveyConfigs.map((c) => c.displayId || c.id);
@@ -34,6 +37,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       ...owner,
       consent: consentKeys.has(key),
       surveys,
+      opposition: oppositionMap.get(key) ?? false,
       memo: memoMap.get(key) || '',
       lastSynced: syncedAt,
     };
@@ -47,6 +51,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
     totalRows: rows.length,
     updatedRows: rows.length,
     durationMs: Date.now() - startedAt,
+    duplicates,
   };
 
   // 4. 알림

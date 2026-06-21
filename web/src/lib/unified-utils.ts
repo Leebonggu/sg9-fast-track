@@ -79,6 +79,7 @@ export function applyFilter(
   // 사전동의 완료 세대 중 신분증 미제출
   if (filter === 'no-id')
     return rows.filter((r) => r.consent && (r.idUploaded ?? 0) === 0);
+  if (filter === 'opposition') return rows.filter((r) => r.opposition);
 
   if (filter === 'rental') return rows.filter(isRental);
   if (filter === 'rental-incomplete')

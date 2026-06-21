@@ -98,6 +98,24 @@ export async function getMemoMap(): Promise<Map<string, string>> {
   }
 }
 
+// 마스터 시트("통합현황")에서 반대 의사 맵 읽기 (sync 전 보존용)
+export async function getOppositionMap(): Promise<Map<string, boolean>> {
+  const doc = await getOwnerDoc();
+  const sheet = doc.sheetsByTitle['통합현황'];
+  if (!sheet) return new Map();
+  try {
+    const rows = await sheet.getRows();
+    const map = new Map<string, boolean>();
+    for (const row of rows) {
+      const key = `${row.get('동')}-${row.get('호수')}`;
+      if (row.get('재건축반대') === 'TRUE') map.set(key, true);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 // 마스터 시트("통합현황") 전체 overwrite
 export async function writeMasterRows(
   rows: UnifiedRow[],
@@ -111,7 +129,7 @@ export async function writeMasterRows(
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
     '신속통합동의서_제출_완료',
     ...surveyIds,
-    '메모', '마지막_동기화',
+    '재건축반대', '메모', '마지막_동기화',
   ];
 
   await sheet.clear();
@@ -128,6 +146,7 @@ export async function writeMasterRows(
     ...Object.fromEntries(
       surveyIds.map((id) => [id, r.surveys[id] ? 'TRUE' : 'FALSE']),
     ),
+    재건축반대: r.opposition ? 'TRUE' : 'FALSE',
     메모: r.memo,
     마지막_동기화: r.lastSynced,
   }));
@@ -135,6 +154,20 @@ export async function writeMasterRows(
   for (let i = 0; i < data.length; i += 500) {
     await sheet.addRows(data.slice(i, i + 500));
   }
+}
+
+// 특정 세대 반대 의사 토글 (통합현황 시트)
+export async function updateOpposition(dong: string, ho: string, value: boolean): Promise<void> {
+  const doc = await getOwnerDoc();
+  const sheet = doc.sheetsByTitle['통합현황'];
+  if (!sheet) throw new Error('통합현황 시트를 찾을 수 없습니다.');
+  const rows = await sheet.getRows();
+  const row = rows.find(
+    (r) => String(r.get('동')) === dong && String(r.get('호수')) === ho,
+  );
+  if (!row) throw new Error(`${dong}동 ${ho}호를 찾을 수 없습니다.`);
+  row.set('재건축반대', value ? 'TRUE' : 'FALSE');
+  await row.save();
 }
 
 // 특정 세대 메모만 업데이트 (통합현황 시트)
@@ -306,7 +339,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
   const headers = sheet.headerValues;
   const fixedCols = new Set([
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
-    '신속통합동의서_제출_완료', '메모', '마지막_동기화',
+    '신속통합동의서_제출_완료', '재건축반대', '메모', '마지막_동기화',
   ]);
   const surveyIds = headers.filter((h) => !fixedCols.has(h));
 
@@ -322,6 +355,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     surveys: Object.fromEntries(
       surveyIds.map((id) => [id, row.get(id) === 'TRUE']),
     ),
+    opposition: row.get('재건축반대') === 'TRUE',
     memo: String(row.get('메모') || ''),
     lastSynced: String(row.get('마지막_동기화') || ''),
   }));

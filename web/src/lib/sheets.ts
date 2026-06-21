@@ -235,23 +235,33 @@ export async function toggleCollected(building: string, unit: string) {
   throw new Error('해당 호수 데이터 없음');
 }
 
-// 사전동의 완료 세대 키셋 반환: Set<"901-101">
-export async function getConsentKeyset(): Promise<Set<string>> {
+// 사전동의 완료 세대 키셋 반환: Set<"901-101"> + 중복 TRUE 행 목록
+export async function getConsentKeyset(): Promise<{
+  keys: Set<string>;
+  duplicates: { dong: string; ho: string; count: number }[];
+}> {
   const doc = await getDoc();
   const dongs = Object.keys(BUILDING_CONFIG); // ["901동", "902동", ...]
-  const result = new Set<string>();
+  const keys = new Set<string>();
+  const duplicates: { dong: string; ho: string; count: number }[] = [];
 
   for (const dongKey of dongs) {
     const dongNum = dongKey.replace('동', ''); // "901동" → "901"
     const sheet = doc.sheetsByTitle[dongKey];
     if (!sheet) continue;
     const rows = await sheet.getRows();
+    const countMap: Record<string, number> = {};
     for (const row of rows) {
       const ho = String(row.get('호수') || '').trim();
       const collected = String(row.get('동의서수거여부') || '').trim();
-      if (ho && collected === 'TRUE') result.add(`${dongNum}-${ho}`);
+      if (!ho || collected !== 'TRUE') continue;
+      keys.add(`${dongNum}-${ho}`);
+      countMap[ho] = (countMap[ho] || 0) + 1;
+    }
+    for (const [ho, count] of Object.entries(countMap)) {
+      if (count > 1) duplicates.push({ dong: dongKey, ho, count });
     }
   }
 
-  return result;
+  return { keys, duplicates };
 }

@@ -29,7 +29,7 @@ function FilterButton({
   rows: UnifiedRow[];
   surveyIds: string[];
   onChange: (f: FilterType) => void;
-  variant?: 'blue' | 'orange' | 'green';
+  variant?: 'blue' | 'orange' | 'green' | 'red';
 }) {
   const count = applyFilter(rows, filterKey, surveyIds).length;
   const isActive = active === filterKey;
@@ -38,7 +38,9 @@ function FilterButton({
       ? 'bg-orange-500 text-white border-orange-500'
       : variant === 'green'
         ? 'bg-green-600 text-white border-green-600'
-        : 'bg-[#2F5496] text-white border-[#2F5496]';
+        : variant === 'red'
+          ? 'bg-red-600 text-white border-red-600'
+          : 'bg-[#2F5496] text-white border-[#2F5496]';
   return (
     <button
       onClick={() => onChange(filterKey)}
@@ -56,11 +58,12 @@ function FilterButton({
 export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Props) {
   const [open, setOpen] = useState(false);
 
-  const baseFilters: { key: FilterType; label: string }[] = [
+  const baseFilters: { key: FilterType; label: string; variant?: 'blue' | 'orange' | 'green' | 'red' }[] = [
     { key: 'all', label: '전체' },
     { key: 'incomplete', label: '하나라도 미완료' },
     { key: 'no-consent', label: '동의서 미제출' },
     { key: 'no-id', label: '신분증 미제출' },
+    { key: 'opposition', label: '반대 의사', variant: 'red' },
     ...surveyIds.map((id) => ({
       key: `no-${id}` as FilterType,
       label: `${shortSurveyLabel(id)} 미완료`,
@@ -96,7 +99,7 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
     <div className="flex flex-col gap-2 mb-3">
       <div className="overflow-x-auto -mx-4 sm:mx-0">
         <div className="flex gap-2 px-4 sm:px-0 min-w-max pb-0.5">
-          {baseFilters.map(({ key, label }) => (
+          {baseFilters.map(({ key, label, variant }) => (
             <FilterButton
               key={key}
               filterKey={key}
@@ -105,6 +108,7 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
               rows={rows}
               surveyIds={surveyIds}
               onChange={onChange}
+              variant={variant}
             />
           ))}
         </div>

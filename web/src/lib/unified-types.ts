@@ -15,6 +15,7 @@ export interface UnifiedRow extends OwnerRow {
   memo: string
   lastSynced: string
   idUploaded?: number  // 신분증 사본 업로드 장수 (파기 제외) — /api/unified에서 병합
+  opposition?: boolean  // 재건축 반대 의사 (통합현황 시트 재건축반대 컬럼)
 }
 
 // 위원이 모달에서 수정하는 4필드 — 원본 시트에 직접 적용 + 변경로그 기록
@@ -25,15 +26,22 @@ export interface UnifiedRowOverrides {
   residency?: string
 }
 
+export interface SyncDuplicate {
+  dong: string
+  ho: string
+  count: number
+}
+
 export interface SyncResult {
   syncedAt: string
   totalRows: number
   updatedRows: number
   durationMs: number
+  duplicates: SyncDuplicate[]
 }
 
 export interface SyncNotifier {
   notify(result: SyncResult): Promise<void>
 }
 
-export type FilterType = 'all' | 'incomplete' | 'no-consent' | string
+export type FilterType = 'all' | 'incomplete' | 'no-consent' | 'opposition' | string

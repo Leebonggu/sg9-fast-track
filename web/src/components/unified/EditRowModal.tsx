@@ -15,6 +15,8 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
   const [residency, setResidency] = useState(row.residency ?? '');
+  const [opposition, setOpposition] = useState(row.opposition ?? false);
+  const [oppositionSaving, setOppositionSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [operatorName, setOperatorName] = useState('');
 
@@ -55,6 +57,22 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
       onClose();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleOpposition() {
+    const newVal = !opposition;
+    setOppositionSaving(true);
+    try {
+      await fetch('/api/unified/opposition', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong: row.dong, ho: row.ho, opposition: newVal }),
+      });
+      setOpposition(newVal);
+      onSaved?.();
+    } finally {
+      setOppositionSaving(false);
     }
   }
 
@@ -110,6 +128,29 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
               <option value="임대">임대</option>
             </select>
           </div>
+        </div>
+
+        <div className="pt-1 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">재건축 반대 의사</span>
+            <button
+              type="button"
+              onClick={toggleOpposition}
+              disabled={oppositionSaving}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                opposition ? 'bg-red-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  opposition ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          {opposition && (
+            <p className="text-[10px] text-red-500 mt-0.5">반대 의사 세대로 표시됩니다.</p>
+          )}
         </div>
 
         <IdUploadAdmin dong={row.dong} ho={row.ho} />

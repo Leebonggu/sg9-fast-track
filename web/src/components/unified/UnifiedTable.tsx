@@ -121,6 +121,9 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                   <span className="text-xs text-gray-700 truncate">
                     {row.ownerName || '-'}
                   </span>
+                  {row.nameMismatch && (
+                    <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
+                  )}
                   {row.opposition && (
                     <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
                   )}
@@ -189,8 +192,11 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                   )}
                   <td className="py-2 px-3 font-medium">{row.ho}</td>
                   <td className="py-2 px-3 text-gray-700">
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 flex-wrap">
                       {row.ownerName}
+                      {row.nameMismatch && (
+                        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
+                      )}
                       {row.opposition && (
                         <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
                       )}

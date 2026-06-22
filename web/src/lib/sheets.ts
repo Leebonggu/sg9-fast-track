@@ -239,11 +239,13 @@ export async function toggleCollected(building: string, unit: string) {
 // 사전동의 완료 세대 키셋 반환: Set<"901-101"> + 중복 TRUE 행 목록
 export async function getConsentKeyset(): Promise<{
   keys: Set<string>;
+  nameMap: Map<string, string>;
   duplicates: { dong: string; ho: string; count: number }[];
 }> {
   const doc = await getDoc();
   const dongs = Object.keys(BUILDING_CONFIG); // ["901동", "902동", ...]
   const keys = new Set<string>();
+  const nameMap = new Map<string, string>(); // "901-101" → "홍길동"
   const duplicates: { dong: string; ho: string; count: number }[] = [];
 
   for (const dongKey of dongs) {
@@ -255,8 +257,12 @@ export async function getConsentKeyset(): Promise<{
     for (const row of rows) {
       const ho = String(row.get('호수') || '').trim();
       const collected = String(row.get('동의서수거여부') || '').trim();
-      if (!ho || collected !== 'TRUE') continue;
-      keys.add(`${dongNum}-${ho}`);
+      const name = String(row.get('성명') || '').trim();
+      const note = String(row.get('비고') || '').trim();
+      if (!ho || collected !== 'TRUE' || note === '삭제') continue;
+      const key = `${dongNum}-${ho}`;
+      keys.add(key);
+      if (name) nameMap.set(key, name);
       countMap[ho] = (countMap[ho] || 0) + 1;
     }
     for (const [ho, count] of Object.entries(countMap)) {
@@ -264,5 +270,5 @@ export async function getConsentKeyset(): Promise<{
     }
   }
 
-  return { keys, duplicates };
+  return { keys, nameMap, duplicates };
 }

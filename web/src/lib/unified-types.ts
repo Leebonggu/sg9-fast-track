@@ -16,6 +16,8 @@ export interface UnifiedRow extends OwnerRow {
   lastSynced: string
   idUploaded?: number  // 신분증 사본 업로드 장수 (파기 제외) — /api/unified에서 병합
   opposition?: boolean  // 재건축 반대 의사 (통합현황 시트 재건축반대 컬럼)
+  consentName?: string  // 동의서에 기재된 이름 (sync 시 기록)
+  nameMismatch?: boolean  // 소유자명 vs 동의서이름 불일치 여부 (포맷 정규화 후 비교)
 }
 
 // 위원이 모달에서 수정하는 4필드 — 원본 시트에 직접 적용 + 변경로그 기록

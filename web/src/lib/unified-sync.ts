@@ -1,6 +1,18 @@
 // web/src/lib/unified-sync.ts
 import { getOwners, getMemoMap, getOppositionMap, writeMasterRows } from './owner-sheets';
 import { getConsentKeyset } from './sheets';
+
+function normalizeNameSet(raw: string): Set<string> {
+  return new Set(raw.split(/[,ㆍ·/、]\s*/).map((s) => s.trim()).filter(Boolean));
+}
+
+function checkNameMismatch(ownerName: string, consentName: string): boolean {
+  if (!consentName) return false;
+  const ownerSet = normalizeNameSet(ownerName);
+  const consentSet = normalizeNameSet(consentName);
+  for (const n of consentSet) if (ownerSet.has(n)) return false;
+  return true;
+}
 import { getSurveyKeyset } from './survey-sheets';
 import { getAllSurveyConfigs } from './surveys/registry';
 import { notifiers } from './notifier';
@@ -21,6 +33,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       ...surveyConfigs.map((c) => getSurveyKeyset(c)),
     ]);
   const consentKeys = consentResult.keys;
+  const consentNameMap = consentResult.nameMap;
   const duplicates = consentResult.duplicates;
 
   // displayId가 있으면 마스터 시트 컬럼명으로 사용, 없으면 id 사용
@@ -33,13 +46,17 @@ export async function syncMasterSheet(): Promise<SyncResult> {
     surveyDisplayIds.forEach((displayId, i) => {
       surveys[displayId] = surveyKeysets[i].has(key);
     });
+    const consentName = consentNameMap.get(key) || '';
+    const consent = consentKeys.has(key);
     return {
       ...owner,
-      consent: consentKeys.has(key),
+      consent,
       surveys,
       opposition: oppositionMap.get(key) ?? false,
       memo: memoMap.get(key) || '',
       lastSynced: syncedAt,
+      consentName: consent ? consentName : '',
+      nameMismatch: consent ? checkNameMismatch(owner.ownerName, consentName) : false,
     };
   });
 

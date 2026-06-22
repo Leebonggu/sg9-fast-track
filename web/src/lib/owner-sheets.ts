@@ -129,7 +129,7 @@ export async function writeMasterRows(
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
     '신속통합동의서_제출_완료',
     ...surveyIds,
-    '재건축반대', '메모', '마지막_동기화',
+    '재건축반대', '메모', '마지막_동기화', '동의서이름', '이름불일치',
   ];
 
   await sheet.clear();
@@ -149,6 +149,8 @@ export async function writeMasterRows(
     재건축반대: r.opposition ? 'TRUE' : 'FALSE',
     메모: r.memo,
     마지막_동기화: r.lastSynced,
+    동의서이름: r.consentName ?? '',
+    이름불일치: r.nameMismatch ? 'TRUE' : 'FALSE',
   }));
 
   for (let i = 0; i < data.length; i += 500) {
@@ -340,6 +342,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
   const fixedCols = new Set([
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
     '신속통합동의서_제출_완료', '재건축반대', '메모', '마지막_동기화',
+    '동의서이름', '이름불일치',
   ]);
   const surveyIds = headers.filter((h) => !fixedCols.has(h));
 
@@ -358,6 +361,8 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     opposition: row.get('재건축반대') === 'TRUE',
     memo: String(row.get('메모') || ''),
     lastSynced: String(row.get('마지막_동기화') || ''),
+    consentName: String(row.get('동의서이름') || ''),
+    nameMismatch: row.get('이름불일치') === 'TRUE',
   }));
 
   return { rows, surveyIds };

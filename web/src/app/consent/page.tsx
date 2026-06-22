@@ -57,6 +57,7 @@ export default function ConsentPage() {
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState<{ unit: string; info: GridInfo | null } | null>(null);
   const [modalName, setModalName] = useState('');
+  const [modalPhone, setModalPhone] = useState('');
   const [modalCollected, setModalCollected] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const [selectedHeatmapDong, setSelectedHeatmapDong] = useState<string | null>(null);
@@ -120,6 +121,7 @@ export default function ConsentPage() {
     if (excluded.includes(unitNum)) return;
     const info = buildingData.grid[unitNum] || null;
     setModalName(info?.name || '');
+    setModalPhone(info?.phone || '');
     setModalCollected(false);
     setModal({ unit: unitNum, info });
   }
@@ -135,13 +137,13 @@ export default function ConsentPage() {
         await fetch('/api/consent', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim() }),
+          body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim(), phone: modalPhone.trim() }),
         });
       } else {
         await fetch('/api/consent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim(), collected: modalCollected }),
+          body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim(), collected: modalCollected, phone: modalPhone.trim() }),
         });
       }
       setModal(null);
@@ -456,6 +458,14 @@ export default function ConsentPage() {
                 value={modalName}
                 onChange={(e) => setModalName(e.target.value)}
                 autoFocus
+              />
+              <label className="text-sm text-gray-400">연락처 (선택)</label>
+              <input
+                type="tel"
+                className="w-full p-3.5 border-2 border-gray-200 rounded-xl text-lg outline-none focus:border-[#2F5496] mb-3"
+                placeholder="010-0000-0000"
+                value={modalPhone}
+                onChange={(e) => setModalPhone(e.target.value)}
               />
               {!modal.info && (
                 <label className="flex items-center gap-2.5 mb-4 cursor-pointer select-none">

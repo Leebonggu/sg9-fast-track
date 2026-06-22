@@ -3,8 +3,8 @@ import { addConsent, updateConsent, deleteConsent } from '@/lib/sheets';
 
 export async function POST(req: NextRequest) {
   try {
-    const { building, unit, name, collected } = await req.json();
-    await addConsent(building, unit, name, !!collected);
+    const { building, unit, name, collected, phone } = await req.json();
+    await addConsent(building, unit, name, !!collected, phone ?? '');
     return NextResponse.json({ success: true });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const { building, unit, name } = await req.json();
-    await updateConsent(building, unit, name);
+    const { building, unit, name, phone } = await req.json();
+    await updateConsent(building, unit, name, phone);
     return NextResponse.json({ success: true });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e);

@@ -135,7 +135,7 @@ export async function getBuildingData(building: string) {
   };
 }
 
-export async function addConsent(building: string, unit: string, name: string, collected = false) {
+export async function addConsent(building: string, unit: string, name: string, collected = false, phone = '') {
   const doc = await getDoc();
   const sheet = doc.sheetsByTitle[building];
   if (!sheet) throw new Error('시트 없음: ' + building);
@@ -145,7 +145,7 @@ export async function addConsent(building: string, unit: string, name: string, c
   await sheet.addRow({
     '타임스탬프': now,
     '성명': name,
-    '연락처': '',
+    '연락처': phone,
     '호수': unit,
     '주민등록상주소': `노원구 노원로 532, ${building} ${unit}호`,
     '사전동의여부': '신속통합기획 추진 검토에 동의합니다.',
@@ -158,7 +158,7 @@ export async function addConsent(building: string, unit: string, name: string, c
   });
 }
 
-export async function updateConsent(building: string, unit: string, newName: string) {
+export async function updateConsent(building: string, unit: string, newName: string, phone?: string) {
   const doc = await getDoc();
   const sheet = doc.sheetsByTitle[building];
   if (!sheet) throw new Error('시트 없음: ' + building);
@@ -172,6 +172,7 @@ export async function updateConsent(building: string, unit: string, newName: str
 
     if (rowUnit === unit && !note.includes('중복(이전 응답)') && note.trim() !== '삭제') {
       row.set('성명', newName);
+      if (phone !== undefined) row.set('연락처', phone);
       await row.save();
       return;
     }

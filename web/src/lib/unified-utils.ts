@@ -64,6 +64,7 @@ export function downloadByDongAsXlsx(rows: UnifiedRow[], surveyIds: string[], fi
 
 const isRental = (r: UnifiedRow) => r.residency === '임대';
 const isResident = (r: UnifiedRow) => r.residency === '실거주';
+const isJoint = (r: UnifiedRow) => r.ownerName.includes(',');
 
 export function applyFilter(
   rows: UnifiedRow[],
@@ -80,6 +81,12 @@ export function applyFilter(
   if (filter === 'no-id')
     return rows.filter((r) => r.consent && (r.idUploaded ?? 0) === 0);
   if (filter === 'opposition') return rows.filter((r) => r.opposition);
+
+  if (filter === 'joint') return rows.filter(isJoint);
+  if (filter === 'joint-incomplete')
+    return rows.filter((r) => isJoint(r) && (!r.consent || surveyIds.some((id) => !r.surveys[id])));
+  if (filter === 'joint-no-consent')
+    return rows.filter((r) => isJoint(r) && !r.consent);
 
   if (filter === 'rental') return rows.filter(isRental);
   if (filter === 'rental-incomplete')

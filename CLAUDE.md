@@ -140,6 +140,7 @@ SURVEY_001_SPREADSHEET_ID=2026_04_기본조사설문시트ID
 SURVEY_WEBAPP_URL=범용Apps Script웹앱URL (PDF생성+신분증업로드 공용)
 ID_UPLOAD_FOLDER_ID=신분증사본저장용_비공개_Drive폴더ID
 ID_UPLOAD_SECRET=Next.js↔Apps Script웹앱_공유비밀값 (웹앱에 setIdUploadSecret로 동일값 설정)
+BACKUP_FOLDER_ID=통합현황_스프레드시트_백업저장용_비공개_Drive폴더ID
 ```
 
 ## 신분증 사본 업로드 시스템
@@ -150,6 +151,15 @@ ID_UPLOAD_SECRET=Next.js↔Apps Script웹앱_공유비밀값 (웹앱에 setIdUpl
 - **관리자**: `/unified` 행 모달(EditRowModal)에서 열람·폐기, `/unified/id-print`에서 인쇄. 이미지는 `/api/upload-id/image` 프록시(APP_PASSWORD 보호) 경유
 - **폐기**: 자동 파기 없음 → 관리자가 수동 폐기(시트 상태 '파기' + Drive 삭제)
 - ⚠️ **Apps Script 재배포 필요**: `survey_generic_webapp.gs` 수정 후 Apps Script 편집기에 반영 → 재배포 → `setIdUploadSecret('값')` 1회 실행
+
+## 스프레드시트 백업 시스템
+
+- **대상**: `OWNER_SPREADSHEET_ID` (원본·통합현황·후원금·변경로그 등 핵심 데이터가 모두 있는 스프레드시트)만 백업. v2 사전동의(`SPREADSHEET_ID`)·설문 시트는 대상 아님
+- **주기**: Vercel Cron 매일 1회 (`vercel.json`, UTC 16:00 = KST 01:00 — `sync-unified`(UTC 14:00) 이후라 최신 동기화 데이터를 백업)
+- **저장**: `survey_generic_webapp.gs`의 `mode:'backupCopy'` 분기 → `BACKUP_FOLDER_ID` 비공개 폴더에 스프레드시트 전체 사본 생성 (신분증업로드와 동일하게 서비스 계정이 Drive 파일을 직접 소유 못 해 Apps Script 경유)
+- **보관 기간**: 최근 30일만 유지 — 같은 cron이 `mode:'backupCleanup'`으로 30일 지난 사본을 자동 휴지통 이동
+- **코드**: `web/src/lib/backup.ts`, `web/src/app/api/cron/backup-sheets/route.ts`
+- ⚠️ **Apps Script 재배포 필요**: `survey_generic_webapp.gs`에 `backupCopy`/`backupCleanup` 모드 추가했으므로 재배포 필요 (신분증업로드와 동일 웹앱·동일 `ID_UPLOAD_SECRET` 재사용, 별도 secret 없음)
 
 ## v2 시트 컬럼 구조 (동별 시트)
 

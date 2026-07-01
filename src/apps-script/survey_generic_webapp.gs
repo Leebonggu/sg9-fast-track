@@ -30,6 +30,11 @@ function doPost(e) {
       return jsonResponse(handleIdMode(data));
     }
 
+    // ── 스프레드시트 백업 복사/오래된 백업 정리 (PDF 생성과 별개 분기) ──
+    if (data.mode === 'backupCopy' || data.mode === 'backupCleanup') {
+      return jsonResponse(handleBackupMode(data));
+    }
+
     if (!data.templateDocId) {
       return jsonResponse({ error: 'templateDocId가 필요합니다.' });
     }
@@ -217,6 +222,42 @@ function handleIdMode(data) {
   }
 
   return { error: 'unknown id mode' };
+}
+
+// secret 검사는 idUpload와 동일한 ID_UPLOAD_SECRET 공유값을 재사용 (웹앱 전체 공용 인증값)
+function handleBackupMode(data) {
+  if (!checkIdSecret(data)) {
+    return { error: '인증 실패(secret 불일치)' };
+  }
+
+  if (data.mode === 'backupCopy') {
+    if (!data.sourceId) return { error: 'sourceId가 필요합니다.' };
+    if (!data.folderId) return { error: 'folderId가 필요합니다.' };
+    var name = data.name || ('백업_' + new Date().toISOString());
+    var copy = DriveApp.getFileById(data.sourceId).makeCopy(
+      name,
+      DriveApp.getFolderById(data.folderId)
+    );
+    return { success: true, fileId: copy.getId(), name: name };
+  }
+
+  if (data.mode === 'backupCleanup') {
+    if (!data.folderId) return { error: 'folderId가 필요합니다.' };
+    var olderThanDays = data.olderThanDays || 30;
+    var cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000);
+    var files = DriveApp.getFolderById(data.folderId).getFiles();
+    var deletedCount = 0;
+    while (files.hasNext()) {
+      var file = files.next();
+      if (file.getDateCreated() < cutoff) {
+        file.setTrashed(true);
+        deletedCount++;
+      }
+    }
+    return { success: true, deletedCount: deletedCount };
+  }
+
+  return { error: 'unknown backup mode' };
 }
 
 function escapeRegex(str) {

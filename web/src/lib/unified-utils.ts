@@ -80,9 +80,9 @@ export function applyFilter(
   // 사전동의 완료 세대 중 신분증 미제출
   if (filter === 'no-id')
     return rows.filter((r) => r.consent && (r.idUploaded ?? 0) === 0);
-  // 사전동의 완료 세대 중 후원금 미납부
+  // 전체 세대 중 후원금 미납부 (사전동의 여부와 무관 — 후원금은 전체 세대 대상)
   if (filter === 'no-donation')
-    return rows.filter((r) => r.consent && (r.donationTotal ?? 0) === 0);
+    return rows.filter((r) => (r.donationTotal ?? 0) === 0);
   if (filter === 'opposition') return rows.filter((r) => r.opposition);
 
   if (filter === 'joint') return rows.filter(isJoint);

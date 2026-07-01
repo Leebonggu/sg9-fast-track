@@ -53,6 +53,23 @@ function IdBadge({ consent, count }: { consent: boolean; count: number }) {
   );
 }
 
+function DonationBadge({ total, count }: { total: number; count: number }) {
+  if (total <= 0)
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-gray-50 text-gray-400 border-gray-200">
+        <span className="whitespace-nowrap">- (미납부)</span>
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+      <span className="font-bold">✓</span>
+      <span className="whitespace-nowrap">
+        {total.toLocaleString()}원·{count}회
+      </span>
+    </span>
+  );
+}
+
 function ResidencyBadge({ value }: { value: string }) {
   if (!value) return null;
   const base =
@@ -142,6 +159,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                     label={shortSurveyLabel(id)}
                   />
                 ))}
+                <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
               </div>
               <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
             </div>
@@ -163,6 +181,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">
                 신속통합동의서_제출
               </th>
+              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">후원금</th>
               {surveyIds.map((id) => (
                 <th
                   key={id}
@@ -207,6 +226,9 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                   </td>
                   <td className="py-2 px-3 text-center">
                     <Check value={row.consent} />
+                  </td>
+                  <td className="py-2 px-3 text-center">
+                    <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
                   </td>
                   {surveyIds.map((id) => (
                     <td key={id} className="py-2 px-3 text-center">

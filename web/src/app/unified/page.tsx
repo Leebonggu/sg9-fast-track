@@ -29,6 +29,15 @@ export default function UnifiedPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // 후원금 추가/수정/취소는 세대 하나의 값만 바뀌므로 전체 재조회 없이 로컬 상태만 patch
+  const patchDonation = useCallback((dong: string, ho: string, total: number, count: number) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === dong && r.ho === ho ? { ...r, donationTotal: total, donationCount: count } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -109,6 +118,7 @@ export default function UnifiedPage() {
           row={editing}
           onClose={() => setEditing(null)}
           onSaved={fetchData}
+          onDonationChanged={patchDonation}
         />
       )}
     </AdminLayout>

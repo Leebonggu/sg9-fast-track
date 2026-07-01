@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
+import DonationPanel from './DonationPanel';
 
 interface Props {
   row: UnifiedRow;
   onClose: () => void;
   onSaved?: () => void;
+  onDonationChanged?: (dong: string, ho: string, total: number, count: number) => void;
 }
 
-export default function EditRowModal({ row, onClose, onSaved }: Props) {
+export default function EditRowModal({ row, onClose, onSaved, onDonationChanged }: Props) {
   const [ownerName, setOwnerName] = useState(row.ownerName ?? '');
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
@@ -99,6 +101,7 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
           </button>
         </div>
 
+        <h3 className="text-xs font-semibold text-gray-500 mb-2">소유자 정보 수정</h3>
         <div className="space-y-3">
           <Field
             label="소유자명"
@@ -129,30 +132,7 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        <div className="pt-1 border-t border-gray-100">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">재건축 반대 의사</span>
-            <button
-              type="button"
-              onClick={toggleOpposition}
-              disabled={oppositionSaving}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                opposition ? 'bg-red-500' : 'bg-gray-200'
-              }`}
-            >
-              <span
-                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                  opposition ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
-            </button>
-          </div>
-          {opposition && (
-            <p className="text-[10px] text-red-500 mt-0.5">반대 의사 세대로 표시됩니다.</p>
-          )}
-        </div>
-
-        <div className="mt-3 rounded bg-amber-50 border border-amber-200 px-2.5 py-2">
+        <div className="mt-2 rounded bg-amber-50 border border-amber-200 px-2.5 py-2">
           <p className="text-[11px] text-amber-800 leading-snug">
             ⚠ <b>원본 시트가 직접 수정됩니다.</b> 변경 이력(시각/이전값/새값/수정자)은 <b>변경로그</b> 시트에 자동 기록됩니다.
           </p>
@@ -161,7 +141,7 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
           </p>
         </div>
 
-        <div className="flex justify-between items-center mt-4">
+        <div className="flex justify-between items-center mt-2">
           <span className="text-xs text-gray-500">
             {diffCount === 0 ? '변경 없음' : `${diffCount}개 필드 변경됨`}
           </span>
@@ -182,6 +162,36 @@ export default function EditRowModal({ row, onClose, onSaved }: Props) {
             </button>
           </div>
         </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">재건축 반대 의사</span>
+            <button
+              type="button"
+              onClick={toggleOpposition}
+              disabled={oppositionSaving}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                opposition ? 'bg-red-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  opposition ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          {opposition && (
+            <p className="text-[10px] text-red-500 mt-0.5">반대 의사 세대로 표시됩니다.</p>
+          )}
+          <p className="text-[10px] text-gray-400 mt-1">토글 즉시 저장됩니다 (위 저장 버튼과 무관).</p>
+        </div>
+
+        <DonationPanel
+          dong={row.dong}
+          ho={row.ho}
+          onChanged={(total, count) => onDonationChanged?.(row.dong, row.ho, total, count)}
+        />
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
 import DonationListTable from '@/components/unified/DonationListTable';
@@ -41,6 +42,14 @@ export default function DonationsListPage() {
     <AdminLayout>
       <div className="min-h-screen bg-gray-50 pb-16">
         <div className="p-4 max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-2">
+            <Link href="/unified" className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1">
+              ← 통합현황으로
+            </Link>
+            <Link href="/unified/donations-import" className="text-xs text-[#2F5496] hover:underline">
+              일괄업로드 →
+            </Link>
+          </div>
           <h1 className="text-lg font-bold text-gray-800 mb-4">후원금 전체 목록</h1>
 
           <div className="flex flex-wrap items-center gap-2 mb-4">

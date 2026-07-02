@@ -97,10 +97,15 @@ export default function DonationsImportPage() {
     <AdminLayout>
       <div className="min-h-screen bg-gray-50 pb-16">
         <div className="p-4 max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-2">
+            <Link href="/unified" className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1">
+              ← 통합현황으로
+            </Link>
+            <Link href="/unified/donations" className="text-xs text-[#2F5496] hover:underline">
+              전체 목록 →
+            </Link>
+          </div>
           <h1 className="text-lg font-bold text-gray-800 mb-4">후원금 일괄업로드</h1>
-          <Link href="/unified/donations" className="text-xs text-[#2F5496] hover:underline mb-4 inline-block">
-            → 전체 목록 보기
-          </Link>
 
           <div className="mb-6">
             <label

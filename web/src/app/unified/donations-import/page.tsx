@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import AdminLayout from '@/components/AdminLayout';
+import AdminNav from '@/components/AdminNav';
 import DonationImportTable from '@/components/unified/DonationImportTable';
 import type { EditableRow } from '@/components/unified/DonationImportTable';
 import type { ClassifiedImportRow } from '@/lib/donation-import-types';
@@ -90,66 +90,68 @@ export default function DonationsImportPage() {
     }
   }
 
+  const hasResult = newRows.length > 0 || reviewRows.length > 0 || duplicateCount > 0;
+
   return (
     <AdminLayout>
-      <div className="p-4 max-w-5xl mx-auto">
-        <Link href="/unified" className="text-xs text-gray-400 hover:text-gray-600 inline-flex items-center gap-1 mb-2">
-          ← 통합현황으로
-        </Link>
-        <h1 className="text-lg font-bold text-gray-800 mb-4">후원금 일괄업로드</h1>
+      <div className="min-h-screen bg-gray-50 pb-16">
+        <div className="p-4 max-w-5xl mx-auto">
+          <h1 className="text-lg font-bold text-gray-800 mb-4">후원금 일괄업로드</h1>
 
-        <div className="mb-4">
-          <label
-            htmlFor="donation-file-input"
-            className="flex flex-col items-center justify-center gap-1 border-2 border-dashed border-gray-300 rounded-lg py-8 cursor-pointer hover:border-[#2F5496] hover:bg-gray-50 transition-colors"
-          >
-            <span className="text-sm font-medium text-gray-600">
-              {file ? file.name : '클릭해서 은행 거래내역 엑셀 파일 선택'}
-            </span>
-            <span className="text-xs text-gray-400">.xls, .xlsx 지원</span>
-          </label>
-          <input
-            id="donation-file-input"
-            type="file"
-            accept=".xls,.xlsx"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="hidden"
-          />
-          <button
-            onClick={handlePreview}
-            disabled={!file || loading}
-            className="mt-2 w-full text-sm px-3 py-2 rounded bg-[#2F5496] text-white font-semibold disabled:opacity-50"
-          >
-            {loading ? '분석 중...' : '미리보기'}
-          </button>
-        </div>
-
-        {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
-        {result && (
-          <p className="text-sm text-green-600 mb-4">
-            등록 완료: {result.inserted}건 (중복으로 제외됨: {result.skipped}건)
-          </p>
-        )}
-
-        {(newRows.length > 0 || reviewRows.length > 0 || duplicateCount > 0) && (
-          <>
-            <DonationImportTable
-              newRows={newRows}
-              reviewRows={reviewRows}
-              duplicateCount={duplicateCount}
-              onEdit={editField}
-              onToggle={toggleRow}
+          <div className="mb-6">
+            <label
+              htmlFor="donation-file-input"
+              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 rounded-2xl py-20 cursor-pointer hover:border-[#2F5496] hover:bg-white bg-white/60 transition-colors text-center"
+            >
+              <span className="text-lg font-semibold text-gray-700">
+                {file ? file.name : '클릭해서 은행 거래내역 엑셀 파일 선택'}
+              </span>
+              <span className="text-sm text-gray-400">.xls, .xlsx 지원</span>
+            </label>
+            <input
+              id="donation-file-input"
+              type="file"
+              accept=".xls,.xlsx"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="hidden"
             />
             <button
-              onClick={handleCommit}
-              disabled={committing}
-              className="mt-4 text-sm px-4 py-2 rounded bg-green-600 text-white font-semibold disabled:opacity-50"
+              onClick={handlePreview}
+              disabled={!file || loading}
+              className="mt-3 w-full text-base px-3 py-3 rounded-xl bg-[#2F5496] text-white font-semibold disabled:opacity-50"
             >
-              {committing ? '등록 중...' : '선택한 건 등록'}
+              {loading ? '분석 중...' : '미리보기'}
             </button>
-          </>
-        )}
+          </div>
+
+          {error && <p className="text-sm text-red-500 mb-4">{error}</p>}
+          {result && (
+            <p className="text-sm text-green-600 mb-4">
+              등록 완료: {result.inserted}건 (중복으로 제외됨: {result.skipped}건)
+            </p>
+          )}
+
+          {hasResult && (
+            <>
+              <DonationImportTable
+                newRows={newRows}
+                reviewRows={reviewRows}
+                duplicateCount={duplicateCount}
+                onEdit={editField}
+                onToggle={toggleRow}
+              />
+              <button
+                onClick={handleCommit}
+                disabled={committing}
+                className="mt-4 text-sm px-4 py-2 rounded bg-green-600 text-white font-semibold disabled:opacity-50"
+              >
+                {committing ? '등록 중...' : '선택한 건 등록'}
+              </button>
+            </>
+          )}
+        </div>
       </div>
+      <AdminNav />
     </AdminLayout>
   );
 }

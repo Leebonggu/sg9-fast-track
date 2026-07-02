@@ -3,6 +3,7 @@
 // 신분증업로드(id-upload.ts)와 동일한 "별도 시트 + 동/호수 키 관계형 매핑" 패턴.
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { getServiceAccountAuth } from './google-auth';
+import { buildDedupKey } from './donation-import';
 
 const SHEET_TITLE = '후원금';
 const HEADERS = ['ID', '시각', '동', '호수', '납부일', '금액', '등록자', '비고', '상태'];
@@ -195,5 +196,48 @@ export async function cancelDonation(id: string, operator: string): Promise<void
     ho,
     [{ field: '상태', oldValue: prevStatus, newValue: '취소' }],
     operator,
+  );
+}
+
+// 업로드 미리보기용 — 후원금 시트 전체를 시각+금액 키로 로드 (중복판단)
+export async function getExistingDonationsByKey(): Promise<Map<string, { dong: string; ho: string }>> {
+  const doc = await getDoc();
+  const sheet = doc.sheetsByTitle[SHEET_TITLE];
+  const map = new Map<string, { dong: string; ho: string }>();
+  if (!sheet) return map;
+  const rows = await sheet.getRows();
+  for (const row of rows) {
+    const key = buildDedupKey(String(row.get('시각') || ''), Number(row.get('금액')) || 0);
+    map.set(key, { dong: String(row.get('동') || '').trim(), ho: String(row.get('호수') || '').trim() });
+  }
+  return map;
+}
+
+export interface BulkDonationInput {
+  iso: string;
+  dateOnly: string;
+  amount: number;
+  dong: string;
+  ho: string;
+}
+
+// xlsx 일괄업로드 확정 등록 — addDonation()과 달리 시각을 "지금"이 아니라
+// 원본 송금시각(iso, 파라미터로 전달받음) 그대로 저장한다.
+export async function bulkAddDonations(records: BulkDonationInput[], registrant: string): Promise<void> {
+  if (records.length === 0) return;
+  const doc = await getDoc();
+  const sheet = await ensureSheet(doc);
+  await sheet.addRows(
+    records.map((r) => ({
+      ID: crypto.randomUUID(),
+      시각: r.iso,
+      동: r.dong,
+      호수: r.ho,
+      납부일: r.dateOnly,
+      금액: String(r.amount),
+      등록자: registrant,
+      비고: '',
+      상태: '정상',
+    })),
   );
 }

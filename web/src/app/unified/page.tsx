@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import AdminLayout from '@/components/AdminLayout';
 import UnifiedSidebar from '@/components/unified/UnifiedSidebar';
 import UnifiedSummary from '@/components/unified/UnifiedSummary';
@@ -48,7 +49,15 @@ export default function UnifiedPage() {
         <div className="flex-1 min-w-0 p-4 overflow-y-auto pb-20">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-lg font-bold text-gray-800">통합 현황</h1>
-            <SyncButton lastSynced={lastSynced} onSynced={fetchData} />
+            <div className="flex items-center gap-2">
+              <Link
+                href="/unified/donations-import"
+                className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                후원금 일괄업로드
+              </Link>
+              <SyncButton lastSynced={lastSynced} onSynced={fetchData} />
+            </div>
           </div>
           {loading ? (
             <div className="text-center py-12 text-gray-400">불러오는 중...</div>

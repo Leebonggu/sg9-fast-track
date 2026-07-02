@@ -241,3 +241,18 @@ export async function bulkAddDonations(records: BulkDonationInput[], registrant:
     })),
   );
 }
+
+// 전체 후원금 거래 목록 (취소 포함) — /unified/donations 목록 페이지용
+export async function getAllDonations(): Promise<DonationRecord[]> {
+  const doc = await getDoc();
+  const sheet = doc.sheetsByTitle[SHEET_TITLE];
+  if (!sheet) return [];
+  const rows = await sheet.getRows();
+  return rows
+    .map(mapRow)
+    .sort((a, b) => {
+      const dateCompare = b.paidDate.localeCompare(a.paidDate);
+      if (dateCompare !== 0) return dateCompare;
+      return (Date.parse(b.timestamp) || 0) - (Date.parse(a.timestamp) || 0);
+    });
+}

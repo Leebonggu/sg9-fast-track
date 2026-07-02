@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDonations, addDonation, updateDonation, cancelDonation } from '@/lib/donation';
+import { getDonations, getAllDonations, addDonation, updateDonation, cancelDonation } from '@/lib/donation';
 
 function resolveOperator(req: NextRequest, fromBody: unknown): string {
   const name = typeof fromBody === 'string' ? fromBody.trim() : '';
@@ -13,10 +13,11 @@ function resolveOperator(req: NextRequest, fromBody: unknown): string {
 export async function GET(req: NextRequest) {
   const dong = req.nextUrl.searchParams.get('dong');
   const ho = req.nextUrl.searchParams.get('ho');
-  if (!dong || !ho) {
-    return NextResponse.json({ error: '필수 파라미터 누락' }, { status: 400 });
+  if (dong && ho) {
+    const donations = await getDonations(dong, ho);
+    return NextResponse.json({ donations });
   }
-  const donations = await getDonations(dong, ho);
+  const donations = await getAllDonations();
   return NextResponse.json({ donations });
 }
 

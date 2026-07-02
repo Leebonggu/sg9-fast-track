@@ -51,6 +51,12 @@ export default function UnifiedPage() {
             <h1 className="text-lg font-bold text-gray-800">통합 현황</h1>
             <div className="flex items-center gap-2">
               <Link
+                href="/unified/donations"
+                className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                후원금 목록
+              </Link>
+              <Link
                 href="/unified/donations-import"
                 className="text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
               >

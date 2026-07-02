@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
 import DonationImportTable from '@/components/unified/DonationImportTable';
@@ -97,6 +98,9 @@ export default function DonationsImportPage() {
       <div className="min-h-screen bg-gray-50 pb-16">
         <div className="p-4 max-w-5xl mx-auto">
           <h1 className="text-lg font-bold text-gray-800 mb-4">후원금 일괄업로드</h1>
+          <Link href="/unified/donations" className="text-xs text-[#2F5496] hover:underline mb-4 inline-block">
+            → 전체 목록 보기
+          </Link>
 
           <div className="mb-6">
             <label

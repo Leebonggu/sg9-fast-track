@@ -83,6 +83,9 @@ export function applyFilter(
   // 전체 세대 중 후원금 미납부 (사전동의 여부와 무관 — 후원금은 전체 세대 대상)
   if (filter === 'no-donation')
     return rows.filter((r) => (r.donationTotal ?? 0) === 0);
+  // 전체 세대 중 후원금 납부 완료
+  if (filter === 'donation')
+    return rows.filter((r) => (r.donationTotal ?? 0) > 0);
   if (filter === 'opposition') return rows.filter((r) => r.opposition);
 
   if (filter === 'joint') return rows.filter(isJoint);

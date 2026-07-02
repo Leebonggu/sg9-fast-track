@@ -75,12 +75,17 @@ export default function DonationsListPage() {
             />
           </div>
 
-          <p className="text-xs text-gray-400 mb-2">
-            {filtered.length.toLocaleString()}건 표시 중 / 전체 {donations.length.toLocaleString()}건
-          </p>
+          {!loading && (
+            <p className="text-xs text-gray-400 mb-2">
+              {filtered.length.toLocaleString()}건 표시 중 / 전체 {donations.length.toLocaleString()}건
+            </p>
+          )}
 
           {loading ? (
-            <div className="text-center py-12 text-gray-400">불러오는 중...</div>
+            <div className="flex flex-col items-center gap-3 py-16">
+              <div className="w-8 h-8 border-3 border-gray-200 border-t-[#2F5496] rounded-full animate-spin" />
+              <span className="text-xs text-gray-400">불러오는 중...</span>
+            </div>
           ) : (
             <DonationListTable donations={filtered} onChanged={fetchData} />
           )}

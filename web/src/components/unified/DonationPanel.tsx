@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface DonationRecord {
   id: string;
@@ -47,7 +48,7 @@ export default function DonationPanel({ dong, ho, onChanged }: Props) {
 
   const fetchDonations = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/unified/donations?dong=${dong}&ho=${ho}`);
+    const res = await adminFetch(`/api/unified/donations?dong=${dong}&ho=${ho}`);
     const data = await res.json();
     const list: DonationRecord[] = data.donations ?? [];
     setDonations(list);
@@ -72,7 +73,7 @@ export default function DonationPanel({ dong, ho, onChanged }: Props) {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/unified/donations', {
+      const res = await adminFetch('/api/unified/donations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,7 +109,7 @@ export default function DonationPanel({ dong, ho, onChanged }: Props) {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/unified/donations', {
+      const res = await adminFetch('/api/unified/donations', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, paidDate: editPaidDate, amount, operatorName }),
@@ -129,7 +130,7 @@ export default function DonationPanel({ dong, ho, onChanged }: Props) {
     if (!confirm('이 후원금 납부 기록을 취소하시겠습니까?')) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/unified/donations', {
+      const res = await adminFetch('/api/unified/donations', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, operatorName }),

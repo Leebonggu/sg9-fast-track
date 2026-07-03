@@ -11,6 +11,7 @@ import SyncButton from '@/components/unified/SyncButton';
 import EditRowModal from '@/components/unified/EditRowModal';
 import { applyFilter } from '@/lib/unified-utils';
 import type { UnifiedRow, FilterType } from '@/lib/unified-types';
+import { adminFetch } from '@/lib/admin-fetch';
 
 export default function UnifiedDongPage() {
   const params = useParams();
@@ -23,7 +24,7 @@ export default function UnifiedDongPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/unified?dong=${dong}`);
+    const res = await adminFetch(`/api/unified?dong=${dong}`);
     const data = await res.json();
     setRows(data.rows);
     setSurveyIds(data.surveyIds);

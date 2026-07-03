@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { DonationRecord } from '@/lib/donation';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface Props {
   donations: DonationRecord[];
@@ -32,7 +33,7 @@ export default function DonationListTable({ donations, onChanged }: Props) {
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/unified/donations', {
+      const res = await adminFetch('/api/unified/donations', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, paidDate: editPaidDate, amount, operatorName: operatorName() }),
@@ -53,7 +54,7 @@ export default function DonationListTable({ donations, onChanged }: Props) {
     if (!confirm('이 후원금 납부 기록을 취소하시겠습니까?')) return;
     setSaving(true);
     try {
-      const res = await fetch('/api/unified/donations', {
+      const res = await adminFetch('/api/unified/donations', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, operatorName: operatorName() }),

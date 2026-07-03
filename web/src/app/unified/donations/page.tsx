@@ -7,6 +7,7 @@ import AdminNav from '@/components/AdminNav';
 import DonationListTable from '@/components/unified/DonationListTable';
 import type { DonationRecord } from '@/lib/donation';
 import { downloadDonationsAsXlsx } from '@/lib/donation-export';
+import { adminFetch } from '@/lib/admin-fetch';
 
 type StatusFilter = 'all' | '정상' | '취소';
 
@@ -20,7 +21,7 @@ export default function DonationsListPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/unified/donations');
+    const res = await adminFetch('/api/unified/donations');
     const data = await res.json();
     setDonations(data.donations ?? []);
     setLoading(false);

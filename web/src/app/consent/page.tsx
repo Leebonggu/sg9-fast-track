@@ -7,6 +7,7 @@ import { BUILDINGS } from '@/lib/buildings';
 import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
 import DongHeatmap from '@/components/DongHeatmap';
+import { adminFetch } from '@/lib/admin-fetch';
 
 type BuildingInfo = {
   building: string;
@@ -85,7 +86,7 @@ export default function ConsentPage() {
   async function loadDashboard(pushHistory = true) {
     setLoading(true);
     try {
-      const res = await fetch('/api/dashboard');
+      const res = await adminFetch('/api/dashboard');
       const data = await res.json();
       setDashboard(data);
       setScreen('main');
@@ -102,7 +103,7 @@ export default function ConsentPage() {
     setModal(null);
     setLoading(true);
     try {
-      const res = await fetch(`/api/building/${encodeURIComponent(building)}`);
+      const res = await adminFetch(`/api/building/${encodeURIComponent(building)}`);
       const data = await res.json();
       setBuildingData(data);
       setScreen('grid');
@@ -134,13 +135,13 @@ export default function ConsentPage() {
     setLoading(true);
     try {
       if (modal.info) {
-        await fetch('/api/consent', {
+        await adminFetch('/api/consent', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim(), phone: modalPhone.trim() }),
         });
       } else {
-        await fetch('/api/consent', {
+        await adminFetch('/api/consent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ building: buildingData.building, unit: modal.unit, name: modalName.trim(), collected: modalCollected, phone: modalPhone.trim() }),
@@ -160,7 +161,7 @@ export default function ConsentPage() {
     if (input !== '삭제') return;
     setLoading(true);
     try {
-      await fetch('/api/consent', {
+      await adminFetch('/api/consent', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ building: buildingData.building, unit: modal.unit }),
@@ -183,7 +184,7 @@ export default function ConsentPage() {
     setHeatmapBuildingData(null);
     setHeatmapLoading(true);
     try {
-      const res = await fetch(`/api/building/${encodeURIComponent(building)}`);
+      const res = await adminFetch(`/api/building/${encodeURIComponent(building)}`);
       const data = await res.json();
       setHeatmapBuildingData(data);
     } catch { /* silent */ }
@@ -488,7 +489,7 @@ export default function ConsentPage() {
                     onClick={async () => {
                       setLoading(true);
                       try {
-                        await fetch('/api/consent/toggle', {
+                        await adminFetch('/api/consent/toggle', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ building: buildingData.building, unit: modal.unit }),

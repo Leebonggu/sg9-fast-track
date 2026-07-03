@@ -7,6 +7,7 @@ import SurveyAnalytics from '@/components/survey/SurveyAnalytics';
 import SurveyDetailTabs from '@/components/survey/SurveyDetailTabs';
 import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
+import { adminFetch } from '@/lib/admin-fetch';
 
 type BasicInfoFieldMeta = { key: string; label: string };
 type SurveyQuestion = { id: string; label: string; options: string[] };
@@ -50,8 +51,8 @@ export default function SurveyAnalyticsPage() {
     setError('');
     try {
       const [surveyRes, missingRes] = await Promise.all([
-        fetch(`/api/survey/${surveyId}`),
-        fetch(`/api/survey/${surveyId}/missing`),
+        adminFetch(`/api/survey/${surveyId}`),
+        adminFetch(`/api/survey/${surveyId}/missing`),
       ]);
       const data = await surveyRes.json();
       if (data.error) throw new Error(data.error);

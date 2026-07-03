@@ -5,6 +5,7 @@ import AdminLayout from '@/components/AdminLayout';
 import { useBuildingSelector } from '@/hooks/useBuildingSelector';
 import { BuildingSelector } from '@/components/survey/BuildingSelector';
 import type { VerifyLogRow } from '@/lib/kakao-verify-log';
+import { adminFetch } from '@/lib/admin-fetch';
 
 function formatTs(iso: string): string {
   if (!iso) return '-';
@@ -55,7 +56,7 @@ export default function KakaoVerifyLogsPage() {
 
   function fetchLogs() {
     setLoading(true);
-    fetch('/api/kakao-verify-logs')
+    adminFetch('/api/kakao-verify-logs')
       .then((r) => r.json())
       .then((d) => { if (d.error) throw new Error(d.error); setLogs(d.logs ?? []); })
       .catch((e) => setError(e.message))
@@ -70,7 +71,7 @@ export default function KakaoVerifyLogsPage() {
     setGeneratedUrl('');
     setCopied(false);
     try {
-      const res = await fetch('/api/admin/kakao-link', {
+      const res = await adminFetch('/api/admin/kakao-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dong: basicInfo.dong, ho: basicInfo.ho }),

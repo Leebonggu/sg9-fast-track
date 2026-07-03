@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface Props {
   lastSynced: string | null;
@@ -14,7 +15,7 @@ export default function SyncButton({ lastSynced, onSynced }: Props) {
 
   async function handleSync() {
     setSyncing(true);
-    const res = await fetch('/api/unified/sync', { method: 'POST' });
+    const res = await adminFetch('/api/unified/sync', { method: 'POST' });
     const data = await res.json();
     setSyncing(false);
     if (data.success) {

@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
 import { applyFilter } from '@/lib/unified-utils';
 import type { FilterType, UnifiedRow } from '@/lib/unified-types';
+import { adminFetch } from '@/lib/admin-fetch';
 
 const LABELS_PER_PAGE = 16;
 
@@ -17,7 +18,7 @@ function LabelsContent() {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/unified');
+      const res = await adminFetch('/api/unified');
       const data = await res.json();
       setRows(data.rows);
       setSurveyIds(data.surveyIds);

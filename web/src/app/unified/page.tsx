@@ -11,6 +11,7 @@ import SyncButton from '@/components/unified/SyncButton';
 import EditRowModal from '@/components/unified/EditRowModal';
 import { applyFilter, downloadAsXlsx, downloadByDongAsXlsx } from '@/lib/unified-utils';
 import type { UnifiedRow, FilterType } from '@/lib/unified-types';
+import { adminFetch } from '@/lib/admin-fetch';
 
 export default function UnifiedPage() {
   const [rows, setRows] = useState<UnifiedRow[]>([]);
@@ -21,7 +22,7 @@ export default function UnifiedPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/unified');
+    const res = await adminFetch('/api/unified');
     const data = await res.json();
     setRows(data.rows);
     setSurveyIds(data.surveyIds);

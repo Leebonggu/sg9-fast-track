@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface Props {
   dong: string;
@@ -15,7 +16,7 @@ export default function MemoCell({ dong, ho, initialMemo }: Props) {
 
   async function saveMemo(value: string) {
     setSaving(true);
-    await fetch('/api/unified/memo', {
+    await adminFetch('/api/unified/memo', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dong, ho, memo: value }),

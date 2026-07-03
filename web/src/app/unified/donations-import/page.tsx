@@ -7,6 +7,7 @@ import AdminNav from '@/components/AdminNav';
 import DonationImportTable from '@/components/unified/DonationImportTable';
 import type { EditableRow } from '@/components/unified/DonationImportTable';
 import type { ClassifiedImportRow } from '@/lib/donation-import-types';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface PreviewResponse {
   new: ClassifiedImportRow[];
@@ -32,7 +33,7 @@ export default function DonationsImportPage() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/unified/donations/import/preview', { method: 'POST', body: formData });
+      const res = await adminFetch('/api/unified/donations/import/preview', { method: 'POST', body: formData });
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || '미리보기 실패');
@@ -70,7 +71,7 @@ export default function DonationsImportPage() {
     try {
       const operatorName = typeof window !== 'undefined' ? sessionStorage.getItem('operatorName') : '';
       const registrant = operatorName ? `엑셀 일괄등록(${operatorName})` : '엑셀 일괄등록';
-      const res = await fetch('/api/unified/donations/import/commit', {
+      const res = await adminFetch('/api/unified/donations/import/commit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

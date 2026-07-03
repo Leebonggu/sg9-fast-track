@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
 import { applyFilter } from '@/lib/unified-utils';
 import type { FilterType, UnifiedRow } from '@/lib/unified-types';
+import { adminFetch } from '@/lib/admin-fetch';
 
 // 설문 컬럼 머리글용 짧은 라벨: "2026_04_기본조사_제출_완료" → "기본조사"
 const shortSurveyLabel = (id: string) =>
@@ -32,7 +33,7 @@ function PrintContent() {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/unified');
+      const res = await adminFetch('/api/unified');
       const data = await res.json();
       setRows(data.rows);
       setSurveyIds(data.surveyIds);

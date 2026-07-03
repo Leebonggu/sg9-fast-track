@@ -7,6 +7,7 @@ import QRCode from 'qrcode';
 import SurveyDetailTabs from '@/components/survey/SurveyDetailTabs';
 import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
+import { adminFetch } from '@/lib/admin-fetch';
 
 type BasicInfoFieldMeta = { key: string; label: string; type: 'text' | 'select'; options?: string[] };
 type SurveyQuestion = { id: string; label: string; options: string[] };
@@ -66,7 +67,7 @@ export default function SurveyDetailPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/survey/${surveyId}`);
+      const res = await adminFetch(`/api/survey/${surveyId}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setConfig(data.config);
@@ -87,7 +88,7 @@ export default function SurveyDetailPage() {
         let totalDone = 0;
         let remaining = 1;
         while (remaining > 0) {
-          const res = await fetch(`/api/survey/${surveyId}/generate`, {
+          const res = await adminFetch(`/api/survey/${surveyId}/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ mode }),
@@ -102,7 +103,7 @@ export default function SurveyDetailPage() {
         }
         setMessage(`${totalDone}건 생성 완료`);
       } else {
-        const res = await fetch(`/api/survey/${surveyId}/generate`, {
+        const res = await adminFetch(`/api/survey/${surveyId}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mode, rowIndex }),
@@ -128,7 +129,7 @@ export default function SurveyDetailPage() {
     setEditSaving(true);
     setMessage('');
     try {
-      const res = await fetch(`/api/survey/${surveyId}`, {
+      const res = await adminFetch(`/api/survey/${surveyId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -154,7 +155,7 @@ export default function SurveyDetailPage() {
     if (!deleteTarget || deleteConfirm !== '삭제') return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/survey/${surveyId}`, {
+      const res = await adminFetch(`/api/survey/${surveyId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rowIndex: deleteTarget.rowIndex }),

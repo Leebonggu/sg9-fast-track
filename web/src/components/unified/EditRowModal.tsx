@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
 import DonationPanel from './DonationPanel';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface Props {
   row: UnifiedRow;
@@ -44,7 +45,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged 
     }
     setSaving(true);
     try {
-      const res = await fetch('/api/unified/overrides', {
+      const res = await adminFetch('/api/unified/overrides', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dong: row.dong, ho: row.ho, overrides, operatorName }),
@@ -65,7 +66,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged 
     const newVal = !opposition;
     setOppositionSaving(true);
     try {
-      await fetch('/api/unified/opposition', {
+      await adminFetch('/api/unified/opposition', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dong: row.dong, ho: row.ho, opposition: newVal }),

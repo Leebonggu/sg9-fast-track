@@ -6,10 +6,7 @@ import { generateSurveyPdf } from '@/lib/survey-pdf';
 export async function GET(req: NextRequest) {
   // Vercel Cron 인증 (CRON_SECRET 환경변수로 보호)
   const authHeader = req.headers.get('authorization');
-  if (
-    process.env.CRON_SECRET &&
-    authHeader !== `Bearer ${process.env.CRON_SECRET}`
-  ) {
+  if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

@@ -4,6 +4,7 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { getServiceAccountAuth } from './google-auth';
 import { buildDedupKey } from './donation-import';
+import { sanitizeCell } from './xlsx-safe';
 
 const SHEET_TITLE = '후원금';
 const HEADERS = ['ID', '시각', '동', '호수', '납부일', '금액', '등록자', '비고', '상태'];
@@ -133,12 +134,12 @@ export async function addDonation(rec: {
   await sheet.addRow({
     ID: crypto.randomUUID(),
     시각: new Date().toISOString(),
-    동: rec.dong,
-    호수: rec.ho,
+    동: sanitizeCell(rec.dong),
+    호수: sanitizeCell(rec.ho),
     납부일: rec.paidDate,
     금액: String(rec.amount),
-    등록자: rec.registrant,
-    비고: rec.note || '',
+    등록자: sanitizeCell(rec.registrant),
+    비고: sanitizeCell(rec.note || ''),
     상태: '정상',
   });
 }
@@ -170,7 +171,7 @@ export async function updateDonation(
     row.set('금액', String(updates.amount));
   }
   if (updates.note !== undefined && updates.note !== String(row.get('비고') || '')) {
-    row.set('비고', updates.note);
+    row.set('비고', sanitizeCell(updates.note));
   }
 
   await row.save();
@@ -231,11 +232,11 @@ export async function bulkAddDonations(records: BulkDonationInput[], registrant:
     records.map((r) => ({
       ID: crypto.randomUUID(),
       시각: r.iso,
-      동: r.dong,
-      호수: r.ho,
+      동: sanitizeCell(r.dong),
+      호수: sanitizeCell(r.ho),
       납부일: r.dateOnly,
       금액: String(r.amount),
-      등록자: registrant,
+      등록자: sanitizeCell(registrant),
       비고: '',
       상태: '정상',
     })),

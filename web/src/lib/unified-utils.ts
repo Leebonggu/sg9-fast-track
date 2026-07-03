@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { UnifiedRow, FilterType } from './unified-types';
+import { sanitizeCell } from './xlsx-safe';
 
 // 행 배열 → 워크시트. includeDong=false면 '동' 컬럼 제외(동별 시트에서는 시트명이 동 역할).
 function buildSheet(rows: UnifiedRow[], surveyIds: string[], includeDong: boolean) {
@@ -8,15 +9,15 @@ function buildSheet(rows: UnifiedRow[], surveyIds: string[], includeDong: boolea
     '호수', '소유자명', '우편번호', '대표주소', '실거주여부', '신속통합동의서_제출', ...surveyIds, '메모',
   ];
   const dataRows = rows.map((r) => [
-    ...(includeDong ? [r.dong] : []),
-    r.ho,
-    r.ownerName,
-    r.postalCode,
-    r.address,
-    r.residency,
+    ...(includeDong ? [sanitizeCell(r.dong)] : []),
+    sanitizeCell(r.ho),
+    sanitizeCell(r.ownerName),
+    sanitizeCell(r.postalCode),
+    sanitizeCell(r.address),
+    sanitizeCell(r.residency),
     r.consent ? 'O' : 'X',
     ...surveyIds.map((id) => (r.surveys[id] ? 'O' : 'X')),
-    r.memo,
+    sanitizeCell(r.memo),
   ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
   // 모든 데이터 셀을 명시적 텍스트 타입으로 지정 → 우편번호 등 leading-zero 유지

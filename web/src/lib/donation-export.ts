@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { DonationRecord } from './donation';
+import { sanitizeCell } from './xlsx-safe';
 
 // 후원자 공유용 심플 포맷 (내부 관리 필드인 등록자/비고/상태는 제외)
 export function downloadDonationsAsXlsx(donations: DonationRecord[], filename: string) {
@@ -8,7 +9,7 @@ export function downloadDonationsAsXlsx(donations: DonationRecord[], filename: s
     return;
   }
   const headers = ['납부일', '동', '호수', '금액'];
-  const dataRows = donations.map((d) => [d.paidDate, d.dong, d.ho, d.amount]);
+  const dataRows = donations.map((d) => [sanitizeCell(d.paidDate), sanitizeCell(d.dong), sanitizeCell(d.ho), d.amount]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, '후원금');

@@ -5,6 +5,7 @@ import {
 } from 'google-spreadsheet';
 import { getServiceAccountAuth } from './google-auth';
 import type { OwnerRow, UnifiedRow, UnifiedRowOverrides } from './unified-types';
+import { sanitizeCell } from './xlsx-safe';
 
 // 한국 우편번호는 5자리 — 시트가 숫자 포맷이면 leading-zero가 사라지므로 보정
 function normalizePostalCode(raw: string): string {
@@ -182,7 +183,7 @@ export async function updateMemo(dong: string, ho: string, memo: string): Promis
     (r) => String(r.get('동')) === dong && String(r.get('호수')) === ho,
   );
   if (!row) throw new Error(`${dong}동 ${ho}호를 찾을 수 없습니다.`);
-  row.set('메모', memo);
+  row.set('메모', sanitizeCell(memo));
   await row.save();
 }
 
@@ -253,7 +254,7 @@ export async function updateOwnerRecord(
     for (let n = 1; n <= 5; n++) {
       const key = pickExistingKey(row, ownerNameVariants(n));
       const oldValue = String(row.get(key) || '').trim();
-      const newValue = names[n - 1] || '';
+      const newValue = sanitizeCell(names[n - 1] || '');
       if (oldValue !== newValue) {
         row.set(key, newValue);
         changes.push({ field: key, oldValue, newValue });
@@ -276,7 +277,7 @@ export async function updateOwnerRecord(
   if (overrides.address !== undefined) {
     const key = pickExistingKey(row, addressVariants);
     const oldValue = String(row.get(key) || '').trim();
-    const newValue = overrides.address.trim();
+    const newValue = sanitizeCell(overrides.address.trim());
     if (oldValue !== newValue) {
       row.set(key, newValue);
       changes.push({ field: key, oldValue, newValue });
@@ -322,11 +323,11 @@ async function updateMasterRowFields(
       String(r.get('호수') || '').trim() === ho,
   );
   if (!row) return;
-  if (overrides.ownerName !== undefined) row.set('소유자명', overrides.ownerName);
+  if (overrides.ownerName !== undefined) row.set('소유자명', sanitizeCell(overrides.ownerName));
   if (overrides.postalCode !== undefined) {
     row.set('우편번호', normalizePostalCode(overrides.postalCode));
   }
-  if (overrides.address !== undefined) row.set('대표주소', overrides.address.trim());
+  if (overrides.address !== undefined) row.set('대표주소', sanitizeCell(overrides.address.trim()));
   if (overrides.residency !== undefined) row.set('실거주여부', overrides.residency.trim());
   await row.save();
 }

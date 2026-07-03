@@ -6,6 +6,7 @@ import AdminLayout from '@/components/AdminLayout';
 import AdminNav from '@/components/AdminNav';
 import DonationListTable from '@/components/unified/DonationListTable';
 import type { DonationRecord } from '@/lib/donation';
+import { downloadDonationsAsXlsx } from '@/lib/donation-export';
 
 type StatusFilter = 'all' | '정상' | '취소';
 
@@ -14,6 +15,8 @@ export default function DonationsListPage() {
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -29,8 +32,15 @@ export default function DonationsListPage() {
     if (statusFilter !== 'all' && d.status !== statusFilter) return false;
     const digits = search.replace(/[^0-9]/g, '');
     if (digits && !`${d.dong}${d.ho}`.includes(digits)) return false;
+    if (startDate && d.paidDate < startDate) return false;
+    if (endDate && d.paidDate > endDate) return false;
     return true;
   });
+
+  function handleDownload() {
+    const rangeLabel = startDate || endDate ? `${startDate || '전체'}~${endDate || '전체'}` : '전체';
+    downloadDonationsAsXlsx(filtered, `후원금_${rangeLabel}.xlsx`);
+  }
 
   const statusTabs: { key: StatusFilter; label: string }[] = [
     { key: 'all', label: '전체' },
@@ -73,6 +83,37 @@ export default function DonationsListPage() {
               placeholder="동/호수 검색 (예: 901101)"
               className="text-xs border border-gray-300 rounded px-2 py-1.5 ml-auto"
             />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className="text-xs text-gray-400">납부일</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-xs border border-gray-300 rounded px-2 py-1.5"
+            />
+            <span className="text-xs text-gray-400">~</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-xs border border-gray-300 rounded px-2 py-1.5"
+            />
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                className="text-xs text-gray-400 hover:text-gray-600 underline"
+              >
+                초기화
+              </button>
+            )}
+            <button
+              onClick={handleDownload}
+              className="ml-auto text-xs px-3 py-1.5 rounded bg-[#2F5496] text-white font-semibold hover:bg-[#1e3a6e] transition-colors"
+            >
+              엑셀 다운로드 ({filtered.length.toLocaleString()})
+            </button>
           </div>
 
           {!loading && (

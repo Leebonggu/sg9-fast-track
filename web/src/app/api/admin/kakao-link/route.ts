@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createVerifyToken } from '@/lib/kakao-verify';
 import { appendVerifyLog } from '@/lib/kakao-verify-log';
+import { getClientIp } from '@/lib/request-ip';
 
 export async function POST(req: NextRequest) {
   try {
-    const ip =
-      req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
+    const ip = getClientIp(req);
 
     const { dong: rawDong, ho: rawHo } = await req.json();
 

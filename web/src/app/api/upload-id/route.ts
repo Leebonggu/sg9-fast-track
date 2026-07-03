@@ -9,13 +9,10 @@ import {
   deleteIdImage,
 } from '@/lib/id-upload';
 import { checkRateLimit, appendVerifyLog } from '@/lib/kakao-verify-log';
+import { getClientIp } from '@/lib/request-ip';
 
 // base64 디코드 후 최대 허용 크기 (서버 보호용). 클라이언트에서 압축 후 전송.
 const MAX_BYTES = 8 * 1024 * 1024;
-
-function getIp(req: NextRequest): string {
-  return req.headers.get('x-forwarded-for')?.split(',')[0].trim() ?? 'unknown';
-}
 
 async function isConsented(dong: string, ho: string): Promise<boolean> {
   const { rows } = await getMasterRows();
@@ -30,7 +27,7 @@ const EXTRA_SLOT_MAX = 10;
 // ── 주민: 신분증 업로드 ──────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const ip = getIp(req);
+    const ip = getClientIp(req);
 
     const body = await req.json();
     const { t, ownerIndex, ownerName, mimeType, base64 } = body ?? {};
@@ -200,7 +197,7 @@ export async function DELETE(req: NextRequest) {
       String(ho).trim(),
       `소유자${Number(ownerIndex) + 1}`,
       '신분증삭제',
-      getIp(req),
+      getClientIp(req),
     );
     return NextResponse.json({ success: true });
   } catch (e: unknown) {

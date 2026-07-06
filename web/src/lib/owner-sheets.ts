@@ -372,7 +372,13 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
   const sheet = doc.sheetsByTitle['통합현황'];
   if (!sheet) return { rows: [], surveyIds: [] };
 
-  await sheet.loadHeaderRow();
+  try {
+    await sheet.loadHeaderRow();
+  } catch {
+    // 동기화(writeMasterRows)가 sheet.clear() 직후 헤더를 잠깐 비우는 순간과 겹치면
+    // loadHeaderRow가 "빈 헤더"로 예외를 던진다 → 500 대신 빈 결과 반환(다음 조회 시 정상)
+    return { rows: [], surveyIds: [] };
+  }
   const headers = sheet.headerValues;
   const fixedCols = new Set([
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',

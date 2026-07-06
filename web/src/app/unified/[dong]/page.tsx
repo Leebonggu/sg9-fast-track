@@ -24,11 +24,16 @@ export default function UnifiedDongPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const res = await adminFetch(`/api/unified?dong=${dong}`);
-    const data = await res.json();
-    setRows(data.rows);
-    setSurveyIds(data.surveyIds);
-    setLoading(false);
+    try {
+      const res = await adminFetch(`/api/unified?dong=${dong}`);
+      const data = await res.json().catch(() => null);
+      if (res.ok && data) {
+        setRows(data.rows ?? []);
+        setSurveyIds(data.surveyIds ?? []);
+      }
+    } finally {
+      setLoading(false);
+    }
   }, [dong]);
 
   useEffect(() => { fetchData(); }, [fetchData]);

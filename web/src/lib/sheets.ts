@@ -272,3 +272,36 @@ export async function getConsentKeyset(): Promise<{
 
   return { keys, nameMap, duplicates };
 }
+
+// 동별 시트에서 세대별 연락처 맵 (폼 제출한 모든 세대, 수거여부 무관)
+// key "901-101" → "홍길동 010-1234-5678" 또는 공동/다중 제출 시 "홍길동 010-... / 김철수 010-...".
+// 최신(뒤쪽) 행 우선, 같은 번호는 중복 제거, 빈 연락처·삭제·중복행 제외.
+export async function getPhoneMap(): Promise<Map<string, string>> {
+  const doc = await getDoc();
+  const dongs = Object.keys(BUILDING_CONFIG);
+  const acc = new Map<string, { seen: Set<string>; entries: string[] }>();
+  for (const dongKey of dongs) {
+    const dongNum = dongKey.replace('동', '');
+    const sheet = doc.sheetsByTitle[dongKey];
+    if (!sheet) continue;
+    const rows = await sheet.getRows();
+    // 뒤에서부터 읽어 최신 응답 우선
+    for (let i = rows.length - 1; i >= 0; i--) {
+      const row = rows[i];
+      const ho = String(row.get('호수') || '').trim();
+      const phone = String(row.get('연락처') || '').trim();
+      const name = String(row.get('성명') || '').trim();
+      const note = String(row.get('비고') || '').trim();
+      if (!ho || !phone) continue;
+      if (note === '삭제' || note.includes('중복(이전 응답)')) continue;
+      const key = `${dongNum}-${ho}`;
+      let d = acc.get(key);
+      if (!d) { d = { seen: new Set(), entries: [] }; acc.set(key, d); }
+      if (!d.seen.has(phone)) {           // 같은 번호 중복 제거
+        d.seen.add(phone);
+        d.entries.push(name ? `${name} ${phone}` : phone);
+      }
+    }
+  }
+  return new Map([...acc].map(([k, d]) => [k, d.entries.join(' / ')]));
+}

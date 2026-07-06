@@ -10,15 +10,18 @@ interface Props {
   onClose: () => void;
   onSaved?: () => void;
   onDonationChanged?: (dong: string, ho: string, total: number, count: number) => void;
+  onKakaoToggled?: (dong: string, ho: string, value: boolean) => void;
 }
 
-export default function EditRowModal({ row, onClose, onSaved, onDonationChanged }: Props) {
+export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled }: Props) {
   const [ownerName, setOwnerName] = useState(row.ownerName ?? '');
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
   const [residency, setResidency] = useState(row.residency ?? '');
   const [opposition, setOpposition] = useState(row.opposition ?? false);
   const [oppositionSaving, setOppositionSaving] = useState(false);
+  const [kakaoGroup, setKakaoGroup] = useState(row.kakaoGroup ?? false);
+  const [kakaoSaving, setKakaoSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [operatorName, setOperatorName] = useState('');
 
@@ -75,6 +78,23 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged 
       onSaved?.();
     } finally {
       setOppositionSaving(false);
+    }
+  }
+
+  async function toggleKakao() {
+    const newVal = !kakaoGroup;
+    setKakaoSaving(true);
+    try {
+      const res = await adminFetch('/api/unified/kakao-group', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong: row.dong, ho: row.ho, kakaoGroup: newVal }),
+      });
+      if (!res.ok) { alert('저장 실패'); return; }
+      setKakaoGroup(newVal);
+      onKakaoToggled?.(row.dong, row.ho, newVal);
+    } finally {
+      setKakaoSaving(false);
     }
   }
 
@@ -186,6 +206,27 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged 
             <p className="text-[10px] text-red-500 mt-0.5">반대 의사 세대로 표시됩니다.</p>
           )}
           <p className="text-[10px] text-gray-400 mt-1">토글 즉시 저장됩니다 (위 저장 버튼과 무관).</p>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">단톡방 참여</span>
+            <button
+              type="button"
+              onClick={toggleKakao}
+              disabled={kakaoSaving}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                kakaoGroup ? 'bg-green-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  kakaoGroup ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1">토글 즉시 저장됩니다.</p>
         </div>
 
         <DonationPanel

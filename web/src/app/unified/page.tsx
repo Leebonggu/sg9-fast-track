@@ -40,6 +40,14 @@ export default function UnifiedPage() {
     );
   }, []);
 
+  const patchKakaoGroup = useCallback((dong: string, ho: string, value: boolean) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === dong && r.ho === ho ? { ...r, kakaoGroup: value } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -124,6 +132,7 @@ export default function UnifiedPage() {
                 surveyIds={surveyIds}
                 showDong={true}
                 onRowClick={setEditing}
+                onKakaoToggled={patchKakaoGroup}
               />
             </>
           )}
@@ -135,6 +144,7 @@ export default function UnifiedPage() {
           onClose={() => setEditing(null)}
           onSaved={fetchData}
           onDonationChanged={patchDonation}
+          onKakaoToggled={patchKakaoGroup}
         />
       )}
     </AdminLayout>

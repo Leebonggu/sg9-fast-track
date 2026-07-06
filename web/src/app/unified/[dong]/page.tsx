@@ -33,6 +33,14 @@ export default function UnifiedDongPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const patchKakaoGroup = useCallback((d: string, ho: string, value: boolean) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === d && r.ho === ho ? { ...r, kakaoGroup: value } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -59,6 +67,7 @@ export default function UnifiedDongPage() {
                 surveyIds={surveyIds}
                 showDong={false}
                 onRowClick={setEditing}
+                onKakaoToggled={patchKakaoGroup}
               />
             </>
           )}
@@ -69,6 +78,7 @@ export default function UnifiedDongPage() {
           row={editing}
           onClose={() => setEditing(null)}
           onSaved={fetchData}
+          onKakaoToggled={patchKakaoGroup}
         />
       )}
     </AdminLayout>

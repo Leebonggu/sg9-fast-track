@@ -67,6 +67,8 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
     { key: 'no-donation', label: '후원금 미납부' },
     { key: 'donation', label: '후원금 납부', variant: 'green' },
     { key: 'opposition', label: '반대 의사', variant: 'red' },
+    { key: 'no-kakao-group', label: '단톡방 미참여' },
+    { key: 'kakao-group', label: '단톡방 참여', variant: 'green' },
     ...surveyIds.map((id) => ({
       key: `no-${id}` as FilterType,
       label: `${shortSurveyLabel(id)} 미완료`,

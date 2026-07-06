@@ -88,6 +88,8 @@ export function applyFilter(
   if (filter === 'donation')
     return rows.filter((r) => (r.donationTotal ?? 0) > 0);
   if (filter === 'opposition') return rows.filter((r) => r.opposition);
+  if (filter === 'kakao-group') return rows.filter((r) => r.kakaoGroup);
+  if (filter === 'no-kakao-group') return rows.filter((r) => !r.kakaoGroup);
 
   if (filter === 'joint') return rows.filter(isJoint);
   if (filter === 'joint-incomplete')

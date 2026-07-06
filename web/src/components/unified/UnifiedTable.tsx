@@ -1,7 +1,8 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
+import { adminFetch } from '@/lib/admin-fetch';
 import MemoCell from './MemoCell';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   surveyIds: string[];
   showDong: boolean;
   onRowClick: (row: UnifiedRow) => void;
+  onKakaoToggled: (dong: string, ho: string, value: boolean) => void;
 }
 
 const Check = ({ value }: { value: boolean }) =>
@@ -20,6 +22,45 @@ const Check = ({ value }: { value: boolean }) =>
 
 const shortSurveyLabel = (id: string) =>
   id.replace(/_완료$/, '').replace(/^\d{4}_\d{2}_/, '');
+
+function KakaoToggle({
+  dong, ho, value, onChanged,
+}: {
+  dong: string; ho: string; value: boolean;
+  onChanged: (dong: string, ho: string, value: boolean) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  async function toggle() {
+    const newVal = !value;
+    setSaving(true);
+    try {
+      const res = await adminFetch('/api/unified/kakao-group', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong, ho, kakaoGroup: newVal }),
+      });
+      if (!res.ok) { alert('저장 실패'); return; }
+      onChanged(dong, ho, newVal);
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={saving}
+      title="단톡방 참여 여부 (클릭해서 토글)"
+      className={`inline-flex items-center justify-center h-7 min-w-[3rem] px-2 rounded-full border text-[11px] font-medium transition-colors disabled:opacity-50 ${
+        value
+          ? 'bg-green-500 text-white border-green-500'
+          : 'bg-white text-gray-400 border-gray-300 hover:border-green-400'
+      }`}
+    >
+      {value ? '✓ 참여' : '미참여'}
+    </button>
+  );
+}
 
 function Chip({ done, label }: { done: boolean; label: string }) {
   return (
@@ -104,7 +145,7 @@ function rowBgClass(doneCount: number, totalCount: number) {
   return 'bg-amber-50';
 }
 
-function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
+function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggled }: Props) {
   if (rows.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 text-sm">
@@ -147,6 +188,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <ResidencyBadge value={row.residency} />
+                  <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
                   <EditButton onClick={() => onRowClick(row)} />
                 </div>
               </div>
@@ -178,6 +220,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">호수</th>
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">소유자</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">실거주</th>
+              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">단톡방</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">
                 신속통합동의서_제출
               </th>
@@ -223,6 +266,9 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick }: Props) {
                   </td>
                   <td className="py-2 px-3 text-center">
                     <ResidencyBadge value={row.residency} />
+                  </td>
+                  <td className="py-2 px-3 text-center">
+                    <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
                   </td>
                   <td className="py-2 px-3 text-center">
                     <Check value={row.consent} />

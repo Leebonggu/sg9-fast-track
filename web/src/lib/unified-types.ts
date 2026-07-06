@@ -18,8 +18,10 @@ export interface UnifiedRow extends OwnerRow {
   donationTotal?: number  // 후원금 누적 납부액 (취소 제외) — /api/unified에서 병합
   donationCount?: number  // 후원금 납부 횟수 (취소 제외) — /api/unified에서 병합
   opposition?: boolean  // 재건축 반대 의사 (통합현황 시트 재건축반대 컬럼)
+  kakaoGroup?: boolean  // 단톡방 참여 여부 (통합현황 시트 단톡방참여 컬럼, 위원 수동 토글)
   consentName?: string  // 동의서에 기재된 이름 (sync 시 기록)
   nameMismatch?: boolean  // 소유자명 vs 동의서이름 불일치 여부 (포맷 정규화 후 비교)
+  phone?: string  // 세대 연락처 (동별 시트에서 sync 시 채움, 폼 제출 세대만 값 있음)
 }
 
 // 위원이 모달에서 수정하는 4필드 — 원본 시트에 직접 적용 + 변경로그 기록

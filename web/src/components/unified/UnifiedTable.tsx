@@ -79,23 +79,6 @@ function Chip({ done, label }: { done: boolean; label: string }) {
   );
 }
 
-function IdBadge({ consent, count }: { consent: boolean; count: number }) {
-  if (!consent) return <span className="text-gray-300 text-xs">-</span>;
-  if (count > 0)
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-green-50 text-green-700 border-green-200">
-        <span className="font-bold">✓</span>
-        <span className="whitespace-nowrap">{count}장</span>
-      </span>
-    );
-  return (
-    <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-red-50/60 text-red-400 border-red-100">
-      <span className="font-bold">✗</span>
-      <span className="whitespace-nowrap">미제출</span>
-    </span>
-  );
-}
-
 function DonationBadge({ total, count }: { total: number; count: number }) {
   if (total <= 0)
     return (
@@ -147,6 +130,121 @@ function rowBgClass(doneCount: number, totalCount: number) {
   return 'bg-amber-50';
 }
 
+interface RowProps {
+  row: UnifiedRow;
+  surveyIds: string[];
+  showDong: boolean;
+  onRowClick: (row: UnifiedRow) => void;
+  onKakaoToggled: (dong: string, ho: string, value: boolean) => void;
+}
+
+// 개별 행을 memo로 분리 — 토글/메모 변경 시 해당 행만 재렌더 (2,830행 전체 재렌더 방지).
+// patchKakaoGroup은 바뀐 행만 새 객체로 만들고 나머지는 객체 동일성을 유지하므로,
+// 변경되지 않은 행은 memo 얕은 비교에서 걸러져 재렌더되지 않는다.
+const MobileCard = memo(function MobileCard({
+  row, surveyIds, showDong, onRowClick, onKakaoToggled,
+}: RowProps) {
+  const doneCount =
+    (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
+  const totalCount = 1 + surveyIds.length;
+  const bg = rowBgClass(doneCount, totalCount) || 'bg-white';
+  return (
+    <div className={`rounded-lg border border-gray-200 ${bg} px-3 py-2.5`}>
+      <div className="flex items-baseline justify-between mb-1 gap-2">
+        <div className="flex items-baseline gap-1.5 min-w-0">
+          {showDong && (
+            <span className="text-xs text-gray-400 shrink-0">{row.dong}동</span>
+          )}
+          <span className="font-semibold text-sm text-gray-800 shrink-0">
+            {row.ho}호
+          </span>
+          <span className="text-xs text-gray-700 truncate">
+            {row.ownerName || '-'}
+          </span>
+          {row.nameMismatch && (
+            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
+          )}
+          {row.opposition && (
+            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <ResidencyBadge value={row.residency} />
+          <EditButton onClick={() => onRowClick(row)} />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1 mb-2 items-center">
+        <Chip done={row.consent} label="동의서" />
+        {surveyIds.map((id) => (
+          <Chip
+            key={id}
+            done={row.surveys[id] ?? false}
+            label={shortSurveyLabel(id)}
+          />
+        ))}
+        <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
+        </div>
+        <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
+      </div>
+    </div>
+  );
+});
+
+const DesktopRow = memo(function DesktopRow({
+  row, surveyIds, showDong, onRowClick, onKakaoToggled,
+}: RowProps) {
+  const doneCount =
+    (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
+  const totalCount = 1 + surveyIds.length;
+  const bg = rowBgClass(doneCount, totalCount);
+  return (
+    <tr className={`border-b border-gray-100 hover:bg-gray-50 ${bg}`}>
+      {showDong && (
+        <td className="py-2 px-3 text-gray-400 text-xs">{row.dong}</td>
+      )}
+      <td className="py-2 px-3 font-medium">{row.ho}</td>
+      <td className="py-2 px-3 text-gray-700">
+        <span className="flex items-center gap-1.5 flex-wrap">
+          {row.ownerName}
+          {row.nameMismatch && (
+            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
+          )}
+          {row.opposition && (
+            <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
+          )}
+        </span>
+      </td>
+      <td className="py-2 px-3 text-center">
+        <ResidencyBadge value={row.residency} />
+      </td>
+      <td className="py-2 px-3 text-center">
+        <Check value={row.consent} />
+      </td>
+      <td className="py-2 px-3 text-center">
+        <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
+      </td>
+      {surveyIds.map((id) => (
+        <td key={id} className="py-2 px-3 text-center">
+          <Check value={row.surveys[id] ?? false} />
+        </td>
+      ))}
+      <td className="py-2 px-3 min-w-[100px]">
+        <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
+      </td>
+      <td className="py-2 px-3 text-center">
+        <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
+      </td>
+      <td className="py-2 px-3 text-center">
+        <EditButton onClick={() => onRowClick(row)} />
+      </td>
+    </tr>
+  );
+});
+
 function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggled }: Props) {
   if (rows.length === 0) {
     return (
@@ -160,59 +258,16 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
     <>
       {/* 모바일: 카드 리스트 */}
       <div className="sm:hidden flex flex-col gap-2 -mx-1">
-        {rows.map((row) => {
-          const doneCount =
-            (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
-          const totalCount = 1 + surveyIds.length;
-          const bg = rowBgClass(doneCount, totalCount) || 'bg-white';
-          return (
-            <div
-              key={`${row.dong}-${row.ho}`}
-              className={`rounded-lg border border-gray-200 ${bg} px-3 py-2.5`}
-            >
-              <div className="flex items-baseline justify-between mb-1 gap-2">
-                <div className="flex items-baseline gap-1.5 min-w-0">
-                  {showDong && (
-                    <span className="text-xs text-gray-400 shrink-0">{row.dong}동</span>
-                  )}
-                  <span className="font-semibold text-sm text-gray-800 shrink-0">
-                    {row.ho}호
-                  </span>
-                  <span className="text-xs text-gray-700 truncate">
-                    {row.ownerName || '-'}
-                  </span>
-                  {row.nameMismatch && (
-                    <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
-                  )}
-                  {row.opposition && (
-                    <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <ResidencyBadge value={row.residency} />
-                  <EditButton onClick={() => onRowClick(row)} />
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1 mb-2 items-center">
-                <Chip done={row.consent} label="동의서" />
-                {surveyIds.map((id) => (
-                  <Chip
-                    key={id}
-                    done={row.surveys[id] ?? false}
-                    label={shortSurveyLabel(id)}
-                  />
-                ))}
-                <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
-                </div>
-                <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
-              </div>
-            </div>
-          );
-        })}
+        {rows.map((row) => (
+          <MobileCard
+            key={`${row.dong}-${row.ho}`}
+            row={row}
+            surveyIds={surveyIds}
+            showDong={showDong}
+            onRowClick={onRowClick}
+            onKakaoToggled={onKakaoToggled}
+          />
+        ))}
       </div>
 
       {/* 데스크톱: 테이블 */}
@@ -244,58 +299,16 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
-              const doneCount =
-                (row.consent ? 1 : 0) +
-                surveyIds.filter((id) => row.surveys[id]).length;
-              const totalCount = 1 + surveyIds.length;
-              const bg = rowBgClass(doneCount, totalCount);
-              return (
-                <tr
-                  key={`${row.dong}-${row.ho}`}
-                  className={`border-b border-gray-100 hover:bg-gray-50 ${bg}`}
-                >
-                  {showDong && (
-                    <td className="py-2 px-3 text-gray-400 text-xs">{row.dong}</td>
-                  )}
-                  <td className="py-2 px-3 font-medium">{row.ho}</td>
-                  <td className="py-2 px-3 text-gray-700">
-                    <span className="flex items-center gap-1.5 flex-wrap">
-                      {row.ownerName}
-                      {row.nameMismatch && (
-                        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
-                      )}
-                      {row.opposition && (
-                        <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
-                      )}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <ResidencyBadge value={row.residency} />
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <Check value={row.consent} />
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
-                  </td>
-                  {surveyIds.map((id) => (
-                    <td key={id} className="py-2 px-3 text-center">
-                      <Check value={row.surveys[id] ?? false} />
-                    </td>
-                  ))}
-                  <td className="py-2 px-3 min-w-[100px]">
-                    <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
-                  </td>
-                  <td className="py-2 px-3 text-center">
-                    <EditButton onClick={() => onRowClick(row)} />
-                  </td>
-                </tr>
-              );
-            })}
+            {rows.map((row) => (
+              <DesktopRow
+                key={`${row.dong}-${row.ho}`}
+                row={row}
+                surveyIds={surveyIds}
+                showDong={showDong}
+                onRowClick={onRowClick}
+                onKakaoToggled={onKakaoToggled}
+              />
+            ))}
           </tbody>
         </table>
       </div>

@@ -149,7 +149,7 @@ const MobileCard = memo(function MobileCard({
   const totalCount = 1 + surveyIds.length;
   const bg = rowBgClass(doneCount, totalCount) || 'bg-white';
   return (
-    <div className={`rounded-lg border border-gray-200 ${bg} px-3 py-2.5`}>
+    <div className={`rounded-lg border border-gray-200 ${bg} px-3 py-2.5 [content-visibility:auto] [contain-intrinsic-size:auto_120px]`}>
       <div className="flex items-baseline justify-between mb-1 gap-2">
         <div className="flex items-baseline gap-1.5 min-w-0">
           {showDong && (
@@ -205,7 +205,7 @@ const DesktopRow = memo(function DesktopRow({
   const totalCount = 1 + surveyIds.length;
   const bg = rowBgClass(doneCount, totalCount);
   return (
-    <tr className={`border-b border-gray-100 hover:bg-gray-50 ${bg}`}>
+    <tr className={`border-b border-gray-100 hover:bg-gray-50 [content-visibility:auto] [contain-intrinsic-size:auto_41px] ${bg}`}>
       {showDong && (
         <td className="py-2 px-3 text-gray-400 text-xs">{row.dong}</td>
       )}
@@ -221,8 +221,10 @@ const DesktopRow = memo(function DesktopRow({
           )}
         </span>
       </td>
-      <td className="py-2 px-3 text-xs text-gray-600 whitespace-nowrap">
-        {row.phone || '-'}
+      <td className="py-2 px-3 text-xs text-gray-600">
+        <span className="block max-w-[130px] truncate" title={row.phone || undefined}>
+          {row.phone || '-'}
+        </span>
       </td>
       <td className="py-2 px-3 text-center">
         <ResidencyBadge value={row.residency} />
@@ -286,7 +288,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
               )}
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">호수</th>
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">소유자</th>
-              <th className="text-left py-2 px-3 font-medium whitespace-nowrap">연락처</th>
+              <th className="text-left py-2 px-3 font-medium whitespace-nowrap max-w-[130px]">연락처</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">실거주</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">
                 신속통합동의서_제출

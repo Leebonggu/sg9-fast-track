@@ -122,6 +122,12 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
           </button>
         </div>
 
+        <div className="mb-3 rounded bg-gray-50 border border-gray-200 px-2.5 py-2">
+          <span className="text-[11px] text-gray-400">연락처</span>{' '}
+          <span className="text-sm text-gray-700 font-medium break-all">{row.phone || '없음'}</span>
+          <p className="text-[10px] text-gray-400 mt-0.5">동별 시트에서 자동 동기화 (여기서 수정 불가)</p>
+        </div>
+
         <h3 className="text-xs font-semibold text-gray-500 mb-2">소유자 정보 수정</h3>
         <div className="space-y-3">
           <Field

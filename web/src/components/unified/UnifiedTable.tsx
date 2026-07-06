@@ -173,6 +173,9 @@ const MobileCard = memo(function MobileCard({
           <EditButton onClick={() => onRowClick(row)} />
         </div>
       </div>
+      {row.phone && (
+        <div className="text-[11px] text-gray-500 mb-1.5 break-all">📞 {row.phone}</div>
+      )}
       <div className="flex flex-wrap gap-1 mb-2 items-center">
         <Chip done={row.consent} label="동의서" />
         {surveyIds.map((id) => (
@@ -217,6 +220,9 @@ const DesktopRow = memo(function DesktopRow({
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
           )}
         </span>
+      </td>
+      <td className="py-2 px-3 text-xs text-gray-600 whitespace-nowrap">
+        {row.phone || '-'}
       </td>
       <td className="py-2 px-3 text-center">
         <ResidencyBadge value={row.residency} />
@@ -280,6 +286,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
               )}
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">호수</th>
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">소유자</th>
+              <th className="text-left py-2 px-3 font-medium whitespace-nowrap">연락처</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">실거주</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">
                 신속통합동의서_제출

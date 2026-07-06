@@ -31,7 +31,9 @@ function KakaoToggle({
 }) {
   const [saving, setSaving] = useState(false);
   async function toggle() {
+    if (saving) return;
     const newVal = !value;
+    onChanged(dong, ho, newVal); // 낙관적: 즉시 화면 반영, 저장은 백그라운드
     setSaving(true);
     try {
       const res = await adminFetch('/api/unified/kakao-group', {
@@ -39,8 +41,9 @@ function KakaoToggle({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dong, ho, kakaoGroup: newVal }),
       });
-      if (!res.ok) { alert('저장 실패'); return; }
-      onChanged(dong, ho, newVal);
+      if (!res.ok) { onChanged(dong, ho, value); alert('저장 실패'); } // 실패 시 롤백
+    } catch {
+      onChanged(dong, ho, value); // 네트워크 오류 시 롤백
     } finally {
       setSaving(false);
     }
@@ -49,9 +52,8 @@ function KakaoToggle({
     <button
       type="button"
       onClick={toggle}
-      disabled={saving}
       title="단톡방 참여 여부 (클릭해서 토글)"
-      className={`inline-flex items-center justify-center h-7 min-w-[3rem] px-2 rounded-full border text-[11px] font-medium transition-colors disabled:opacity-50 ${
+      className={`inline-flex items-center justify-center h-7 min-w-[3rem] px-2 rounded-full border text-[11px] font-medium transition-colors ${
         value
           ? 'bg-green-500 text-white border-green-500'
           : 'bg-white text-gray-400 border-gray-300 hover:border-green-400'
@@ -188,7 +190,6 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <ResidencyBadge value={row.residency} />
-                  <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
                   <EditButton onClick={() => onRowClick(row)} />
                 </div>
               </div>
@@ -203,7 +204,12 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
                 ))}
                 <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
               </div>
-              <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
+                </div>
+                <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
+              </div>
             </div>
           );
         })}
@@ -220,7 +226,6 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">호수</th>
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">소유자</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">실거주</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">단톡방</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">
                 신속통합동의서_제출
               </th>
@@ -234,6 +239,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
                 </th>
               ))}
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">메모</th>
+              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">단톡방</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">수정</th>
             </tr>
           </thead>
@@ -268,9 +274,6 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
                     <ResidencyBadge value={row.residency} />
                   </td>
                   <td className="py-2 px-3 text-center">
-                    <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
-                  </td>
-                  <td className="py-2 px-3 text-center">
                     <Check value={row.consent} />
                   </td>
                   <td className="py-2 px-3 text-center">
@@ -283,6 +286,9 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
                   ))}
                   <td className="py-2 px-3 min-w-[100px]">
                     <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
+                  </td>
+                  <td className="py-2 px-3 text-center">
+                    <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
                   </td>
                   <td className="py-2 px-3 text-center">
                     <EditButton onClick={() => onRowClick(row)} />

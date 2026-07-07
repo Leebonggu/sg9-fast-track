@@ -9,7 +9,7 @@ import UnifiedFilters from '@/components/unified/UnifiedFilters';
 import UnifiedTable from '@/components/unified/UnifiedTable';
 import SyncButton from '@/components/unified/SyncButton';
 import EditRowModal from '@/components/unified/EditRowModal';
-import { applyFilter, downloadAsXlsx, downloadByDongAsXlsx } from '@/lib/unified-utils';
+import { applyFilter, downloadAsXlsx, downloadByDongAsXlsx, downloadOwnerRegistryByDongAsXlsx } from '@/lib/unified-utils';
 import type { UnifiedRow, FilterType } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 
@@ -55,6 +55,11 @@ export default function UnifiedPage() {
 
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
+  // 소유주 명부(업체용) 버튼 라벨 — 공동명의를 풀었을 때의 소유주 총 인원수
+  const ownerCount = filtered.reduce(
+    (n, r) => n + Math.max(1, r.ownerName.split(',').filter((s) => s.trim()).length),
+    0,
+  );
 
   return (
     <AdminLayout>
@@ -129,6 +134,16 @@ export default function UnifiedPage() {
                     className="flex-1 sm:flex-none text-xs px-3 py-1.5 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
                   >
                     동별 분리 ({filtered.length.toLocaleString()})
+                  </button>
+                  <button
+                    onClick={() => {
+                      const date = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '').replace('.', '');
+                      downloadOwnerRegistryByDongAsXlsx(filtered, `소유주명부_업체용_${filter}_${date}.xlsx`);
+                    }}
+                    className="flex-1 sm:flex-none text-xs px-3 py-1.5 rounded bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-colors"
+                    title="공동명의를 소유주별 1행으로 풀고 전화번호를 매칭한 동별 명부 (업체 전달용)"
+                  >
+                    소유주 명부({ownerCount.toLocaleString()}인)
                   </button>
                 </div>
               </div>

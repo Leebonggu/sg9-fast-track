@@ -20,7 +20,12 @@ function buildSheet(rows: UnifiedRow[], surveyIds: string[], includeDong: boolea
     sanitizeCell(r.memo),
   ]);
   const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-  // 모든 데이터 셀을 명시적 텍스트 타입으로 지정 → 우편번호 등 leading-zero 유지
+  forceTextCells(ws);
+  return ws;
+}
+
+// 모든 데이터 셀을 명시적 텍스트 타입으로 지정 → 우편번호/전화번호 등 leading-zero·서식 유지
+function forceTextCells(ws: XLSX.WorkSheet) {
   const range = XLSX.utils.decode_range(ws['!ref'] ?? 'A1');
   for (let R = range.s.r; R <= range.e.r; R++) {
     for (let C = range.s.c; C <= range.e.c; C++) {
@@ -32,7 +37,75 @@ function buildSheet(rows: UnifiedRow[], surveyIds: string[], includeDong: boolea
       }
     }
   }
-  return ws;
+}
+
+// "홍길동,홍길순" → ['홍길동', '홍길순']
+function splitOwners(name: string): string[] {
+  return name.split(',').map((s) => s.trim()).filter(Boolean);
+}
+
+// "홍길동 010-1111 / 홍길순 010-2222" → [{name:'홍길동', num:'010-1111'}, ...]
+// 이름(선행 비숫자) + 번호(첫 숫자부터)로 분리. 번호가 없으면 전체를 번호로 취급.
+function parsePhones(phone: string): { name: string; num: string }[] {
+  return phone
+    .split('/')
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .map((t) => {
+      const m = t.match(/^(\D*?)\s*(\d.*)$/);
+      return m ? { name: m[1].trim(), num: m[2].trim() } : { name: '', num: t };
+    });
+}
+
+// 업체 전달용 소유주 단위 명부 — 공동명의를 각자 1행으로 풀고, 동별 시트로 분리.
+// 컬럼: 번호 | 동 | 호수 | 소유주 | 전화번호 | 주소  (번호는 동별로 1부터)
+export function downloadOwnerRegistryByDongAsXlsx(rows: UnifiedRow[], filename: string) {
+  if (rows.length === 0) {
+    alert('다운로드할 세대가 없습니다.');
+    return;
+  }
+  const byDong = new Map<string, UnifiedRow[]>();
+  for (const r of rows) {
+    const list = byDong.get(r.dong);
+    if (list) list.push(r);
+    else byDong.set(r.dong, [r]);
+  }
+  const dongs = Array.from(byDong.keys()).sort((a, b) =>
+    a.localeCompare(b, undefined, { numeric: true }),
+  );
+  const headers = ['번호', '동', '호수', '소유주', '전화번호', '주소'];
+  const wb = XLSX.utils.book_new();
+  for (const dong of dongs) {
+    const dongRows = byDong
+      .get(dong)!
+      .slice()
+      .sort((a, b) => a.ho.localeCompare(b.ho, undefined, { numeric: true }));
+    const dataRows: string[][] = [];
+    let seq = 1;
+    for (const r of dongRows) {
+      const owners = splitOwners(r.ownerName);
+      const entries = parsePhones(r.phone ?? '');
+      const allNums = entries.map((e) => e.num).join(' / ');
+      const list = owners.length ? owners : [''];
+      for (const owner of list) {
+        // 이름 정확히 일치하면 본인 번호, 아니면 세대 대표번호(전체)
+        const matched = owner ? entries.find((e) => e.name && e.name === owner) : undefined;
+        const phone = matched ? matched.num : allNums;
+        dataRows.push([
+          String(seq++),
+          sanitizeCell(r.dong),
+          sanitizeCell(r.ho),
+          sanitizeCell(owner),
+          sanitizeCell(phone),
+          sanitizeCell(r.address),
+        ]);
+      }
+    }
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
+    forceTextCells(ws);
+    XLSX.utils.book_append_sheet(wb, ws, `${dong}동`);
+  }
+  XLSX.writeFile(wb, filename);
 }
 
 export function downloadAsXlsx(rows: UnifiedRow[], surveyIds: string[], filename: string) {

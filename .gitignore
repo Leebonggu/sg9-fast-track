@@ -9,3 +9,6 @@ next-env.d.ts
 
 .claude
 .superpowers
+
+# 소유주 이름·주소·전화번호(PII) 원천/산출 엑셀 — GitHub 커밋 금지
+docs/raw/

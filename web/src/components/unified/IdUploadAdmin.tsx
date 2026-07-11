@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { adminFetch } from '@/lib/admin-fetch';
 
 interface UploadedItem {
   ownerIndex: number;
@@ -9,6 +10,8 @@ interface UploadedItem {
   fileId: string;
   link: string;
   timestamp: string;
+  phone: string;
+  correctionAllowed: boolean;
 }
 
 interface Props {
@@ -108,6 +111,30 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
     }
   }
 
+  const [correctionLinks, setCorrectionLinks] = useState<Record<number, string>>({});
+  const [allowingIdx, setAllowingIdx] = useState<number | null>(null);
+
+  async function requestCorrection(ownerIndex: number) {
+    setAllowingIdx(ownerIndex);
+    try {
+      const res = await adminFetch('/api/admin/id-correction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong, ho, ownerIndex }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || '정정 허용 실패');
+        return;
+      }
+      const link = `${window.location.origin}/check-submission/result?t=${encodeURIComponent(data.token)}`;
+      setCorrectionLinks((prev) => ({ ...prev, [ownerIndex]: link }));
+      await load();
+    } finally {
+      setAllowingIdx(null);
+    }
+  }
+
   const byIndex = new Map(uploaded.map((u) => [u.ownerIndex, u]));
 
   // 감지된 소유자 슬롯 + 감지 범위를 넘는 추가 업로드(공동소유 미감지분)
@@ -159,7 +186,10 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
                     {u ? '…' : '없음'}
                   </div>
                 )}
-                <span className="text-xs text-gray-700 flex-1 truncate">{name}</span>
+                <span className="text-xs text-gray-700 flex-1 truncate">
+                  {name}
+                  {u?.phone && <span className="text-gray-400"> · {u.phone}</span>}
+                </span>
                 {u ? (
                   <>
                     <a
@@ -176,6 +206,13 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
                     >
                       폐기
                     </button>
+                    <button
+                      onClick={() => requestCorrection(idx)}
+                      disabled={allowingIdx === idx}
+                      className="text-[11px] text-emerald-600 underline disabled:opacity-50"
+                    >
+                      {u.correctionAllowed ? '정정 허용됨' : '정정 허용'}
+                    </button>
                   </>
                 ) : (
                   <span className="text-[11px] text-gray-400">미제출</span>
@@ -185,6 +222,18 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
           })}
         </div>
       )}
+      {Object.entries(correctionLinks).map(([idx, link]) => (
+        <div key={idx} className="mt-1.5 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+          <span className="text-[10px] text-emerald-700 truncate flex-1">{link}</span>
+          <button
+            type="button"
+            onClick={() => navigator.clipboard.writeText(link)}
+            className="text-[10px] text-emerald-700 font-semibold shrink-0"
+          >
+            복사
+          </button>
+        </div>
+      ))}
     </div>
   );
 }

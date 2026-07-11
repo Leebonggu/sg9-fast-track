@@ -51,6 +51,15 @@ export default function UnifiedSummary({ rows, surveyIds }: Props) {
           </div>
         </div>
       ))}
+      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
+        <div className="text-xs text-gray-400">신분증 제출(동의세대)</div>
+        <div className="text-lg font-bold text-emerald-600">
+          {idDoneCount.toLocaleString()}
+          <span className="text-xs text-gray-400 ml-1">
+            / {consentCount.toLocaleString()} · {consentPct(idDoneCount)}%
+          </span>
+        </div>
+      </div>
     </div>
   );
 }

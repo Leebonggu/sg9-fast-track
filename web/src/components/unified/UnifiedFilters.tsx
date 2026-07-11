@@ -64,6 +64,7 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
     { key: 'all', label: '전체' },
     { key: 'incomplete', label: '하나라도 미완료' },
     { key: 'no-consent', label: '동의서 미제출' },
+    { key: 'no-id', label: '신분증 미제출' },
     { key: 'no-donation', label: '후원금 미납부' },
     { key: 'donation', label: '후원금 납부', variant: 'green' },
     { key: 'opposition', label: '반대 의사', variant: 'red' },

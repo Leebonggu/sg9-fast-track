@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { isValidPhone } from '@/lib/phone-format';
 
 interface UploadedItem {
   ownerIndex: number;
   ownerName: string;
   fileName: string;
   timestamp: string;
+  phone?: string;
+  correctionAllowed?: boolean;
 }
 
 interface Props {
@@ -66,6 +69,7 @@ function extraFromUploads(ups: UploadedItem[], ownerCount: number): number {
 
 export default function IdUploadSection({ token, owners, initialUploaded }: Props) {
   const [agreed, setAgreed] = useState(false);
+  const [phones, setPhones] = useState<Record<number, string>>({});
   const [uploaded, setUploaded] = useState<Record<number, UploadedItem>>(() => {
     const m: Record<number, UploadedItem> = {};
     for (const u of initialUploaded) m[u.ownerIndex] = u;
@@ -100,6 +104,11 @@ export default function IdUploadSection({ token, owners, initialUploaded }: Prop
 
   async function handleFile(index: number, label: string, file: File | null) {
     if (!file) return;
+    const phone = (phones[index] ?? '').trim();
+    if (!isValidPhone(phone)) {
+      setError('올바른 연락처를 입력해 주세요.');
+      return;
+    }
     setError('');
     setBusy(index);
     try {
@@ -107,7 +116,7 @@ export default function IdUploadSection({ token, owners, initialUploaded }: Prop
       const res = await fetch('/api/upload-id', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ t: token, ownerIndex: index, ownerName: label, mimeType, base64 }),
+        body: JSON.stringify({ t: token, ownerIndex: index, ownerName: label, mimeType, base64, phone }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -121,6 +130,8 @@ export default function IdUploadSection({ token, owners, initialUploaded }: Prop
           ownerName: label,
           fileName: file.name,
           timestamp: new Date().toISOString(),
+          phone,
+          correctionAllowed: false,
         },
       }));
     } catch {
@@ -206,41 +217,61 @@ export default function IdUploadSection({ token, owners, initialUploaded }: Prop
         {slots.map(({ index, label }) => {
           const done = uploaded[index];
           const isBusy = busy === index;
+          const locked = !!done && !done.correctionAllowed;
+          const canUploadNow = !done || done.correctionAllowed;
+          const phoneValue = phones[index] ?? done?.phone ?? '';
+          const phoneOk = isValidPhone(phoneValue);
           return (
             <div
               key={index}
-              className="flex items-center justify-between gap-2 border border-gray-200 rounded-xl px-3 py-2.5"
+              className="border border-gray-200 rounded-xl px-3 py-2.5 space-y-2"
             >
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-700 truncate">{label}</div>
-                <div className={`text-[11px] ${done ? 'text-green-600' : 'text-gray-400'}`}>
-                  {isBusy
-                    ? '업로드 중…'
-                    : done
-                      ? `✓ 제출됨${done.timestamp ? ` · ${fmtTime(done.timestamp)}` : ''} (다시 올리면 교체)`
-                      : '미제출'}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-700 truncate">{label}</div>
+                  <div className={`text-[11px] ${done ? 'text-green-600' : 'text-gray-400'}`}>
+                    {isBusy
+                      ? '업로드 중…'
+                      : done
+                        ? locked
+                          ? `✓ 제출완료${done.timestamp ? ` · ${fmtTime(done.timestamp)}` : ''} · 수정은 위원에게 문의`
+                          : `✓ 제출됨${done.timestamp ? ` · ${fmtTime(done.timestamp)}` : ''} (다시 올리면 교체)`
+                        : '미제출'}
+                  </div>
                 </div>
+                {canUploadNow && (
+                  <label
+                    className={`shrink-0 text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer ${
+                      agreed && !isBusy && phoneOk
+                        ? 'bg-[#2F5496] text-white'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {done ? '재촬영' : '촬영/선택'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      disabled={!agreed || isBusy || !phoneOk}
+                      onChange={(e) => {
+                        handleFile(index, label, e.target.files?.[0] ?? null);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
               </div>
-              <label
-                className={`shrink-0 text-xs font-semibold px-3 py-2 rounded-lg cursor-pointer ${
-                  agreed && !isBusy
-                    ? 'bg-[#2F5496] text-white'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                {done ? '재촬영' : '촬영/선택'}
+              {canUploadNow && (
                 <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  disabled={!agreed || isBusy}
-                  onChange={(e) => {
-                    handleFile(index, label, e.target.files?.[0] ?? null);
-                    e.target.value = '';
-                  }}
+                  type="tel"
+                  placeholder="연락처 (010-1234-5678)"
+                  value={phoneValue}
+                  onChange={(e) => setPhones((prev) => ({ ...prev, [index]: e.target.value }))}
+                  disabled={isBusy}
+                  className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[#2F5496]"
                 />
-              </label>
+              )}
             </div>
           );
         })}

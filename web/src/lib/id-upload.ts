@@ -136,6 +136,7 @@ export async function recordIdUpload(rec: {
   fileId: string;
   link: string;
   ip: string;
+  phone: string;
 }): Promise<string | null> {
   const doc = await getDoc();
   const sheet = await ensureSheet(doc);
@@ -157,6 +158,9 @@ export async function recordIdUpload(rec: {
     existing.set('Drive링크', rec.link);
     existing.set('IP', rec.ip);
     existing.set('상태', '제출');
+    existing.set('개인정보동의시각', now);
+    existing.set('전화번호', rec.phone);
+    existing.set('정정허용시각', ''); // 정정으로 재제출된 경우 즉시 재잠금
     await existing.save();
     return prevFileId && prevFileId !== rec.fileId ? prevFileId : null;
   }
@@ -171,6 +175,9 @@ export async function recordIdUpload(rec: {
     Drive링크: rec.link,
     IP: rec.ip,
     상태: '제출',
+    개인정보동의시각: now,
+    전화번호: rec.phone,
+    정정허용시각: '',
   });
   return null;
 }
@@ -197,6 +204,30 @@ export async function markIdPurged(
   row.set('상태', '파기');
   await row.save();
   return fileId || null;
+}
+
+// 관리자: 이미 제출된 슬롯에 대해 1회성 정정 윈도우를 연다 (CORRECTION_WINDOW_MS 동안 재업로드 허용)
+export async function allowCorrection(
+  dong: string,
+  ho: string,
+  ownerIndex: number,
+): Promise<boolean> {
+  const doc = await getDoc();
+  const sheet = doc.sheetsByTitle[SHEET_TITLE];
+  if (!sheet) return false;
+  await ensureHeaders(sheet);
+  const rows = await sheet.getRows();
+  const row = rows.find(
+    (r) =>
+      String(r.get('동') || '').trim() === dong &&
+      String(r.get('호수') || '').trim() === ho &&
+      (parseInt(String(r.get('소유자순번') || '0'), 10) || 0) === ownerIndex &&
+      String(r.get('상태') || '') !== '파기',
+  );
+  if (!row) return false;
+  row.set('정정허용시각', new Date().toISOString());
+  await row.save();
+  return true;
 }
 
 // ── Apps Script 웹앱 호출 ────────────────────────────────────

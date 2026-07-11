@@ -7,9 +7,11 @@ import {
   getIdUploads,
   markIdPurged,
   deleteIdImage,
+  isCorrectionWindowOpen,
 } from '@/lib/id-upload';
 import { checkRateLimit, appendVerifyLog } from '@/lib/kakao-verify-log';
 import { getClientIp } from '@/lib/request-ip';
+import { isValidPhone } from '@/lib/phone-format';
 
 // base64 디코드 후 최대 허용 크기 (서버 보호용). 클라이언트에서 압축 후 전송.
 const MAX_BYTES = 8 * 1024 * 1024;
@@ -30,7 +32,7 @@ export async function POST(req: NextRequest) {
     const ip = getClientIp(req);
 
     const body = await req.json();
-    const { t, ownerIndex, ownerName, mimeType, base64 } = body ?? {};
+    const { t, ownerIndex, ownerName, mimeType, base64, phone: rawPhone } = body ?? {};
 
     const tok = verifyToken(String(t || ''));
     if (!tok.valid) {
@@ -52,11 +54,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 독립적인 3개 시트 읽기를 병렬화 (#1 속도): rate limit / 사전동의 / 소유자
-    const [rateLimited, consented, owners] = await Promise.all([
+    // 독립적인 4개 시트 읽기를 병렬화 (#1 속도): rate limit / 사전동의 / 소유자 / 신분증 현황
+    const [rateLimited, consented, owners, existingUploads] = await Promise.all([
       checkRateLimit(ip),
       isConsented(dong, ho),
       getOwnersByDongHo(dong, ho),
+      getIdUploads(dong, ho),
     ]);
 
     if (rateLimited) {
@@ -93,6 +96,19 @@ export async function POST(req: NextRequest) {
       realName = label ? label.slice(0, 30) : `추가${idx - owners.length + 1}`;
     }
 
+    const phone = typeof rawPhone === 'string' ? rawPhone.trim() : '';
+    if (!isValidPhone(phone)) {
+      return NextResponse.json({ error: '올바른 연락처를 입력해 주세요.' }, { status: 400 });
+    }
+
+    const existingForSlot = existingUploads.find((u) => u.ownerIndex === idx);
+    if (existingForSlot && !isCorrectionWindowOpen(existingForSlot.correctionAllowedAt)) {
+      return NextResponse.json(
+        { error: '이미 제출된 슬롯입니다. 수정이 필요하면 위원에게 문의해 주세요.' },
+        { status: 403 },
+      );
+    }
+
     const ext = mimeType === 'image/png' ? 'png' : 'jpg';
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
     const safeName = realName.replace(/[\\/:*?"<>|]/g, '');
@@ -102,7 +118,7 @@ export async function POST(req: NextRequest) {
 
     // 기록 + 인증로그는 서로 독립 → 병렬 (#1 속도)
     const [prevFileId] = await Promise.all([
-      recordIdUpload({ dong, ho, ownerName: realName, ownerIndex: idx, fileName, fileId, link, ip }),
+      recordIdUpload({ dong, ho, ownerName: realName, ownerIndex: idx, fileName, fileId, link, ip, phone }),
       appendVerifyLog(dong, ho, realName, '신분증업로드', ip),
     ]);
 

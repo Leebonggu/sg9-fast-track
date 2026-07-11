@@ -8,7 +8,18 @@ import { getServiceAccountAuth } from './google-auth';
 const SHEET_TITLE = '신분증업로드';
 const HEADERS = [
   '시각', '동', '호수', '소유자명', '소유자순번', '파일명', '파일ID', 'Drive링크', 'IP', '상태',
+  '개인정보동의시각', '전화번호', '정정허용시각',
 ];
+
+export const CORRECTION_WINDOW_MS = 2 * 60 * 60 * 1000; // 2시간
+
+export function isCorrectionWindowOpen(allowedAtIso: string, now: number = Date.now()): boolean {
+  const trimmed = allowedAtIso.trim();
+  if (!trimmed) return false;
+  const ts = new Date(trimmed).getTime();
+  if (isNaN(ts)) return false;
+  return now - ts <= CORRECTION_WINDOW_MS;
+}
 
 let docCache: GoogleSpreadsheet | null = null;
 
@@ -21,11 +32,21 @@ async function getDoc(): Promise<GoogleSpreadsheet> {
   return doc;
 }
 
+async function ensureHeaders(sheet: import('google-spreadsheet').GoogleSpreadsheetWorksheet) {
+  await sheet.loadHeaderRow();
+  const missing = HEADERS.filter((h) => !sheet.headerValues.includes(h));
+  if (missing.length > 0) {
+    await sheet.setHeaderRow([...sheet.headerValues, ...missing]);
+  }
+}
+
 async function ensureSheet(doc: GoogleSpreadsheet) {
   let sheet = doc.sheetsByTitle[SHEET_TITLE];
   if (!sheet) {
     sheet = await doc.addSheet({ title: SHEET_TITLE, headerValues: HEADERS });
+    return sheet;
   }
+  await ensureHeaders(sheet);
   return sheet;
 }
 
@@ -40,6 +61,9 @@ export interface IdUploadRecord {
   link: string;
   ip: string;
   status: string;
+  consentAt: string;
+  phone: string;
+  correctionAllowedAt: string;
 }
 
 function mapRow(r: import('google-spreadsheet').GoogleSpreadsheetRow): IdUploadRecord {
@@ -54,7 +78,29 @@ function mapRow(r: import('google-spreadsheet').GoogleSpreadsheetRow): IdUploadR
     link: String(r.get('Drive링크') || ''),
     ip: String(r.get('IP') || ''),
     status: String(r.get('상태') || ''),
+    consentAt: String(r.get('개인정보동의시각') || ''),
+    phone: String(r.get('전화번호') || ''),
+    correctionAllowedAt: String(r.get('정정허용시각') || ''),
   };
+}
+
+export async function getIdUploadPhone(
+  dong: string,
+  ho: string,
+  ownerIndex: number,
+): Promise<string> {
+  const doc = await getDoc();
+  const sheet = doc.sheetsByTitle[SHEET_TITLE];
+  if (!sheet) return '';
+  const rows = await sheet.getRows();
+  const row = rows.find(
+    (r) =>
+      String(r.get('동') || '').trim() === dong &&
+      String(r.get('호수') || '').trim() === ho &&
+      (parseInt(String(r.get('소유자순번') || '0'), 10) || 0) === ownerIndex &&
+      String(r.get('상태') || '') !== '파기',
+  );
+  return row ? String(row.get('전화번호') || '') : '';
 }
 
 // ── 시트 조회/기록 ──────────────────────────────────────────

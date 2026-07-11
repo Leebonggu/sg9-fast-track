@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
 import DonationPanel from './DonationPanel';
+import IdUploadAdmin from './IdUploadAdmin';
 import { adminFetch } from '@/lib/admin-fetch';
 
 interface Props {
@@ -158,6 +159,8 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
             </select>
           </div>
         </div>
+
+        <IdUploadAdmin dong={row.dong} ho={row.ho} />
 
         <div className="mt-2 rounded bg-amber-50 border border-amber-200 px-2.5 py-2">
           <p className="text-[11px] text-amber-800 leading-snug">

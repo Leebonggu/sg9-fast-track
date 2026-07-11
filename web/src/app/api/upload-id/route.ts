@@ -176,6 +176,8 @@ export async function GET(req: NextRequest) {
       fileId: u.fileId,
       link: u.link,
       timestamp: u.timestamp,
+      phone: u.phone,
+      correctionAllowed: isCorrectionWindowOpen(u.correctionAllowedAt),
     }));
     return NextResponse.json({ owners, uploaded });
   } catch (e: unknown) {

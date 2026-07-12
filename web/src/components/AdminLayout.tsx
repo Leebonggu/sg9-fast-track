@@ -13,22 +13,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
 
   async function doLogin() {
-    if (!password) return;
+    if (!password || !name.trim()) return;
     setLoginError('');
     const res = await fetch('/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password, name: name.trim() }),
     });
     const data = await res.json();
     if (data.ok) {
       sessionStorage.setItem('auth', '1');
       // 신분증 이미지 프록시/삭제 등 PII 보호 엔드포인트 호출용 (세션 내 보관)
       sessionStorage.setItem('adminPw', password);
-      if (name.trim()) sessionStorage.setItem('operatorName', name.trim());
+      sessionStorage.setItem('operatorName', name.trim());
       setAuthed(true);
     } else {
-      setLoginError('비밀번호가 올바르지 않습니다.');
+      setLoginError('이름 또는 비밀번호가 올바르지 않습니다.');
     }
   }
 
@@ -49,7 +49,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <input
             type="text"
             className="w-full p-3.5 border-2 border-gray-200 rounded-xl text-center text-lg outline-none focus:border-[#2F5496] mb-2"
-            placeholder="이름 (선택)"
+            placeholder="이름 (필수)"
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && doLogin()}
@@ -64,7 +64,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           />
           <button
             onClick={doLogin}
-            className="w-full mt-3 p-3.5 bg-[#2F5496] text-white rounded-xl text-lg font-semibold active:bg-[#1e3a6e]"
+            disabled={!password || !name.trim()}
+            className="w-full mt-3 p-3.5 bg-[#2F5496] text-white rounded-xl text-lg font-semibold active:bg-[#1e3a6e] disabled:opacity-40"
           >
             입장
           </button>

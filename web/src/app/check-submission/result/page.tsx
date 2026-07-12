@@ -80,14 +80,20 @@ export default async function CheckSubmissionResultPage({
       getIdUploads(result.dong, result.ho),
     ]);
     owners = o;
-    uploaded = ups.map((u) => ({
-      ownerIndex: u.ownerIndex,
-      ownerName: u.ownerName,
-      fileName: u.fileName,
-      timestamp: u.timestamp,
-      phone: u.phone,
-      correctionAllowed: isCorrectionWindowOpen(u.correctionAllowedAt),
-    }));
+    // 전화번호는 정정윈도우가 열린(=본인이 다시 편집 가능한) 슬롯에서만 내려준다.
+    // 잠긴 슬롯은 UI에서도 안 쓰지만, 이 값이 서버 컴포넌트 payload에 그대로 실리므로
+    // 굳이 필요 없는 잠긴 슬롯의 전화번호까지 노출할 이유가 없다.
+    uploaded = ups.map((u) => {
+      const correctionAllowed = isCorrectionWindowOpen(u.correctionAllowedAt);
+      return {
+        ownerIndex: u.ownerIndex,
+        ownerName: u.ownerName,
+        fileName: u.fileName,
+        timestamp: u.timestamp,
+        phone: correctionAllowed ? u.phone : '',
+        correctionAllowed,
+      };
+    });
   }
 
   return (

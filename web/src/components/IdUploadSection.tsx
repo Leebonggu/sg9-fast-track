@@ -68,7 +68,9 @@ function extraFromUploads(ups: UploadedItem[], ownerCount: number): number {
 }
 
 export default function IdUploadSection({ token, owners, initialUploaded }: Props) {
-  const [agreed, setAgreed] = useState(false);
+  // 이 세대에 기존 제출 기록이 있으면 이미 개인정보 수집·이용에 동의한 적 있는 것 →
+  // 다시 방문했을 때 체크박스를 매번 새로 받을 필요 없음
+  const [agreed, setAgreed] = useState(() => initialUploaded.length > 0);
   const [phones, setPhones] = useState<Record<number, string>>({});
   const [uploaded, setUploaded] = useState<Record<number, UploadedItem>>(() => {
     const m: Record<number, UploadedItem> = {};
@@ -93,6 +95,7 @@ export default function IdUploadSection({ token, owners, initialUploaded }: Prop
       for (const u of ups) m[u.ownerIndex] = u;
       setUploaded(m);
       setExtraCount((c) => Math.max(c, extraFromUploads(ups, owners.length)));
+      if (ups.length > 0) setAgreed(true);
     } catch {
       /* 조회 실패 시 SSR 초기값 유지 */
     }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/kakao-verify';
+import { verifyToken, verifyAdminViewToken } from '@/lib/kakao-verify';
 import { getOwnersByDongHo, getMasterRows } from '@/lib/owner-sheets';
 import {
   uploadIdImage,
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ── 현황 조회: 주민(토큰) 또는 관리자(pw) ─────────────────────
+// ── 현황 조회: 주민(토큰) 또는 관리자(pw / 관리자 열람토큰) ────
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
@@ -150,17 +150,26 @@ export async function GET(req: NextRequest) {
 
     let dong: string;
     let ho: string;
+    let isAdmin = false;
 
     if (t) {
-      const tok = verifyToken(t);
-      if (!tok.valid) {
-        return NextResponse.json({ error: '유효하지 않은 접근입니다.' }, { status: 401 });
+      const adminTok = verifyAdminViewToken(t);
+      if (adminTok.valid) {
+        dong = adminTok.dong;
+        ho = adminTok.ho;
+        isAdmin = true;
+      } else {
+        const tok = verifyToken(t);
+        if (!tok.valid) {
+          return NextResponse.json({ error: '유효하지 않은 접근입니다.' }, { status: 401 });
+        }
+        dong = tok.dong;
+        ho = tok.ho;
       }
-      dong = tok.dong;
-      ho = tok.ho;
     } else if (pw && pw === process.env.APP_PASSWORD && qDong && qHo) {
       dong = String(qDong).trim();
       ho = String(qHo).trim();
+      isAdmin = true;
     } else {
       return NextResponse.json({ error: '권한이 없습니다.' }, { status: 401 });
     }
@@ -169,16 +178,22 @@ export async function GET(req: NextRequest) {
       getOwnersByDongHo(dong, ho),
       getIdUploads(dong, ho),
     ]);
-    const uploaded = uploads.map((u) => ({
-      ownerIndex: u.ownerIndex,
-      ownerName: u.ownerName,
-      fileName: u.fileName,
-      fileId: u.fileId,
-      link: u.link,
-      timestamp: u.timestamp,
-      phone: u.phone,
-      correctionAllowed: isCorrectionWindowOpen(u.correctionAllowedAt),
-    }));
+    // 주민 토큰(동/호/이름만으로 발급되는 약한 인증)에는 fileId/link를 절대 보내지 않는다 —
+    // 이 값들로 /api/upload-id/image를 거치면 신분증 사진 원본까지 받아갈 수 있었다(수정 완료).
+    // 전화번호도 정정윈도우가 열린(=본인이 다시 편집 가능한) 슬롯에서만 돌려준다.
+    const uploaded = uploads.map((u) => {
+      const correctionAllowed = isCorrectionWindowOpen(u.correctionAllowedAt);
+      return {
+        ownerIndex: u.ownerIndex,
+        ownerName: u.ownerName,
+        fileName: u.fileName,
+        fileId: isAdmin ? u.fileId : '',
+        link: isAdmin ? u.link : '',
+        timestamp: u.timestamp,
+        phone: isAdmin || correctionAllowed ? u.phone : '',
+        correctionAllowed,
+      };
+    });
     return NextResponse.json({ owners, uploaded });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : '서버 오류가 발생했습니다.';

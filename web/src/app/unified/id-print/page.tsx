@@ -21,6 +21,7 @@ function IdPrintInner() {
   const sp = useSearchParams();
   const dong = sp.get('dong') || '';
   const ho = sp.get('ho') || '';
+  const t = sp.get('t') || '';
 
   const [items, setItems] = useState<UploadedItem[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
@@ -30,15 +31,19 @@ function IdPrintInner() {
     let cancelled = false;
     const created: string[] = [];
     (async () => {
-      const pw = getPw();
-      if (!pw) {
+      // t(동/호 스코프 토큰, IdUploadAdmin이 발급)가 있으면 그걸 우선 사용 — 새 탭에서
+      // sessionStorage의 관리자 비밀번호를 못 읽는 경우에도 동작하도록.
+      // 없으면 기존처럼 이 탭의 세션스토리지 pw로 폴백(직접 URL을 다시 연 경우 등).
+      const pw = t ? '' : getPw();
+      if (!t && !pw) {
         setStatus('관리자 로그인이 필요합니다. 통합현황에서 로그인 후 다시 시도해 주세요.');
         return;
       }
       try {
-        const res = await fetch(
-          `/api/upload-id?dong=${encodeURIComponent(dong)}&ho=${encodeURIComponent(ho)}&pw=${encodeURIComponent(pw)}`,
-        );
+        const listQs = t
+          ? `t=${encodeURIComponent(t)}`
+          : `dong=${encodeURIComponent(dong)}&ho=${encodeURIComponent(ho)}&pw=${encodeURIComponent(pw)}`;
+        const res = await fetch(`/api/upload-id?${listQs}`);
         const data = await res.json();
         if (!res.ok) {
           setStatus(data.error || '조회 실패');
@@ -57,7 +62,7 @@ function IdPrintInner() {
           const r = await fetch('/api/upload-id/image', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fileId: u.fileId, pw }),
+            body: JSON.stringify(t ? { fileId: u.fileId, t } : { fileId: u.fileId, pw }),
           });
           if (!r.ok) continue;
           const blob = await r.blob();
@@ -80,7 +85,7 @@ function IdPrintInner() {
       cancelled = true;
       created.forEach((u) => URL.revokeObjectURL(u));
     };
-  }, [dong, ho]);
+  }, [dong, ho, t]);
 
   if (status) {
     return <div className="p-8 text-sm text-gray-600">{status}</div>;

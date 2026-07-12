@@ -111,6 +111,33 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
     }
   }
 
+  const [printing, setPrinting] = useState(false);
+
+  // 인쇄용 보기는 새 탭에서 열리는데, 새 탭은 이 탭의 sessionStorage(adminPw)를
+  // 못 읽는 경우가 있어(특히 모바일) 로그인 필요 메시지가 반복 노출됐다.
+  // 그래서 이 탭(이미 인증됨)에서 (동,호) 스코프 토큰을 미리 발급받아 링크에 실어 보낸다.
+  async function openPrint() {
+    setPrinting(true);
+    try {
+      const res = await adminFetch('/api/admin/id-view-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong, ho }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || '인쇄용 링크 생성 실패');
+        return;
+      }
+      const url = `/unified/id-print?dong=${encodeURIComponent(dong)}&ho=${encodeURIComponent(ho)}&t=${encodeURIComponent(data.token)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      alert('인쇄용 링크 생성 중 오류가 발생했습니다.');
+    } finally {
+      setPrinting(false);
+    }
+  }
+
   const [correctionLinks, setCorrectionLinks] = useState<Record<number, string>>({});
   const [allowingIdx, setAllowingIdx] = useState<number | null>(null);
 
@@ -153,14 +180,14 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
     <div className="mt-3 rounded bg-gray-50 border border-gray-200 px-2.5 py-2">
       <div className="flex items-center justify-between mb-1.5">
         <p className="text-[11px] font-semibold text-gray-600">신분증 사본</p>
-        <a
-          href={`/unified/id-print?dong=${encodeURIComponent(dong)}&ho=${encodeURIComponent(ho)}`}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[11px] text-blue-600 underline"
+        <button
+          type="button"
+          onClick={openPrint}
+          disabled={printing}
+          className="text-[11px] text-blue-600 underline disabled:opacity-50"
         >
           인쇄용 보기
-        </a>
+        </button>
       </div>
       {loading ? (
         <p className="text-[11px] text-gray-400">불러오는 중…</p>

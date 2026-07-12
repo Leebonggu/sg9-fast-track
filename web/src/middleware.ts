@@ -9,6 +9,7 @@ const PROTECTED_PREFIXES = [
   '/api/kakao-verify-logs',
   '/api/admin/kakao-link',
   '/api/admin/id-correction',
+  '/api/admin/id-view-token',
 ];
 
 // /api/survey/[surveyId]는 공개 제출 폼과 관리자 화면이 같은 경로를 나눠 쓰므로

@@ -92,17 +92,32 @@ function AgeSelect({
     }
   }
   return (
-    <select
-      value={value}
-      disabled={saving}
-      onChange={(e) => change(e.target.value)}
-      title="연령대 (선택해서 변경)"
-      className="h-7 min-w-[4.5rem] px-1 rounded border border-gray-300 bg-white text-[11px] text-gray-700 outline-none focus:border-blue-400 disabled:opacity-50"
-    >
-      {AGE_GROUP_OPTIONS.map((opt) => (
-        <option key={opt} value={opt}>{opt || '미지정'}</option>
-      ))}
-    </select>
+    <div className={`group relative inline-flex ${saving ? 'opacity-50' : ''}`}>
+      <span
+        className={`inline-flex items-center gap-1 h-7 pl-2.5 pr-1.5 rounded-full border text-[11px] font-medium transition-colors ${
+          value
+            ? 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:border-indigo-400'
+            : 'bg-white text-gray-400 border-gray-300 group-hover:border-indigo-300'
+        }`}
+      >
+        {value || '미지정'}
+        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 opacity-60" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 4.5 6 7.5 9 4.5" />
+        </svg>
+      </span>
+      <select
+        value={value}
+        disabled={saving}
+        onChange={(e) => change(e.target.value)}
+        title="연령대 (선택해서 변경)"
+        aria-label="연령대"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default"
+      >
+        {AGE_GROUP_OPTIONS.map((opt) => (
+          <option key={opt} value={opt}>{opt || '미지정'}</option>
+        ))}
+      </select>
+    </div>
   );
 }
 

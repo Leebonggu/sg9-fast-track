@@ -6,6 +6,7 @@ import {
 import { getServiceAccountAuth } from './google-auth';
 import type { OwnerRow, UnifiedRow, UnifiedRowOverrides } from './unified-types';
 import { sanitizeCell } from './xlsx-safe';
+import { normalizeAgeGroup } from './unified-utils';
 
 // 한국 우편번호는 5자리 — 시트가 숫자 포맷이면 leading-zero가 사라지므로 보정
 function normalizePostalCode(raw: string): string {
@@ -145,7 +146,7 @@ export async function getAgeMap(): Promise<Map<string, string>> {
     const map = new Map<string, string>();
     for (const row of rows) {
       const key = `${row.get('동')}-${row.get('호수')}`;
-      const age = String(row.get('연령대') || '').trim();
+      const age = normalizeAgeGroup(String(row.get('연령대') || '').trim());
       if (age) map.set(key, age);
     }
     return map;

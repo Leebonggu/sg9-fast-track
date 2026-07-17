@@ -1,6 +1,7 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { getServiceAccountAuth } from './google-auth';
 import type { SurveyConfig, SurveyResponse, SurveyStats } from './surveys/types';
+import { normalizeAgeGroup } from './unified-utils';
 
 const docCacheMap = new Map<string, GoogleSpreadsheet>();
 
@@ -238,8 +239,9 @@ const AGE_RANK: Record<string, number> = {
   '60대': 6, '60대 이상': 6, '70대': 7, '80대': 8, '90대 이상': 9,
 };
 
-// 설문 응답에서 동-호별 연령대 맵 반환: Map<"901-101", "60대 이상">
+// 설문 응답에서 동-호별 연령대 맵 반환: Map<"901-101", "60대">
 // 같은 세대에 여러 응답이면 rank 최고값 선택. getSurveyKeyset과 동일 키 규칙("901동" → "901").
+// 시드 '60대 이상'은 normalizeAgeGroup으로 '60대'에 매핑.
 export async function getSurveyAgeMap(config: SurveyConfig): Promise<Map<string, string>> {
   const doc = await getSurveyDoc(config);
   const sheet = getUnifiedSheet(doc);
@@ -249,7 +251,7 @@ export async function getSurveyAgeMap(config: SurveyConfig): Promise<Map<string,
     const dongRaw = String(row.get('동') || '').trim();
     const dongNum = dongRaw.replace('동', '');
     const ho = String(row.get('호') || '').trim();
-    const age = String(row.get('연령대') || '').trim();
+    const age = normalizeAgeGroup(String(row.get('연령대') || '').trim());
     if (!dongNum || !ho || !age) continue;
     const key = `${dongNum}-${ho}`;
     const existing = map.get(key);

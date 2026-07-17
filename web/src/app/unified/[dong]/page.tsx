@@ -46,6 +46,14 @@ export default function UnifiedDongPage() {
     );
   }, []);
 
+  const patchAge = useCallback((d: string, ho: string, value: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === d && r.ho === ho ? { ...r, ageGroup: value } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -73,6 +81,7 @@ export default function UnifiedDongPage() {
                 showDong={false}
                 onRowClick={setEditing}
                 onKakaoToggled={patchKakaoGroup}
+                onAgeChanged={patchAge}
               />
             </>
           )}
@@ -84,6 +93,7 @@ export default function UnifiedDongPage() {
           onClose={() => setEditing(null)}
           onSaved={fetchData}
           onKakaoToggled={patchKakaoGroup}
+          onAgeChanged={patchAge}
         />
       )}
     </AdminLayout>

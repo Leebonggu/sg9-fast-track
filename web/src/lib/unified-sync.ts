@@ -1,5 +1,5 @@
 // web/src/lib/unified-sync.ts
-import { getOwners, getMemoMap, getOppositionMap, getKakaoGroupMap, writeMasterRows } from './owner-sheets';
+import { getOwners, getMemoMap, getOppositionMap, getKakaoGroupMap, getAgeMap, writeMasterRows } from './owner-sheets';
 import { getConsentKeyset, getPhoneMap } from './sheets';
 
 function normalizeNameSet(raw: string): Set<string> {
@@ -13,7 +13,7 @@ function checkNameMismatch(ownerName: string, consentName: string): boolean {
   for (const n of consentSet) if (ownerSet.has(n)) return false;
   return true;
 }
-import { getSurveyKeyset } from './survey-sheets';
+import { getSurveyKeyset, getMergedSurveyAgeMap } from './survey-sheets';
 import { getAllSurveyConfigs } from './surveys/registry';
 import { notifiers } from './notifier';
 import type { UnifiedRow, SyncResult } from './unified-types';
@@ -24,12 +24,14 @@ export async function syncMasterSheet(): Promise<SyncResult> {
 
   // 1. 소스 시트들 병렬 읽기 — 메모는 sync 시 보존, 4필드는 원본에 직접 갱신되므로 보존 불필요
   const surveyConfigs = getAllSurveyConfigs();
-  const [owners, memoMap, oppositionMap, kakaoGroupMap, consentResult, phoneMap, ...surveyKeysets] =
+  const [owners, memoMap, oppositionMap, kakaoGroupMap, ageMap, surveyAgeMap, consentResult, phoneMap, ...surveyKeysets] =
     await Promise.all([
       getOwners(),
       getMemoMap(),
       getOppositionMap(),
       getKakaoGroupMap(),
+      getAgeMap(),
+      getMergedSurveyAgeMap(surveyConfigs),
       getConsentKeyset(),
       getPhoneMap(),
       ...surveyConfigs.map((c) => getSurveyKeyset(c)),
@@ -56,6 +58,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       surveys,
       opposition: oppositionMap.get(key) ?? false,
       kakaoGroup: kakaoGroupMap.get(key) ?? false,
+      ageGroup: ageMap.get(key) || surveyAgeMap.get(key) || '',
       memo: memoMap.get(key) || '',
       phone: phoneMap.get(key) || '',
       lastSynced: syncedAt,

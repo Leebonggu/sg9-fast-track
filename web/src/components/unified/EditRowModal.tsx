@@ -5,6 +5,7 @@ import type { UnifiedRow } from '@/lib/unified-types';
 import DonationPanel from './DonationPanel';
 import IdUploadAdmin from './IdUploadAdmin';
 import { adminFetch } from '@/lib/admin-fetch';
+import { AGE_GROUP_OPTIONS } from '@/lib/unified-utils';
 
 interface Props {
   row: UnifiedRow;
@@ -12,9 +13,10 @@ interface Props {
   onSaved?: () => void;
   onDonationChanged?: (dong: string, ho: string, total: number, count: number) => void;
   onKakaoToggled?: (dong: string, ho: string, value: boolean) => void;
+  onAgeChanged?: (dong: string, ho: string, value: string) => void;
 }
 
-export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled }: Props) {
+export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged }: Props) {
   const [ownerName, setOwnerName] = useState(row.ownerName ?? '');
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
@@ -23,6 +25,8 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
   const [oppositionSaving, setOppositionSaving] = useState(false);
   const [kakaoGroup, setKakaoGroup] = useState(row.kakaoGroup ?? false);
   const [kakaoSaving, setKakaoSaving] = useState(false);
+  const [ageGroup, setAgeGroup] = useState(row.ageGroup ?? '');
+  const [ageSaving, setAgeSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [operatorName, setOperatorName] = useState('');
 
@@ -96,6 +100,26 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
       onKakaoToggled?.(row.dong, row.ho, newVal);
     } finally {
       setKakaoSaving(false);
+    }
+  }
+
+  async function changeAge(newVal: string) {
+    if (newVal === ageGroup) return;
+    const prev = ageGroup;
+    setAgeGroup(newVal);
+    setAgeSaving(true);
+    try {
+      const res = await adminFetch('/api/unified/age', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong: row.dong, ho: row.ho, ageGroup: newVal }),
+      });
+      if (!res.ok) { setAgeGroup(prev); alert('저장 실패'); return; }
+      onAgeChanged?.(row.dong, row.ho, newVal);
+    } catch {
+      setAgeGroup(prev);
+    } finally {
+      setAgeSaving(false);
     }
   }
 
@@ -236,6 +260,23 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
             </button>
           </div>
           <p className="text-[10px] text-gray-400 mt-1">토글 즉시 저장됩니다.</p>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">연령대</span>
+            <select
+              value={ageGroup}
+              disabled={ageSaving}
+              onChange={(e) => changeAge(e.target.value)}
+              className="border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:border-blue-400 disabled:opacity-50"
+            >
+              {AGE_GROUP_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>{opt || '미지정'}</option>
+              ))}
+            </select>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1">선택 즉시 저장됩니다. (설문 시드값, 위원이 정정 가능)</p>
         </div>
 
         <DonationPanel

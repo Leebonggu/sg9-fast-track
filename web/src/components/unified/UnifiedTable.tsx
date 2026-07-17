@@ -3,6 +3,7 @@
 import { memo, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
+import { AGE_GROUP_OPTIONS } from '@/lib/unified-utils';
 import MemoCell from './MemoCell';
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
   showDong: boolean;
   onRowClick: (row: UnifiedRow) => void;
   onKakaoToggled: (dong: string, ho: string, value: boolean) => void;
+  onAgeChanged: (dong: string, ho: string, value: string) => void;
 }
 
 const Check = ({ value }: { value: boolean }) =>
@@ -61,6 +63,46 @@ function KakaoToggle({
     >
       {value ? '✓ 참여' : '미참여'}
     </button>
+  );
+}
+
+function AgeSelect({
+  dong, ho, value, onChanged,
+}: {
+  dong: string; ho: string; value: string;
+  onChanged: (dong: string, ho: string, value: string) => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  async function change(newVal: string) {
+    if (saving || newVal === value) return;
+    const prev = value;
+    onChanged(dong, ho, newVal); // 낙관적: 즉시 화면 반영, 저장은 백그라운드
+    setSaving(true);
+    try {
+      const res = await adminFetch('/api/unified/age', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong, ho, ageGroup: newVal }),
+      });
+      if (!res.ok) { onChanged(dong, ho, prev); alert('저장 실패'); } // 실패 시 롤백
+    } catch {
+      onChanged(dong, ho, prev); // 네트워크 오류 시 롤백
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <select
+      value={value}
+      disabled={saving}
+      onChange={(e) => change(e.target.value)}
+      title="연령대 (선택해서 변경)"
+      className="h-7 min-w-[4.5rem] px-1 rounded border border-gray-300 bg-white text-[11px] text-gray-700 outline-none focus:border-blue-400 disabled:opacity-50"
+    >
+      {AGE_GROUP_OPTIONS.map((opt) => (
+        <option key={opt} value={opt}>{opt || '미지정'}</option>
+      ))}
+    </select>
   );
 }
 
@@ -136,13 +178,14 @@ interface RowProps {
   showDong: boolean;
   onRowClick: (row: UnifiedRow) => void;
   onKakaoToggled: (dong: string, ho: string, value: boolean) => void;
+  onAgeChanged: (dong: string, ho: string, value: string) => void;
 }
 
 // 개별 행을 memo로 분리 — 토글/메모 변경 시 해당 행만 재렌더 (2,830행 전체 재렌더 방지).
 // patchKakaoGroup은 바뀐 행만 새 객체로 만들고 나머지는 객체 동일성을 유지하므로,
 // 변경되지 않은 행은 memo 얕은 비교에서 걸러져 재렌더되지 않는다.
 const MobileCard = memo(function MobileCard({
-  row, surveyIds, showDong, onRowClick, onKakaoToggled,
+  row, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged,
 }: RowProps) {
   const doneCount =
     (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
@@ -191,6 +234,7 @@ const MobileCard = memo(function MobileCard({
         <div className="flex-1 min-w-0">
           <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
         </div>
+        <AgeSelect dong={row.dong} ho={row.ho} value={row.ageGroup ?? ''} onChanged={onAgeChanged} />
         <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
       </div>
     </div>
@@ -198,7 +242,7 @@ const MobileCard = memo(function MobileCard({
 });
 
 const DesktopRow = memo(function DesktopRow({
-  row, surveyIds, showDong, onRowClick, onKakaoToggled,
+  row, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged,
 }: RowProps) {
   const doneCount =
     (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
@@ -244,6 +288,9 @@ const DesktopRow = memo(function DesktopRow({
         <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
       </td>
       <td className="py-2 px-3 text-center">
+        <AgeSelect dong={row.dong} ho={row.ho} value={row.ageGroup ?? ''} onChanged={onAgeChanged} />
+      </td>
+      <td className="py-2 px-3 text-center">
         <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
       </td>
       <td className="py-2 px-3 text-center">
@@ -253,7 +300,7 @@ const DesktopRow = memo(function DesktopRow({
   );
 });
 
-function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggled }: Props) {
+function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged }: Props) {
   if (rows.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 text-sm">
@@ -274,6 +321,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
             showDong={showDong}
             onRowClick={onRowClick}
             onKakaoToggled={onKakaoToggled}
+            onAgeChanged={onAgeChanged}
           />
         ))}
       </div>
@@ -303,6 +351,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
                 </th>
               ))}
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">메모</th>
+              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">연령대</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">단톡방</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">수정</th>
             </tr>
@@ -316,6 +365,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
                 showDong={showDong}
                 onRowClick={onRowClick}
                 onKakaoToggled={onKakaoToggled}
+                onAgeChanged={onAgeChanged}
               />
             ))}
           </tbody>

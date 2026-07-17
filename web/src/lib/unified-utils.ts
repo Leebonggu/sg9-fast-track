@@ -2,6 +2,12 @@ import * as XLSX from 'xlsx';
 import type { UnifiedRow, FilterType } from './unified-types';
 import { sanitizeCell } from './xlsx-safe';
 
+// 연령대 선택지 (빈값 = 미지정). route·table·modal 공용.
+// '60대 이상'은 survey-001 시드가 주는 값이라 유지 — 위원이 알면 70/80/90으로 정정.
+export const AGE_GROUP_OPTIONS: readonly string[] = [
+  '', '20대', '30대', '40대', '50대', '60대', '60대 이상', '70대', '80대', '90대 이상',
+];
+
 // 행 배열 → 워크시트. includeDong=false면 '동' 컬럼 제외(동별 시트에서는 시트명이 동 역할).
 function buildSheet(rows: UnifiedRow[], surveyIds: string[], includeDong: boolean) {
   const headers = [

@@ -231,3 +231,49 @@ export async function getSurveyKeyset(config: SurveyConfig): Promise<Set<string>
   }
   return result;
 }
+
+// 연령대 순위 — 다중응답 세대는 최고 연령대를 대표값으로 채택
+const AGE_RANK: Record<string, number> = {
+  '20대': 2, '30대': 3, '40대': 4, '50대': 5,
+  '60대': 6, '60대 이상': 6, '70대': 7, '80대': 8, '90대 이상': 9,
+};
+
+// 설문 응답에서 동-호별 연령대 맵 반환: Map<"901-101", "60대 이상">
+// 같은 세대에 여러 응답이면 rank 최고값 선택. getSurveyKeyset과 동일 키 규칙("901동" → "901").
+export async function getSurveyAgeMap(config: SurveyConfig): Promise<Map<string, string>> {
+  const doc = await getSurveyDoc(config);
+  const sheet = getUnifiedSheet(doc);
+  const rows = await sheet.getRows();
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    const dongRaw = String(row.get('동') || '').trim();
+    const dongNum = dongRaw.replace('동', '');
+    const ho = String(row.get('호') || '').trim();
+    const age = String(row.get('연령대') || '').trim();
+    if (!dongNum || !ho || !age) continue;
+    const key = `${dongNum}-${ho}`;
+    const existing = map.get(key);
+    if (!existing || (AGE_RANK[age] ?? 0) > (AGE_RANK[existing] ?? 0)) {
+      map.set(key, age);
+    }
+  }
+  return map;
+}
+
+// 연령대 필드를 가진 설문 config들의 연령대 맵을 rank 최고 기준으로 병합
+export async function getMergedSurveyAgeMap(configs: SurveyConfig[]): Promise<Map<string, string>> {
+  const ageConfigs = configs.filter((c) =>
+    c.basicInfoFields?.some((f) => f.sheetColumn === '연령대'),
+  );
+  const maps = await Promise.all(ageConfigs.map((c) => getSurveyAgeMap(c)));
+  const merged = new Map<string, string>();
+  for (const map of maps) {
+    for (const [key, age] of map) {
+      const existing = merged.get(key);
+      if (!existing || (AGE_RANK[age] ?? 0) > (AGE_RANK[existing] ?? 0)) {
+        merged.set(key, age);
+      }
+    }
+  }
+  return merged;
+}

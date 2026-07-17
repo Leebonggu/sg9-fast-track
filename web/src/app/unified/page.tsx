@@ -53,6 +53,14 @@ export default function UnifiedPage() {
     );
   }, []);
 
+  const patchAge = useCallback((dong: string, ho: string, value: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === dong && r.ho === ho ? { ...r, ageGroup: value } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -138,6 +146,7 @@ export default function UnifiedPage() {
                 showDong={true}
                 onRowClick={setEditing}
                 onKakaoToggled={patchKakaoGroup}
+                onAgeChanged={patchAge}
               />
             </>
           )}
@@ -150,6 +159,7 @@ export default function UnifiedPage() {
           onSaved={fetchData}
           onDonationChanged={patchDonation}
           onKakaoToggled={patchKakaoGroup}
+          onAgeChanged={patchAge}
         />
       )}
     </AdminLayout>

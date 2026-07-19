@@ -1,5 +1,5 @@
 // web/src/lib/unified-sync.ts
-import { getOwners, getMemoMap, getOppositionMap, getKakaoGroupMap, getPlanTrackingMaps, getAgeMap, writeMasterRows } from './owner-sheets';
+import { getOwners, getMemoMap, getOppositionMap, getKakaoGroupMap, getPlanTrackingMaps, getAgeMap, getPhoneOverrideMap, writeMasterRows } from './owner-sheets';
 import { getConsentKeyset, getPhoneMap } from './sheets';
 
 function normalizeNameSet(raw: string): Set<string> {
@@ -24,7 +24,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
 
   // 1. 소스 시트들 병렬 읽기 — 메모는 sync 시 보존, 4필드는 원본에 직접 갱신되므로 보존 불필요
   const surveyConfigs = getAllSurveyConfigs();
-  const [owners, memoMap, oppositionMap, kakaoGroupMap, planMaps, ageMap, surveyAgeMap, consentResult, phoneMap, ...surveyKeysets] =
+  const [owners, memoMap, oppositionMap, kakaoGroupMap, planMaps, ageMap, surveyAgeMap, consentResult, phoneMap, phoneOverrideMap, ...surveyKeysets] =
     await Promise.all([
       getOwners(),
       getMemoMap(),
@@ -35,6 +35,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       getMergedSurveyAgeMap(surveyConfigs),
       getConsentKeyset(),
       getPhoneMap(),
+      getPhoneOverrideMap(),
       ...surveyConfigs.map((c) => getSurveyKeyset(c)),
     ]);
   const consentKeys = consentResult.keys;
@@ -53,6 +54,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
     });
     const consentName = consentNameMap.get(key) || '';
     const consent = consentKeys.has(key);
+    const po = phoneOverrideMap.get(key) || '';
     return {
       ...owner,
       consent,
@@ -64,7 +66,8 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       idReceived: planMaps.idReceived.get(key) ?? false,
       ageGroup: ageMap.get(key) || surveyAgeMap.get(key) || '',
       memo: memoMap.get(key) || '',
-      phone: phoneMap.get(key) || '',
+      phone: po || phoneMap.get(key) || '',
+      phoneOverride: po,
       lastSynced: syncedAt,
       consentName: consent ? consentName : '',
       nameMismatch: consent ? checkNameMismatch(owner.ownerName, consentName) : false,

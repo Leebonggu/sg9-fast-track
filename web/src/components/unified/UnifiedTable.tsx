@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 import { AGE_GROUP_OPTIONS } from '@/lib/unified-utils';
@@ -315,14 +315,14 @@ const DesktopRow = memo(function DesktopRow({
   const totalCount = 1 + surveyIds.length;
   const bg = rowBgClass(doneCount, totalCount);
   return (
-    <tr className={`border-b border-gray-100 hover:bg-gray-50 [content-visibility:auto] [contain-intrinsic-size:auto_41px] ${bg}`}>
+    <tr className={`h-[41px] border-b border-gray-100 hover:bg-gray-50 ${bg}`}>
       {showDong && (
-        <td className="py-2 px-3 text-gray-400 text-xs">{row.dong}</td>
+        <td className="py-0 px-3 text-gray-400 text-xs overflow-hidden whitespace-nowrap">{row.dong}</td>
       )}
-      <td className="py-2 px-3 font-medium">{row.ho}</td>
-      <td className="py-2 px-3 text-gray-700">
-        <span className="flex items-center gap-1.5 flex-wrap">
-          {row.ownerName}
+      <td className="py-0 px-3 font-medium overflow-hidden whitespace-nowrap">{row.ho}</td>
+      <td className="py-0 px-3 text-gray-700 overflow-hidden whitespace-nowrap">
+        <span className="flex items-center gap-1.5 flex-nowrap overflow-hidden" title={row.ownerName || undefined}>
+          <span className="truncate">{row.ownerName}</span>
           {row.nameMismatch && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
           )}
@@ -331,51 +331,119 @@ const DesktopRow = memo(function DesktopRow({
           )}
         </span>
       </td>
-      <td className="py-2 px-3 text-xs text-gray-600">
-        <span className="block max-w-[130px] truncate" title={row.phone || undefined}>
+      <td className="py-0 px-3 text-xs text-gray-600 overflow-hidden whitespace-nowrap">
+        <span className="block truncate" title={row.phone || undefined}>
           {row.phone || '-'}
         </span>
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <ResidencyBadge value={row.residency} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <Check value={row.consent} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
       </td>
       {surveyIds.map((id) => (
-        <td key={id} className="py-2 px-3 text-center">
+        <td key={id} className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
           <Check value={row.surveys[id] ?? false} />
         </td>
       ))}
-      <td className="py-2 px-3 min-w-[100px]">
+      <td className="py-0 px-3 overflow-hidden whitespace-nowrap">
         <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <AgeSelect dong={row.dong} ho={row.ho} value={row.ageGroup ?? ''} onChanged={onAgeChanged} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
       </td>
-      <td className="py-2 px-3 text-center">
+      <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <EditButton onClick={() => onRowClick(row)} />
       </td>
     </tr>
   );
 });
 
+// 데스크톱 테이블 열 너비(px) — table-layout:fixed의 colgroup에 사용.
+// 순서는 thead/DesktopRow의 td 순서와 정확히 일치해야 한다.
+function buildColWidths(showDong: boolean, surveyIds: string[]): number[] {
+  return [
+    ...(showDong ? [48] : []),
+    56,   // 호수
+    150,  // 소유자
+    120,  // 연락처
+    64,   // 실거주
+    90,   // 신속통합동의서_제출
+    112,  // 후원금
+    ...surveyIds.map(() => 90),
+    170,  // 메모
+    88,   // 연령대
+    76,   // 단톡방
+    100,  // 정비입안 동의서
+    100,  // 개인정보동의
+    124,  // 신분증
+    56,   // 수정
+  ];
+}
+
+const ROW_H = 41;
+const OVERSCAN = 8;
+
 function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged, onPlanToggled }: Props) {
+  // 데스크톱/모바일 중 한쪽만 마운트 (둘 다 마운트 시 2,830행 이중 렌더로 느려짐). 기본 데스크톱.
+  const [isDesktop, setIsDesktop] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)');
+    const on = () => setIsDesktop(mq.matches);
+    on();
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+
+  // 데스크톱 가상 스크롤 상태
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportH, setViewportH] = useState(0);
+
+  // rows(필터/검색) 바뀌면 스크롤 리셋 + 뷰포트 높이 재측정
+  useEffect(() => {
+    if (!isDesktop) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    setScrollTop(0);
+    setViewportH(el.clientHeight);
+  }, [rows, isDesktop]);
+
+  useEffect(() => {
+    if (!isDesktop) return;
+    const measure = () => { if (scrollRef.current) setViewportH(scrollRef.current.clientHeight); };
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [isDesktop]);
+
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el || rafRef.current != null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      setScrollTop(el.scrollTop);
+      setViewportH(el.clientHeight);
+    });
+  }
+
   if (rows.length === 0) {
     return (
       <div className="text-center py-12 text-gray-400 text-sm">
@@ -384,10 +452,10 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
     );
   }
 
-  return (
-    <>
-      {/* 모바일: 카드 리스트 */}
-      <div className="sm:hidden flex flex-col gap-2 -mx-1">
+  // 모바일: 카드 리스트 (가상 스크롤 없음, content-visibility는 div라 안전)
+  if (!isDesktop) {
+    return (
+      <div className="flex flex-col gap-2 -mx-1">
         {rows.map((row) => (
           <MobileCard
             key={`${row.dong}-${row.ho}`}
@@ -401,57 +469,86 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
           />
         ))}
       </div>
+    );
+  }
 
-      {/* 데스크톱: 테이블 */}
-      <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-gray-200 text-xs text-gray-400">
-              {showDong && (
-                <th className="text-left py-2 px-3 font-medium whitespace-nowrap">동</th>
-              )}
-              <th className="text-left py-2 px-3 font-medium whitespace-nowrap">호수</th>
-              <th className="text-left py-2 px-3 font-medium whitespace-nowrap">소유자</th>
-              <th className="text-left py-2 px-3 font-medium whitespace-nowrap max-w-[130px]">연락처</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">실거주</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">
-                신속통합동의서_제출
+  // 데스크톱: 고정 높이 스크롤 컨테이너 + table-layout:fixed + 윈도잉
+  const colWidths = buildColWidths(showDong, surveyIds);
+  const colCount = colWidths.length;
+  const minWidth = colWidths.reduce((a, b) => a + b, 0);
+
+  const total = rows.length;
+  const vh = viewportH || 800;
+  const start = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
+  const visibleCount = Math.ceil(vh / ROW_H) + OVERSCAN * 2;
+  const end = Math.min(total, start + visibleCount);
+  const topPad = start * ROW_H;
+  const botPad = (total - end) * ROW_H;
+
+  return (
+    <div ref={scrollRef} onScroll={onScroll} className="overflow-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
+      <table className="text-sm border-collapse" style={{ tableLayout: 'fixed', minWidth }}>
+        <colgroup>
+          {colWidths.map((w, i) => (
+            <col key={i} style={{ width: w }} />
+          ))}
+        </colgroup>
+        <thead>
+          <tr className="border-b border-gray-200 text-xs text-gray-400 sticky top-0 bg-white z-10">
+            {showDong && (
+              <th className="text-left py-2 px-3 font-medium whitespace-nowrap">동</th>
+            )}
+            <th className="text-left py-2 px-3 font-medium whitespace-nowrap">호수</th>
+            <th className="text-left py-2 px-3 font-medium whitespace-nowrap">소유자</th>
+            <th className="text-left py-2 px-3 font-medium whitespace-nowrap">연락처</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">실거주</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">
+              신속통합동의서_제출
+            </th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">후원금</th>
+            {surveyIds.map((id) => (
+              <th
+                key={id}
+                className="text-center py-2 px-3 font-medium whitespace-nowrap"
+              >
+                {id}
               </th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">후원금</th>
-              {surveyIds.map((id) => (
-                <th
-                  key={id}
-                  className="text-center py-2 px-3 font-medium whitespace-nowrap"
-                >
-                  {id}
-                </th>
-              ))}
-              <th className="text-left py-2 px-3 font-medium whitespace-nowrap">메모</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">연령대</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">단톡방</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">정비입안 동의서</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">개인정보동의</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">신분증</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">수정</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <DesktopRow
-                key={`${row.dong}-${row.ho}`}
-                row={row}
-                surveyIds={surveyIds}
-                showDong={showDong}
-                onRowClick={onRowClick}
-                onKakaoToggled={onKakaoToggled}
-                onAgeChanged={onAgeChanged}
-                onPlanToggled={onPlanToggled}
-              />
             ))}
-          </tbody>
-        </table>
-      </div>
-    </>
+            <th className="text-left py-2 px-3 font-medium whitespace-nowrap">메모</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">연령대</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">단톡방</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">정비입안 동의서</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">개인정보동의</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">신분증</th>
+            <th className="text-center py-2 px-3 font-medium whitespace-nowrap">수정</th>
+          </tr>
+        </thead>
+        <tbody>
+          {topPad > 0 && (
+            <tr aria-hidden style={{ height: topPad }}>
+              <td colSpan={colCount} className="p-0 border-0" />
+            </tr>
+          )}
+          {rows.slice(start, end).map((row) => (
+            <DesktopRow
+              key={`${row.dong}-${row.ho}`}
+              row={row}
+              surveyIds={surveyIds}
+              showDong={showDong}
+              onRowClick={onRowClick}
+              onKakaoToggled={onKakaoToggled}
+              onAgeChanged={onAgeChanged}
+              onPlanToggled={onPlanToggled}
+            />
+          ))}
+          {botPad > 0 && (
+            <tr aria-hidden style={{ height: botPad }}>
+              <td colSpan={colCount} className="p-0 border-0" />
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

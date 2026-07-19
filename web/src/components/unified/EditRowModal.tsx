@@ -18,9 +18,12 @@ interface Props {
   onPlanToggled?: (dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => void;
   onConsentToggled?: (dong: string, ho: string, value: boolean) => void;
   onSurveyCompleted?: (dong: string, ho: string, displayId: string) => void;
+  onPhoneChanged?: (dong: string, ho: string, phone: string) => void;
 }
 
-export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged, onPlanToggled, onConsentToggled, onSurveyCompleted }: Props) {
+export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged, onPlanToggled, onConsentToggled, onSurveyCompleted, onPhoneChanged }: Props) {
+  const [phone, setPhone] = useState(row.phone ?? '');
+  const [phoneSaving, setPhoneSaving] = useState(false);
   const [ownerName, setOwnerName] = useState(row.ownerName ?? '');
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
@@ -177,6 +180,22 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
     } finally { setPlanSaving(null); }
   }
 
+  async function savePhone() {
+    if (phone === (row.phone ?? '')) return;
+    setPhoneSaving(true);
+    try {
+      const res = await adminFetch('/api/unified/phone', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong: row.dong, ho: row.ho, phone }),
+      });
+      if (!res.ok) { alert('연락처 저장 실패'); return; }
+      onPhoneChanged?.(row.dong, row.ho, phone);
+    } finally {
+      setPhoneSaving(false);
+    }
+  }
+
   const diffCount = Object.keys(buildDiff()).length;
 
   return (
@@ -219,9 +238,27 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
         ) : (
           <>
         <div className="mb-3 rounded bg-gray-50 border border-gray-200 px-2.5 py-2">
-          <span className="text-[11px] text-gray-400">연락처</span>{' '}
-          <span className="text-sm text-gray-700 font-medium break-all">{row.phone || '없음'}</span>
-          <p className="text-[10px] text-gray-400 mt-0.5">동별 시트에서 자동 동기화 (여기서 수정 불가)</p>
+          <label className="block text-[11px] text-gray-400 mb-1">연락처</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onBlur={savePhone}
+              inputMode="tel"
+              placeholder="연락처 없음"
+              className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+            />
+            <button
+              type="button"
+              onClick={savePhone}
+              disabled={phoneSaving || phone === (row.phone ?? '')}
+              className="shrink-0 px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {phoneSaving ? '저장 중…' : '저장'}
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1">동별 시트가 아니라 통합현황에만 저장됩니다(동별 미기재 세대도 저장 가능). 다음 동기화에도 유지됩니다.</p>
         </div>
 
         <div className="mb-3 rounded border border-blue-200 bg-blue-50 px-2.5 py-2">

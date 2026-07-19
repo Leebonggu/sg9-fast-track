@@ -88,6 +88,14 @@ export default function UnifiedPage() {
     );
   }, []);
 
+  const patchPhone = useCallback((dong: string, ho: string, phone: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === dong && r.ho === ho ? { ...r, phone } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -191,6 +199,7 @@ export default function UnifiedPage() {
           onPlanToggled={patchPlan}
           onConsentToggled={patchConsent}
           onSurveyCompleted={patchSurvey}
+          onPhoneChanged={patchPhone}
         />
       )}
     </AdminLayout>

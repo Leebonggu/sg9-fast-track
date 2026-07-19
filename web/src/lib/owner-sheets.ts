@@ -178,6 +178,25 @@ export async function getAgeMap(): Promise<Map<string, string>> {
   }
 }
 
+// 마스터 시트("통합현황")에서 연락처_수정(override) 맵 읽기 (sync 전 보존용). 빈값은 제외.
+export async function getPhoneOverrideMap(): Promise<Map<string, string>> {
+  const doc = await getOwnerDoc();
+  const sheet = doc.sheetsByTitle['통합현황'];
+  if (!sheet) return new Map();
+  try {
+    const rows = await sheet.getRows();
+    const map = new Map<string, string>();
+    for (const row of rows) {
+      const key = `${row.get('동')}-${row.get('호수')}`;
+      const phone = String(row.get('연락처_수정') || '').trim();
+      if (phone) map.set(key, phone);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
 // 마스터 시트("통합현황") 전체 overwrite
 export async function writeMasterRows(
   rows: UnifiedRow[],
@@ -191,7 +210,7 @@ export async function writeMasterRows(
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
     '신속통합동의서_제출_완료',
     ...surveyIds,
-    '재건축반대', '단톡방참여', '정비계획입안_동의서', '개인정보수집동의', '신분증_수령', '메모', '마지막_동기화', '동의서이름', '이름불일치', '연락처', '연령대',
+    '재건축반대', '단톡방참여', '정비계획입안_동의서', '개인정보수집동의', '신분증_수령', '메모', '마지막_동기화', '동의서이름', '이름불일치', '연락처', '연락처_수정', '연령대',
   ];
 
   await sheet.clear();
@@ -218,6 +237,7 @@ export async function writeMasterRows(
     동의서이름: r.consentName ?? '',
     이름불일치: r.nameMismatch ? 'TRUE' : 'FALSE',
     연락처: sanitizeCell(r.phone ?? ''),
+    연락처_수정: sanitizeCell(r.phoneOverride ?? ''),
     연령대: r.ageGroup ?? '',
   }));
 
@@ -282,6 +302,23 @@ export async function updateAge(dong: string, ho: string, value: string): Promis
   );
   if (!row) throw new Error(`${dong}동 ${ho}호를 찾을 수 없습니다.`);
   row.set('연령대', value);
+  await row.save();
+}
+
+// 특정 세대 연락처 override 업데이트 (통합현황 시트만; 동별 v2 시트는 미변경).
+// 연락처_수정과 연락처(즉시 표시용) 둘 다 set — 연락처는 다음 sync 때 override로 다시 채워진다.
+export async function updatePhoneOverride(dong: string, ho: string, phone: string): Promise<void> {
+  const doc = await getOwnerDoc();
+  const sheet = doc.sheetsByTitle['통합현황'];
+  if (!sheet) throw new Error('통합현황 시트를 찾을 수 없습니다.');
+  const rows = await sheet.getRows();
+  const row = rows.find(
+    (r) => String(r.get('동')) === dong && String(r.get('호수')) === ho,
+  );
+  if (!row) throw new Error(`${dong}동 ${ho}호를 찾을 수 없습니다.`);
+  const clean = sanitizeCell(phone);
+  row.set('연락처_수정', clean);
+  row.set('연락처', clean);
   await row.save();
 }
 
@@ -463,7 +500,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     '신속통합동의서_제출_완료', '재건축반대', '단톡방참여',
     '정비계획입안_동의서', '개인정보수집동의', '신분증_수령',
     '메모', '마지막_동기화',
-    '동의서이름', '이름불일치', '연락처', '연령대',
+    '동의서이름', '이름불일치', '연락처', '연락처_수정', '연령대',
   ]);
   const surveyIds = headers.filter((h) => !fixedCols.has(h));
 
@@ -489,6 +526,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     consentName: String(row.get('동의서이름') || ''),
     nameMismatch: row.get('이름불일치') === 'TRUE',
     phone: String(row.get('연락처') || ''),
+    phoneOverride: String(row.get('연락처_수정') || ''),
     ageGroup: String(row.get('연령대') || ''),
   }));
 

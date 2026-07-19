@@ -25,6 +25,7 @@ export interface UnifiedRow extends OwnerRow {
   consentName?: string  // 동의서에 기재된 이름 (sync 시 기록)
   nameMismatch?: boolean  // 소유자명 vs 동의서이름 불일치 여부 (포맷 정규화 후 비교)
   phone?: string  // 세대 연락처 (동별 시트에서 sync 시 채움, 폼 제출 세대만 값 있음)
+  phoneOverride?: string  // 위원이 통합현황에서 직접 수정한 연락처 (연락처_수정 컬럼, sync에도 보존·우선)
   ageGroup?: string  // 세대 연령대 (통합현황 시트 연령대 컬럼, survey-001 시드 + 위원 수정)
 }
 
@@ -34,6 +35,7 @@ export interface UnifiedRowOverrides {
   postalCode?: string
   address?: string
   residency?: string
+  phone?: string
 }
 
 export interface SyncDuplicate {

@@ -81,6 +81,14 @@ export default function UnifiedDongPage() {
     );
   }, []);
 
+  const patchPhone = useCallback((d: string, ho: string, phone: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === d && r.ho === ho ? { ...r, phone } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -125,6 +133,7 @@ export default function UnifiedDongPage() {
           onPlanToggled={patchPlan}
           onConsentToggled={patchConsent}
           onSurveyCompleted={patchSurvey}
+          onPhoneChanged={patchPhone}
         />
       )}
     </AdminLayout>

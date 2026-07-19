@@ -73,6 +73,14 @@ export default function UnifiedDongPage() {
     }));
   }, []);
 
+  const patchSurvey = useCallback((d: string, ho: string, displayId: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === d && r.ho === ho ? { ...r, surveys: { ...r.surveys, [displayId]: true } } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -116,6 +124,7 @@ export default function UnifiedDongPage() {
           onAgeChanged={patchAge}
           onPlanToggled={patchPlan}
           onConsentToggled={patchConsent}
+          onSurveyCompleted={patchSurvey}
         />
       )}
     </AdminLayout>

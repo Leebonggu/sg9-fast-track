@@ -80,6 +80,14 @@ export default function UnifiedPage() {
     }));
   }, []);
 
+  const patchSurvey = useCallback((dong: string, ho: string, displayId: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === dong && r.ho === ho ? { ...r, surveys: { ...r.surveys, [displayId]: true } } : r,
+      ),
+    );
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -182,6 +190,7 @@ export default function UnifiedPage() {
           onAgeChanged={patchAge}
           onPlanToggled={patchPlan}
           onConsentToggled={patchConsent}
+          onSurveyCompleted={patchSurvey}
         />
       )}
     </AdminLayout>

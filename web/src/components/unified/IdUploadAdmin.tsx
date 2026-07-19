@@ -29,6 +29,7 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
   const [owners, setOwners] = useState<string[]>([]);
   const [uploaded, setUploaded] = useState<UploadedItem[]>([]);
   const [urls, setUrls] = useState<Record<string, string>>({});
+  const [phones, setPhones] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -166,7 +167,7 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
   const [busyIdx, setBusyIdx] = useState<number | null>(null);
   const [extraCount, setExtraCount] = useState(0);
 
-  async function upload(ownerIndex: number, name: string, file: File | null) {
+  async function upload(ownerIndex: number, name: string, file: File | null, phone: string) {
     if (!file) return;
     setBusyIdx(ownerIndex);
     try {
@@ -174,7 +175,7 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
       const res = await fetch('/api/upload-id', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pw: getPw(), dong, ho, ownerIndex, ownerName: name, mimeType, base64 }),
+        body: JSON.stringify({ pw: getPw(), dong, ho, ownerIndex, ownerName: name, phone: phone.trim(), mimeType, base64 }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -238,8 +239,10 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
               {slots.map(({ index: idx, name }) => {
                 const u = byIndex.get(idx);
                 const isBusy = busyIdx === idx;
+                const phoneVal = phones[idx] ?? u?.phone ?? '';
                 return (
-                  <div key={idx} className="flex items-center gap-2">
+                  <div key={idx} className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
                     {u && urls[u.fileId] ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -296,11 +299,21 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
                         className="hidden"
                         disabled={busyIdx !== null}
                         onChange={(e) => {
-                          upload(idx, name, e.target.files?.[0] ?? null);
+                          upload(idx, name, e.target.files?.[0] ?? null, phoneVal);
                           e.target.value = '';
                         }}
                       />
                     </label>
+                  </div>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={phoneVal}
+                    placeholder="연락처 (선택)"
+                    disabled={busyIdx !== null}
+                    onChange={(e) => setPhones((prev) => ({ ...prev, [idx]: e.target.value }))}
+                    className="ml-14 w-[calc(100%-3.5rem)] border border-gray-200 rounded px-2 py-1 text-[11px] outline-none focus:border-blue-400 disabled:opacity-50"
+                  />
                   </div>
                 );
               })}

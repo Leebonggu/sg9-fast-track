@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
 import DonationPanel from './DonationPanel';
 import IdUploadAdmin from './IdUploadAdmin';
+import SurveyManualForm from '@/components/survey/SurveyManualForm';
 import { adminFetch } from '@/lib/admin-fetch';
 import { AGE_GROUP_OPTIONS } from '@/lib/unified-utils';
 
@@ -16,9 +17,10 @@ interface Props {
   onAgeChanged?: (dong: string, ho: string, value: string) => void;
   onPlanToggled?: (dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => void;
   onConsentToggled?: (dong: string, ho: string, value: boolean) => void;
+  onSurveyCompleted?: (dong: string, ho: string, displayId: string) => void;
 }
 
-export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged, onPlanToggled, onConsentToggled }: Props) {
+export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged, onPlanToggled, onConsentToggled, onSurveyCompleted }: Props) {
   const [ownerName, setOwnerName] = useState(row.ownerName ?? '');
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
@@ -36,6 +38,8 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
   const [consent, setConsent] = useState(row.consent ?? false);
   const [consentSaving, setConsentSaving] = useState(false);
   const [surveys, setSurveys] = useState<{ id: string; title: string; displayId?: string }[]>([]);
+  const [activeSurvey, setActiveSurvey] = useState<{ id: string; displayId: string; title: string } | null>(null);
+  const [completedSurveys, setCompletedSurveys] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [operatorName, setOperatorName] = useState('');
 
@@ -197,6 +201,23 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
           </button>
         </div>
 
+        {activeSurvey ? (
+          <SurveyManualForm
+            surveyId={activeSurvey.id}
+            dong={row.dong}
+            ho={row.ho}
+            prefill={{ ownerName: row.ownerName, phone: row.phone }}
+            operatorName={operatorName}
+            onCancel={() => setActiveSurvey(null)}
+            onSubmitted={() => {
+              const key = activeSurvey.displayId;
+              setCompletedSurveys((s) => new Set(s).add(key));
+              onSurveyCompleted?.(row.dong, row.ho, key);
+              setActiveSurvey(null);
+            }}
+          />
+        ) : (
+          <>
         <div className="mb-3 rounded bg-gray-50 border border-gray-200 px-2.5 py-2">
           <span className="text-[11px] text-gray-400">연락처</span>{' '}
           <span className="text-sm text-gray-700 font-medium break-all">{row.phone || '없음'}</span>
@@ -420,7 +441,8 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
           ) : (
             <div className="space-y-1.5">
               {surveys.map((s) => {
-                const done = !!row.surveys[s.displayId ?? s.id];
+                const key = s.displayId ?? s.id;
+                const done = !!row.surveys[key] || completedSurveys.has(key);
                 return (
                   <div key={s.id} className="flex items-center justify-between gap-2">
                     <span className="text-xs text-gray-700 flex-1 truncate">
@@ -434,15 +456,11 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
                     <button
                       type="button"
                       onClick={() =>
-                        window.open(
-                          `/survey/${s.id}/manual?dong=${encodeURIComponent(row.dong)}&ho=${encodeURIComponent(row.ho)}`,
-                          '_blank',
-                          'noopener,noreferrer',
-                        )
+                        setActiveSurvey({ id: s.id, displayId: s.displayId ?? s.id, title: s.title })
                       }
                       className="shrink-0 text-[11px] text-blue-600 underline"
                     >
-                      수동입력 열기
+                      입력
                     </button>
                   </div>
                 );
@@ -456,6 +474,8 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
           ho={row.ho}
           onChanged={(total, count) => onDonationChanged?.(row.dong, row.ho, total, count)}
         />
+          </>
+        )}
       </div>
     </div>
   );

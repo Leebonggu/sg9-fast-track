@@ -96,15 +96,6 @@ function PlanMiniToggle({ dong, ho, field, label, value, onChanged }: {
   );
 }
 
-function PlanTrackingCell({ row, onPlanToggled }: { row: UnifiedRow; onPlanToggled: RowProps['onPlanToggled']; }) {
-  return (
-    <div className="inline-flex gap-1">
-      <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
-      <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.planPrivacy ?? false} onChanged={onPlanToggled} />
-    </div>
-  );
-}
-
 function IdReceivedCell({ row, onPlanToggled }: { row: UnifiedRow; onPlanToggled: RowProps['onPlanToggled']; }) {
   const online = row.idUploaded ?? 0;
   return (
@@ -306,8 +297,10 @@ const MobileCard = memo(function MobileCard({
         <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
       </div>
       <div className="mt-1.5 flex items-center gap-1 flex-wrap">
-        <span className="text-[10px] text-gray-400">정비입안</span>
-        <PlanTrackingCell row={row} onPlanToggled={onPlanToggled} />
+        <span className="text-[10px] text-gray-400">정비입안 동의서</span>
+        <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
+        <span className="text-[10px] text-gray-400 ml-1">개인정보</span>
+        <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
         <span className="text-[10px] text-gray-400 ml-1">신분증</span>
         <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
       </div>
@@ -368,7 +361,10 @@ const DesktopRow = memo(function DesktopRow({
         <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
       </td>
       <td className="py-2 px-3 text-center">
-        <PlanTrackingCell row={row} onPlanToggled={onPlanToggled} />
+        <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
+      </td>
+      <td className="py-2 px-3 text-center">
+        <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
       </td>
       <td className="py-2 px-3 text-center">
         <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
@@ -434,7 +430,8 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
               <th className="text-left py-2 px-3 font-medium whitespace-nowrap">메모</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">연령대</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">단톡방</th>
-              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">정비계획 입안</th>
+              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">정비입안 동의서</th>
+              <th className="text-center py-2 px-3 font-medium whitespace-nowrap">개인정보동의</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">신분증</th>
               <th className="text-center py-2 px-3 font-medium whitespace-nowrap">수정</th>
             </tr>

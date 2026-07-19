@@ -58,7 +58,7 @@ export default function UnifiedDongPage() {
     setRows((prev) => prev.map((r) => {
       if (r.dong === d && r.ho === ho) {
         if (field === 'consent') return { ...r, planConsent: value };
-        if (field === 'privacy') return { ...r, planPrivacy: value };
+        if (field === 'privacy') return { ...r, privacyConsent: value };
         return { ...r, idReceived: value };
       }
       return r;

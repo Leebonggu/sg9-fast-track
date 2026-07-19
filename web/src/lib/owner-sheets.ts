@@ -138,24 +138,24 @@ export async function getKakaoGroupMap(): Promise<Map<string, boolean>> {
 
 // 마스터 시트("통합현황")에서 정비계획입안 2종 + 신분증 수령 맵 읽기 (sync 전 보존용). 한 번의 getRows로 3컬럼 동시 처리.
 export async function getPlanTrackingMaps(): Promise<{
-  consent: Map<string, boolean>; privacy: Map<string, boolean>; idReceived: Map<string, boolean>;
+  consent: Map<string, boolean>; privacyConsent: Map<string, boolean>; idReceived: Map<string, boolean>;
 }> {
   const doc = await getOwnerDoc();
   const sheet = doc.sheetsByTitle['통합현황'];
-  const empty = { consent: new Map<string, boolean>(), privacy: new Map<string, boolean>(), idReceived: new Map<string, boolean>() };
+  const empty = { consent: new Map<string, boolean>(), privacyConsent: new Map<string, boolean>(), idReceived: new Map<string, boolean>() };
   if (!sheet) return empty;
   try {
     const rows = await sheet.getRows();
     const consent = new Map<string, boolean>();
-    const privacy = new Map<string, boolean>();
+    const privacyConsent = new Map<string, boolean>();
     const idReceived = new Map<string, boolean>();
     for (const row of rows) {
       const key = `${row.get('동')}-${row.get('호수')}`;
       if (row.get('정비계획입안_동의서') === 'TRUE') consent.set(key, true);
-      if (row.get('정비계획입안_개인정보동의') === 'TRUE') privacy.set(key, true);
+      if (row.get('개인정보수집동의') === 'TRUE') privacyConsent.set(key, true);
       if (row.get('신분증_수령') === 'TRUE') idReceived.set(key, true);
     }
-    return { consent, privacy, idReceived };
+    return { consent, privacyConsent, idReceived };
   } catch { return empty; }
 }
 
@@ -191,7 +191,7 @@ export async function writeMasterRows(
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
     '신속통합동의서_제출_완료',
     ...surveyIds,
-    '재건축반대', '단톡방참여', '정비계획입안_동의서', '정비계획입안_개인정보동의', '신분증_수령', '메모', '마지막_동기화', '동의서이름', '이름불일치', '연락처', '연령대',
+    '재건축반대', '단톡방참여', '정비계획입안_동의서', '개인정보수집동의', '신분증_수령', '메모', '마지막_동기화', '동의서이름', '이름불일치', '연락처', '연령대',
   ];
 
   await sheet.clear();
@@ -211,7 +211,7 @@ export async function writeMasterRows(
     재건축반대: r.opposition ? 'TRUE' : 'FALSE',
     단톡방참여: r.kakaoGroup ? 'TRUE' : 'FALSE',
     정비계획입안_동의서: r.planConsent ? 'TRUE' : 'FALSE',
-    정비계획입안_개인정보동의: r.planPrivacy ? 'TRUE' : 'FALSE',
+    개인정보수집동의: r.privacyConsent ? 'TRUE' : 'FALSE',
     신분증_수령: r.idReceived ? 'TRUE' : 'FALSE',
     메모: r.memo,
     마지막_동기화: r.lastSynced,
@@ -256,7 +256,7 @@ export async function updateKakaoGroup(dong: string, ho: string, value: boolean)
 
 // 특정 세대 정비계획입안 3종 중 하나 토글 (통합현황 시트)
 const PLAN_FIELD_COL: Record<'consent' | 'privacy' | 'id', string> = {
-  consent: '정비계획입안_동의서', privacy: '정비계획입안_개인정보동의', id: '신분증_수령',
+  consent: '정비계획입안_동의서', privacy: '개인정보수집동의', id: '신분증_수령',
 };
 export async function updatePlanTracking(
   dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean,
@@ -461,7 +461,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
   const fixedCols = new Set([
     '동', '호수', '소유자명', '우편번호', '대표주소', '실거주여부',
     '신속통합동의서_제출_완료', '재건축반대', '단톡방참여',
-    '정비계획입안_동의서', '정비계획입안_개인정보동의', '신분증_수령',
+    '정비계획입안_동의서', '개인정보수집동의', '신분증_수령',
     '메모', '마지막_동기화',
     '동의서이름', '이름불일치', '연락처', '연령대',
   ]);
@@ -482,7 +482,7 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     opposition: row.get('재건축반대') === 'TRUE',
     kakaoGroup: row.get('단톡방참여') === 'TRUE',
     planConsent: row.get('정비계획입안_동의서') === 'TRUE',
-    planPrivacy: row.get('정비계획입안_개인정보동의') === 'TRUE',
+    privacyConsent: row.get('개인정보수집동의') === 'TRUE',
     idReceived: row.get('신분증_수령') === 'TRUE',
     memo: String(row.get('메모') || ''),
     lastSynced: String(row.get('마지막_동기화') || ''),

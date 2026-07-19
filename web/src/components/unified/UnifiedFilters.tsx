@@ -114,9 +114,8 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
           {btn('no-consent', '동의서 미제출')}
           {btn('no-id', '신분증 미제출')}
           {surveyIds.map((id) => btn(`no-${id}` as FilterType, `${shortSurveyLabel(id)} 미완료`))}
-          {btn('plan-incomplete', '정비입안 2종')}
-          {btn('no-plan-consent', '└ 동의서')}
-          {btn('no-plan-privacy', '└ 개인정보')}
+          {btn('no-plan-consent', '정비입안 동의서')}
+          {btn('no-privacy', '개인정보 미동의')}
         </>
       ))}
 

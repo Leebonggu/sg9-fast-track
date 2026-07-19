@@ -29,7 +29,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
   const [ageGroup, setAgeGroup] = useState(row.ageGroup ?? '');
   const [ageSaving, setAgeSaving] = useState(false);
   const [planConsent, setPlanConsent] = useState(row.planConsent ?? false);
-  const [planPrivacy, setPlanPrivacy] = useState(row.planPrivacy ?? false);
+  const [privacyConsent, setPrivacyConsent] = useState(row.privacyConsent ?? false);
   const [idReceived, setIdReceived] = useState(row.idReceived ?? false);
   const [planSaving, setPlanSaving] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -299,30 +299,45 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
         </div>
 
         <div className="mt-4 pt-3 border-t border-gray-200">
-          <h3 className="text-xs font-semibold text-gray-500 mb-2">정비계획 입안 제안</h3>
-          {([
-            { field: 'consent' as const, label: '동의서', value: planConsent, setter: setPlanConsent },
-            { field: 'privacy' as const, label: '개인정보동의', value: planPrivacy, setter: setPlanPrivacy },
-          ]).map(({ field, label, value, setter }) => (
-            <div key={field} className="flex items-center justify-between py-1">
-              <span className="text-xs text-gray-500">{label}</span>
-              <button
-                type="button"
-                onClick={() => togglePlan(field, value, setter)}
-                disabled={planSaving === field}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                  value ? 'bg-blue-500' : 'bg-gray-200'
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">정비계획 입안 제안 동의서</span>
+            <button
+              type="button"
+              onClick={() => togglePlan('consent', planConsent, setPlanConsent)}
+              disabled={planSaving === 'consent'}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                planConsent ? 'bg-blue-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  planConsent ? 'translate-x-6' : 'translate-x-1'
                 }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                    value ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
-          ))}
+              />
+            </button>
+          </div>
           <p className="text-[10px] text-gray-400 mt-1">오프라인 수령 시 체크. 토글 즉시 저장됩니다.</p>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">개인정보 수집·제공 동의</span>
+            <button
+              type="button"
+              onClick={() => togglePlan('privacy', privacyConsent, setPrivacyConsent)}
+              disabled={planSaving === 'privacy'}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                privacyConsent ? 'bg-blue-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  privacyConsent ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1">재건축 과정 정보제공 동의. 오프라인 수령 시 체크.</p>
         </div>
 
         <div className="mt-4 pt-3 border-t border-gray-200">

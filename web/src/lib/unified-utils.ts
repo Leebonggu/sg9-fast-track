@@ -174,10 +174,8 @@ export function applyFilter(
   if (filter === 'kakao-group') return rows.filter((r) => r.kakaoGroup);
   if (filter === 'no-kakao-group') return rows.filter((r) => !r.kakaoGroup);
 
-  if (filter === 'plan-incomplete')
-    return rows.filter((r) => !(r.planConsent && r.planPrivacy));
   if (filter === 'no-plan-consent') return rows.filter((r) => !r.planConsent);
-  if (filter === 'no-plan-privacy') return rows.filter((r) => !r.planPrivacy);
+  if (filter === 'no-privacy') return rows.filter((r) => !r.privacyConsent);
 
   if (filter === 'joint') return rows.filter(isJoint);
   if (filter === 'joint-incomplete')

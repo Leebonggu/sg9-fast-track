@@ -60,7 +60,7 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       opposition: oppositionMap.get(key) ?? false,
       kakaoGroup: kakaoGroupMap.get(key) ?? false,
       planConsent: planMaps.consent.get(key) ?? false,
-      planPrivacy: planMaps.privacy.get(key) ?? false,
+      privacyConsent: planMaps.privacyConsent.get(key) ?? false,
       idReceived: planMaps.idReceived.get(key) ?? false,
       ageGroup: ageMap.get(key) || surveyAgeMap.get(key) || '',
       memo: memoMap.get(key) || '',

@@ -61,6 +61,17 @@ export default function UnifiedPage() {
     );
   }, []);
 
+  const patchPlan = useCallback((dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => {
+    setRows((prev) => prev.map((r) => {
+      if (r.dong === dong && r.ho === ho) {
+        if (field === 'consent') return { ...r, planConsent: value };
+        if (field === 'privacy') return { ...r, planPrivacy: value };
+        return { ...r, idReceived: value };
+      }
+      return r;
+    }));
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -147,6 +158,7 @@ export default function UnifiedPage() {
                 onRowClick={setEditing}
                 onKakaoToggled={patchKakaoGroup}
                 onAgeChanged={patchAge}
+                onPlanToggled={patchPlan}
               />
             </>
           )}
@@ -160,6 +172,7 @@ export default function UnifiedPage() {
           onDonationChanged={patchDonation}
           onKakaoToggled={patchKakaoGroup}
           onAgeChanged={patchAge}
+          onPlanToggled={patchPlan}
         />
       )}
     </AdminLayout>

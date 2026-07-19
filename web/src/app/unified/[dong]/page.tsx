@@ -54,6 +54,17 @@ export default function UnifiedDongPage() {
     );
   }, []);
 
+  const patchPlan = useCallback((d: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => {
+    setRows((prev) => prev.map((r) => {
+      if (r.dong === d && r.ho === ho) {
+        if (field === 'consent') return { ...r, planConsent: value };
+        if (field === 'privacy') return { ...r, planPrivacy: value };
+        return { ...r, idReceived: value };
+      }
+      return r;
+    }));
+  }, []);
+
   const lastSynced = rows[0]?.lastSynced ?? null;
   const filtered = applyFilter(rows, filter, surveyIds);
 
@@ -82,6 +93,7 @@ export default function UnifiedDongPage() {
                 onRowClick={setEditing}
                 onKakaoToggled={patchKakaoGroup}
                 onAgeChanged={patchAge}
+                onPlanToggled={patchPlan}
               />
             </>
           )}
@@ -94,6 +106,7 @@ export default function UnifiedDongPage() {
           onSaved={fetchData}
           onKakaoToggled={patchKakaoGroup}
           onAgeChanged={patchAge}
+          onPlanToggled={patchPlan}
         />
       )}
     </AdminLayout>

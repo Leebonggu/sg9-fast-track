@@ -1,5 +1,5 @@
 // web/src/lib/unified-sync.ts
-import { getOwners, getMemoMap, getOppositionMap, getKakaoGroupMap, getAgeMap, writeMasterRows } from './owner-sheets';
+import { getOwners, getMemoMap, getOppositionMap, getKakaoGroupMap, getPlanTrackingMaps, getAgeMap, writeMasterRows } from './owner-sheets';
 import { getConsentKeyset, getPhoneMap } from './sheets';
 
 function normalizeNameSet(raw: string): Set<string> {
@@ -24,12 +24,13 @@ export async function syncMasterSheet(): Promise<SyncResult> {
 
   // 1. 소스 시트들 병렬 읽기 — 메모는 sync 시 보존, 4필드는 원본에 직접 갱신되므로 보존 불필요
   const surveyConfigs = getAllSurveyConfigs();
-  const [owners, memoMap, oppositionMap, kakaoGroupMap, ageMap, surveyAgeMap, consentResult, phoneMap, ...surveyKeysets] =
+  const [owners, memoMap, oppositionMap, kakaoGroupMap, planMaps, ageMap, surveyAgeMap, consentResult, phoneMap, ...surveyKeysets] =
     await Promise.all([
       getOwners(),
       getMemoMap(),
       getOppositionMap(),
       getKakaoGroupMap(),
+      getPlanTrackingMaps(),
       getAgeMap(),
       getMergedSurveyAgeMap(surveyConfigs),
       getConsentKeyset(),
@@ -58,6 +59,9 @@ export async function syncMasterSheet(): Promise<SyncResult> {
       surveys,
       opposition: oppositionMap.get(key) ?? false,
       kakaoGroup: kakaoGroupMap.get(key) ?? false,
+      planConsent: planMaps.consent.get(key) ?? false,
+      planPrivacy: planMaps.privacy.get(key) ?? false,
+      idReceived: planMaps.idReceived.get(key) ?? false,
       ageGroup: ageMap.get(key) || surveyAgeMap.get(key) || '',
       memo: memoMap.get(key) || '',
       phone: phoneMap.get(key) || '',

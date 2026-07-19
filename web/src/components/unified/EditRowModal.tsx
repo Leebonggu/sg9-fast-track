@@ -14,9 +14,10 @@ interface Props {
   onDonationChanged?: (dong: string, ho: string, total: number, count: number) => void;
   onKakaoToggled?: (dong: string, ho: string, value: boolean) => void;
   onAgeChanged?: (dong: string, ho: string, value: string) => void;
+  onPlanToggled?: (dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => void;
 }
 
-export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged }: Props) {
+export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged, onPlanToggled }: Props) {
   const [ownerName, setOwnerName] = useState(row.ownerName ?? '');
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
@@ -27,6 +28,10 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
   const [kakaoSaving, setKakaoSaving] = useState(false);
   const [ageGroup, setAgeGroup] = useState(row.ageGroup ?? '');
   const [ageSaving, setAgeSaving] = useState(false);
+  const [planConsent, setPlanConsent] = useState(row.planConsent ?? false);
+  const [planPrivacy, setPlanPrivacy] = useState(row.planPrivacy ?? false);
+  const [idReceived, setIdReceived] = useState(row.idReceived ?? false);
+  const [planSaving, setPlanSaving] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [operatorName, setOperatorName] = useState('');
 
@@ -121,6 +126,20 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
     } finally {
       setAgeSaving(false);
     }
+  }
+
+  async function togglePlan(field: 'consent' | 'privacy' | 'id', current: boolean, setter: (v: boolean) => void) {
+    const newVal = !current;
+    setPlanSaving(field);
+    try {
+      const res = await adminFetch('/api/unified/plan-tracking', {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dong: row.dong, ho: row.ho, field, value: newVal }),
+      });
+      if (!res.ok) { alert('저장 실패'); return; }
+      setter(newVal);
+      onPlanToggled?.(row.dong, row.ho, field, newVal);
+    } finally { setPlanSaving(null); }
   }
 
   const diffCount = Object.keys(buildDiff()).length;
@@ -277,6 +296,54 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
             </select>
           </div>
           <p className="text-[10px] text-gray-400 mt-1">선택 즉시 저장됩니다. (설문 시드값, 위원이 정정 가능)</p>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <h3 className="text-xs font-semibold text-gray-500 mb-2">정비계획 입안 제안</h3>
+          {([
+            { field: 'consent' as const, label: '동의서', value: planConsent, setter: setPlanConsent },
+            { field: 'privacy' as const, label: '개인정보동의', value: planPrivacy, setter: setPlanPrivacy },
+          ]).map(({ field, label, value, setter }) => (
+            <div key={field} className="flex items-center justify-between py-1">
+              <span className="text-xs text-gray-500">{label}</span>
+              <button
+                type="button"
+                onClick={() => togglePlan(field, value, setter)}
+                disabled={planSaving === field}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                  value ? 'bg-blue-500' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                    value ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
+          <p className="text-[10px] text-gray-400 mt-1">오프라인 수령 시 체크. 토글 즉시 저장됩니다.</p>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">신분증사본 수령 (오프라인 종이)</span>
+            <button
+              type="button"
+              onClick={() => togglePlan('id', idReceived, setIdReceived)}
+              disabled={planSaving === 'id'}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                idReceived ? 'bg-blue-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  idReceived ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1">온라인 업로드분(위 신분증 패널)도 수령으로 자동 인정됩니다. 이 토글은 오프라인 종이 수령용.</p>
         </div>
 
         <DonationPanel

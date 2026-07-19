@@ -161,9 +161,9 @@ export function applyFilter(
       (r) => !r.consent || surveyIds.some((id) => !r.surveys[id]),
     );
   if (filter === 'no-consent') return rows.filter((r) => !r.consent);
-  // 사전동의 완료 세대 중 신분증 미제출
+  // 사전동의 완료 세대 중 신분증 미제출 (온라인 업로드 없고 오프라인 수동체크도 없음)
   if (filter === 'no-id')
-    return rows.filter((r) => r.consent && (r.idUploaded ?? 0) === 0);
+    return rows.filter((r) => r.consent && (r.idUploaded ?? 0) === 0 && !r.idReceived);
   // 전체 세대 중 후원금 미납부 (사전동의 여부와 무관 — 후원금은 전체 세대 대상)
   if (filter === 'no-donation')
     return rows.filter((r) => (r.donationTotal ?? 0) === 0);
@@ -173,6 +173,11 @@ export function applyFilter(
   if (filter === 'opposition') return rows.filter((r) => r.opposition);
   if (filter === 'kakao-group') return rows.filter((r) => r.kakaoGroup);
   if (filter === 'no-kakao-group') return rows.filter((r) => !r.kakaoGroup);
+
+  if (filter === 'plan-incomplete')
+    return rows.filter((r) => !(r.planConsent && r.planPrivacy));
+  if (filter === 'no-plan-consent') return rows.filter((r) => !r.planConsent);
+  if (filter === 'no-plan-privacy') return rows.filter((r) => !r.planPrivacy);
 
   if (filter === 'joint') return rows.filter(isJoint);
   if (filter === 'joint-incomplete')

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/admin-fetch';
+import { compressImage } from '@/lib/image-compress';
 
 interface UploadedItem {
   ownerIndex: number;
@@ -162,9 +163,39 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
     }
   }
 
+  const [busyIdx, setBusyIdx] = useState<number | null>(null);
+  const [extraCount, setExtraCount] = useState(0);
+
+  async function upload(ownerIndex: number, name: string, file: File | null) {
+    if (!file) return;
+    setBusyIdx(ownerIndex);
+    try {
+      const { base64, mimeType } = await compressImage(file);
+      const res = await fetch('/api/upload-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pw: getPw(), dong, ho, ownerIndex, ownerName: name, mimeType, base64 }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || '업로드 실패');
+        return;
+      }
+      // 방금 채운 게 빈 추가 슬롯이면 그 몫만큼 추가 슬롯 수를 줄임 (업로드분은 아래 overflow로 표시됨)
+      if (ownerIndex >= owners.length && !uploaded.some((u) => u.ownerIndex === ownerIndex)) {
+        setExtraCount((c) => Math.max(0, c - 1));
+      }
+      await load();
+    } catch {
+      alert('업로드 중 오류가 발생했습니다.');
+    } finally {
+      setBusyIdx(null);
+    }
+  }
+
   const byIndex = new Map(uploaded.map((u) => [u.ownerIndex, u]));
 
-  // 감지된 소유자 슬롯 + 감지 범위를 넘는 추가 업로드(공동소유 미감지분)
+  // 감지된 소유자 슬롯 + 감지 범위를 넘는 추가 업로드(공동소유 미감지분) + 빈 추가 슬롯
   const slots: { index: number; name: string }[] = owners.map((name, idx) => ({
     index: idx,
     name,
@@ -173,6 +204,11 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
     if (u.ownerIndex >= owners.length) {
       slots.push({ index: u.ownerIndex, name: u.ownerName || `추가 ${u.ownerIndex - owners.length + 1}` });
     }
+  }
+  const maxIndex = slots.reduce((m, s) => Math.max(m, s.index), owners.length - 1);
+  for (let k = 1; k <= extraCount; k++) {
+    const index = maxIndex + k;
+    slots.push({ index, name: `추가 ${index - owners.length + 1}` });
   }
   slots.sort((a, b) => a.index - b.index);
 
@@ -193,61 +229,92 @@ export default function IdUploadAdmin({ dong, ho }: Props) {
         <p className="text-[11px] text-gray-400">불러오는 중…</p>
       ) : error ? (
         <p className="text-[11px] text-red-500">{error}</p>
-      ) : slots.length === 0 ? (
-        <p className="text-[11px] text-gray-400">소유자 정보 없음</p>
       ) : (
-        <div className="space-y-1.5">
-          {slots.map(({ index: idx, name }) => {
-            const u = byIndex.get(idx);
-            return (
-              <div key={idx} className="flex items-center gap-2">
-                {u && urls[u.fileId] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={urls[u.fileId]}
-                    alt={`${name} 신분증`}
-                    className="w-12 h-12 object-cover rounded border border-gray-300"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center text-[9px] text-gray-300">
-                    {u ? '…' : '없음'}
+        <>
+          {slots.length === 0 ? (
+            <p className="text-[11px] text-gray-400 mb-1.5">소유자 정보 없음 — 아래에서 직접 추가할 수 있습니다.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {slots.map(({ index: idx, name }) => {
+                const u = byIndex.get(idx);
+                const isBusy = busyIdx === idx;
+                return (
+                  <div key={idx} className="flex items-center gap-2">
+                    {u && urls[u.fileId] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={urls[u.fileId]}
+                        alt={`${name} 신분증`}
+                        className="w-12 h-12 object-cover rounded border border-gray-300"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded border border-dashed border-gray-300 flex items-center justify-center text-[9px] text-gray-300">
+                        {u ? '…' : '없음'}
+                      </div>
+                    )}
+                    <span className="text-xs text-gray-700 flex-1 truncate">
+                      {name}
+                      {u?.phone && <span className="text-gray-400"> · {u.phone}</span>}
+                    </span>
+                    {u ? (
+                      <>
+                        <a
+                          href={u.link}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] text-blue-600 underline"
+                        >
+                          원본
+                        </a>
+                        <button
+                          onClick={() => remove(idx)}
+                          className="text-[11px] text-red-500 underline"
+                        >
+                          폐기
+                        </button>
+                        <button
+                          onClick={() => requestCorrection(idx)}
+                          disabled={allowingIdx === idx}
+                          className="text-[11px] text-emerald-600 underline disabled:opacity-50"
+                        >
+                          {u.correctionAllowed ? '정정 허용됨' : '정정 허용'}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-[11px] text-gray-400">미제출</span>
+                    )}
+                    <label
+                      className={`shrink-0 text-[11px] px-2 py-1 rounded cursor-pointer ${
+                        isBusy ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white'
+                      }`}
+                    >
+                      {isBusy ? '…' : u ? '재업로드' : '업로드'}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        disabled={busyIdx !== null}
+                        onChange={(e) => {
+                          upload(idx, name, e.target.files?.[0] ?? null);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
                   </div>
-                )}
-                <span className="text-xs text-gray-700 flex-1 truncate">
-                  {name}
-                  {u?.phone && <span className="text-gray-400"> · {u.phone}</span>}
-                </span>
-                {u ? (
-                  <>
-                    <a
-                      href={u.link}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[11px] text-blue-600 underline"
-                    >
-                      원본
-                    </a>
-                    <button
-                      onClick={() => remove(idx)}
-                      className="text-[11px] text-red-500 underline"
-                    >
-                      폐기
-                    </button>
-                    <button
-                      onClick={() => requestCorrection(idx)}
-                      disabled={allowingIdx === idx}
-                      className="text-[11px] text-emerald-600 underline disabled:opacity-50"
-                    >
-                      {u.correctionAllowed ? '정정 허용됨' : '정정 허용'}
-                    </button>
-                  </>
-                ) : (
-                  <span className="text-[11px] text-gray-400">미제출</span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setExtraCount((c) => c + 1)}
+            disabled={busyIdx !== null || extraCount >= 10}
+            className="mt-2 w-full text-[11px] font-semibold text-blue-600 border border-dashed border-blue-300 rounded py-1.5 disabled:opacity-40"
+          >
+            ＋ 신분증 추가
+          </button>
+        </>
       )}
       {Object.entries(correctionLinks).map(([idx, link]) => (
         <div key={idx} className="mt-1.5 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">

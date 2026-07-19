@@ -7,6 +7,7 @@ export async function GET() {
     id: c.id,
     title: c.title,
     organizer: c.organizer,
+    displayId: c.displayId ?? c.id,
   }));
   return NextResponse.json({ surveys });
 }

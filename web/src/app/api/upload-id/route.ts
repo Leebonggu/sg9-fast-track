@@ -26,22 +26,36 @@ async function isConsented(dong: string, ho: string): Promise<boolean> {
 // 감지된 소유자 수를 넘어 추가 신분증 업로드를 허용 (세대당 추가 슬롯 상한).
 const EXTRA_SLOT_MAX = 10;
 
-// ── 주민: 신분증 업로드 ──────────────────────────────────────
+// ── 신분증 업로드: 주민(토큰) 또는 관리자(pw) ────────────────
 export async function POST(req: NextRequest) {
   try {
     const ip = getClientIp(req);
 
     const body = await req.json();
-    const { t, ownerIndex, ownerName, mimeType, base64, phone: rawPhone } = body ?? {};
+    const { t, pw, dong: bDong, ho: bHo, ownerIndex, ownerName, mimeType, base64, phone: rawPhone } = body ?? {};
 
-    const tok = verifyToken(String(t || ''));
-    if (!tok.valid) {
-      return NextResponse.json(
-        { error: tok.reason === 'expired' ? '인증이 만료되었습니다. 다시 확인해 주세요.' : '유효하지 않은 접근입니다.' },
-        { status: 401 },
-      );
+    // 관리자는 pw로 인증(기존 DELETE와 동일 패턴). 세대는 body의 dong/ho로 지정.
+    const isAdmin = typeof pw === 'string' && pw.length > 0 && pw === process.env.APP_PASSWORD;
+
+    let dong: string;
+    let ho: string;
+    if (isAdmin) {
+      dong = typeof bDong === 'string' ? bDong.trim() : '';
+      ho = typeof bHo === 'string' ? bHo.trim() : '';
+      if (!dong || !ho) {
+        return NextResponse.json({ error: '세대 정보가 없습니다.' }, { status: 400 });
+      }
+    } else {
+      const tok = verifyToken(String(t || ''));
+      if (!tok.valid) {
+        return NextResponse.json(
+          { error: tok.reason === 'expired' ? '인증이 만료되었습니다. 다시 확인해 주세요.' : '유효하지 않은 접근입니다.' },
+          { status: 401 },
+        );
+      }
+      dong = tok.dong;
+      ho = tok.ho;
     }
-    const { dong, ho } = tok;
 
     if (typeof base64 !== 'string' || !base64) {
       return NextResponse.json({ error: '이미지가 없습니다.' }, { status: 400 });
@@ -54,25 +68,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 독립적인 4개 시트 읽기를 병렬화 (#1 속도): rate limit / 사전동의 / 소유자 / 신분증 현황
-    const [rateLimited, consented, owners, existingUploads] = await Promise.all([
-      checkRateLimit(ip),
-      isConsented(dong, ho),
-      getOwnersByDongHo(dong, ho),
-      getIdUploads(dong, ho),
-    ]);
-
-    if (rateLimited) {
-      return NextResponse.json(
-        { error: '잠시 후 다시 시도해 주세요. (10분 후 재시도 가능)' },
-        { status: 429 },
-      );
-    }
-    if (!consented) {
-      return NextResponse.json(
-        { error: '사전동의(신속통합동의서)가 완료된 세대만 업로드할 수 있습니다.' },
-        { status: 403 },
-      );
+    // 소유자/기존업로드는 양쪽 공통. 주민 모드에서만 rateLimit/consent도 병렬로 읽고 enforce.
+    let owners: string[];
+    let existingUploads: Awaited<ReturnType<typeof getIdUploads>>;
+    if (isAdmin) {
+      [owners, existingUploads] = await Promise.all([
+        getOwnersByDongHo(dong, ho),
+        getIdUploads(dong, ho),
+      ]);
+    } else {
+      const [rateLimited, consented, o, e] = await Promise.all([
+        checkRateLimit(ip),
+        isConsented(dong, ho),
+        getOwnersByDongHo(dong, ho),
+        getIdUploads(dong, ho),
+      ]);
+      if (rateLimited) {
+        return NextResponse.json(
+          { error: '잠시 후 다시 시도해 주세요. (10분 후 재시도 가능)' },
+          { status: 429 },
+        );
+      }
+      if (!consented) {
+        return NextResponse.json(
+          { error: '사전동의(신속통합동의서)가 완료된 세대만 업로드할 수 있습니다.' },
+          { status: 403 },
+        );
+      }
+      owners = o;
+      existingUploads = e;
     }
 
     const idx = Number(ownerIndex);
@@ -82,9 +106,10 @@ export async function POST(req: NextRequest) {
 
     let realName: string;
     if (idx < owners.length) {
-      // 감지된 소유자 슬롯 — 이름 일치 확인 (공백 무시)
+      // 감지된 소유자 슬롯 — 이름 일치 확인 (공백 무시). 관리자는 검증 생략.
       realName = owners[idx];
       if (
+        !isAdmin &&
         typeof ownerName === 'string' &&
         ownerName.replace(/\s/g, '') !== realName.replace(/\s/g, '')
       ) {
@@ -96,17 +121,21 @@ export async function POST(req: NextRequest) {
       realName = label ? label.slice(0, 30) : `추가${idx - owners.length + 1}`;
     }
 
+    // 관리자는 전화번호 선택(빈 값 허용). 주민은 기존대로 필수.
     const phone = typeof rawPhone === 'string' ? rawPhone.trim() : '';
-    if (!isValidPhone(phone)) {
+    if (!isAdmin && !isValidPhone(phone)) {
       return NextResponse.json({ error: '올바른 연락처를 입력해 주세요.' }, { status: 400 });
     }
 
-    const existingForSlot = existingUploads.find((u) => u.ownerIndex === idx);
-    if (existingForSlot && !isCorrectionWindowOpen(existingForSlot.correctionAllowedAt)) {
-      return NextResponse.json(
-        { error: '이미 제출된 슬롯입니다. 수정이 필요하면 위원에게 문의해 주세요.' },
-        { status: 403 },
-      );
+    // 정정윈도우 잠금은 주민에게만 적용. 관리자는 이미 제출된 슬롯도 덮어쓰기 허용.
+    if (!isAdmin) {
+      const existingForSlot = existingUploads.find((u) => u.ownerIndex === idx);
+      if (existingForSlot && !isCorrectionWindowOpen(existingForSlot.correctionAllowedAt)) {
+        return NextResponse.json(
+          { error: '이미 제출된 슬롯입니다. 수정이 필요하면 위원에게 문의해 주세요.' },
+          { status: 403 },
+        );
+      }
     }
 
     const ext = mimeType === 'image/png' ? 'png' : 'jpg';
@@ -119,7 +148,7 @@ export async function POST(req: NextRequest) {
     // 기록 + 인증로그는 서로 독립 → 병렬 (#1 속도)
     const [prevFileId] = await Promise.all([
       recordIdUpload({ dong, ho, ownerName: realName, ownerIndex: idx, fileName, fileId, link, ip, phone }),
-      appendVerifyLog(dong, ho, realName, '신분증업로드', ip),
+      appendVerifyLog(dong, ho, realName, isAdmin ? '신분증업로드(관리자)' : '신분증업로드', ip),
     ]);
 
     // 재업로드로 교체된 이전 파일은 Drive에서 삭제 (고아 파일·민감정보 잔존 방지)

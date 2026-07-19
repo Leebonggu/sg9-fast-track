@@ -15,9 +15,10 @@ interface Props {
   onKakaoToggled?: (dong: string, ho: string, value: boolean) => void;
   onAgeChanged?: (dong: string, ho: string, value: string) => void;
   onPlanToggled?: (dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => void;
+  onConsentToggled?: (dong: string, ho: string, value: boolean) => void;
 }
 
-export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged, onPlanToggled }: Props) {
+export default function EditRowModal({ row, onClose, onSaved, onDonationChanged, onKakaoToggled, onAgeChanged, onPlanToggled, onConsentToggled }: Props) {
   const [ownerName, setOwnerName] = useState(row.ownerName ?? '');
   const [postalCode, setPostalCode] = useState(row.postalCode ?? '');
   const [address, setAddress] = useState(row.address ?? '');
@@ -32,6 +33,9 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
   const [privacyConsent, setPrivacyConsent] = useState(row.privacyConsent ?? false);
   const [idReceived, setIdReceived] = useState(row.idReceived ?? false);
   const [planSaving, setPlanSaving] = useState<string | null>(null);
+  const [consent, setConsent] = useState(row.consent ?? false);
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [surveys, setSurveys] = useState<{ id: string; title: string; displayId?: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [operatorName, setOperatorName] = useState('');
 
@@ -39,6 +43,13 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
     if (typeof window !== 'undefined') {
       setOperatorName(sessionStorage.getItem('operatorName') || '');
     }
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/survey')
+      .then((r) => r.json())
+      .then((d) => setSurveys(d.surveys ?? []))
+      .catch(() => {});
   }, []);
 
   function buildDiff() {
@@ -72,6 +83,26 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
       onClose();
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleConsent() {
+    // row.dong은 "901"(동 없음), v2 시트명은 "901동" — 보정 안 하면 조용히 실패한다.
+    const building = row.dong.endsWith('동') ? row.dong : `${row.dong}동`;
+    setConsentSaving(true);
+    try {
+      const res = await adminFetch('/api/consent/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ building, unit: row.ho }),
+      });
+      if (!res.ok) { alert('저장 실패'); return; }
+      const data = await res.json();
+      const newVal = data.collected ?? !consent;
+      setConsent(newVal);
+      onConsentToggled?.(row.dong, row.ho, newVal);
+    } finally {
+      setConsentSaving(false);
     }
   }
 
@@ -170,6 +201,27 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
           <span className="text-[11px] text-gray-400">연락처</span>{' '}
           <span className="text-sm text-gray-700 font-medium break-all">{row.phone || '없음'}</span>
           <p className="text-[10px] text-gray-400 mt-0.5">동별 시트에서 자동 동기화 (여기서 수정 불가)</p>
+        </div>
+
+        <div className="mb-3 rounded border border-blue-200 bg-blue-50 px-2.5 py-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-700">사전동의(신속통합동의서) 수거</span>
+            <button
+              type="button"
+              onClick={toggleConsent}
+              disabled={consentSaving}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
+                consent ? 'bg-blue-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  consent ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <p className="text-[10px] text-blue-700 mt-1">⚠ v2 동별 시트에 직접 반영됩니다. 토글 즉시 저장.</p>
         </div>
 
         <h3 className="text-xs font-semibold text-gray-500 mb-2">소유자 정보 수정</h3>
@@ -359,6 +411,44 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
             </button>
           </div>
           <p className="text-[10px] text-gray-400 mt-1">온라인 업로드분(위 신분증 패널)도 수령으로 자동 인정됩니다. 이 토글은 오프라인 종이 수령용.</p>
+        </div>
+
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <p className="text-xs text-gray-500 mb-2">설문 수동입력</p>
+          {surveys.length === 0 ? (
+            <p className="text-[11px] text-gray-400">등록된 설문 없음</p>
+          ) : (
+            <div className="space-y-1.5">
+              {surveys.map((s) => {
+                const done = !!row.surveys[s.displayId ?? s.id];
+                return (
+                  <div key={s.id} className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-gray-700 flex-1 truncate">
+                      {s.title}
+                      {done ? (
+                        <span className="ml-1 text-[10px] text-green-600">✓완료</span>
+                      ) : (
+                        <span className="ml-1 text-[10px] text-gray-400">미입력</span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        window.open(
+                          `/survey/${s.id}/manual?dong=${encodeURIComponent(row.dong)}&ho=${encodeURIComponent(row.ho)}`,
+                          '_blank',
+                          'noopener,noreferrer',
+                        )
+                      }
+                      className="shrink-0 text-[11px] text-blue-600 underline"
+                    >
+                      수동입력 열기
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <DonationPanel

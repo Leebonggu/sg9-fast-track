@@ -54,6 +54,14 @@ export default function UnifiedDongPage() {
     );
   }, []);
 
+  const patchConsent = useCallback((d: string, ho: string, value: boolean) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.dong === d && r.ho === ho ? { ...r, consent: value } : r,
+      ),
+    );
+  }, []);
+
   const patchPlan = useCallback((d: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => {
     setRows((prev) => prev.map((r) => {
       if (r.dong === d && r.ho === ho) {
@@ -107,6 +115,7 @@ export default function UnifiedDongPage() {
           onKakaoToggled={patchKakaoGroup}
           onAgeChanged={patchAge}
           onPlanToggled={patchPlan}
+          onConsentToggled={patchConsent}
         />
       )}
     </AdminLayout>

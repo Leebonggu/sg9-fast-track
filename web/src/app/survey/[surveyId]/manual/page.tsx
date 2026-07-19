@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import AdminLayout from '@/components/AdminLayout';
 import { useBuildingSelector } from '@/hooks/useBuildingSelector';
@@ -18,8 +18,12 @@ type SurveyConfigMeta = {
   questions: SurveyQuestion[];
 };
 
-export default function ManualInputPage() {
+function ManualInputInner() {
   const { surveyId } = useParams<{ surveyId: string }>();
+  const searchParams = useSearchParams();
+  const lockDong = searchParams.get('dong') || '';
+  const lockHo = searchParams.get('ho') || '';
+  const locked = !!(lockDong && lockHo);
   const [config, setConfig] = useState<SurveyConfigMeta | null>(null);
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -49,6 +53,7 @@ export default function ManualInputPage() {
     const stored = sessionStorage.getItem('operatorName') || '';
     setOperatorName(stored);
     loadConfig();
+    if (locked) setBasicInfo((prev) => ({ ...prev, dong: lockDong, ho: lockHo }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveyId]);
 
@@ -186,17 +191,26 @@ export default function ManualInputPage() {
             <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
               <h2 className="font-bold text-[#2F5496] text-base">기본정보</h2>
 
-              <BuildingSelector
-                selectedDong={selectedDong}
-                selectedFloor={selectedFloor}
-                selectedHo={basicInfo.ho || ''}
-                dongList={dongList}
-                floorList={floorList}
-                hoList={hoList}
-                onDongChange={handleDongChange}
-                onFloorChange={handleFloorChange}
-                onHoChange={handleHoChange}
-              />
+              {locked ? (
+                <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-3">
+                  <div className="text-xs text-blue-600 mb-0.5">대상 세대 · 모달에서 지정됨</div>
+                  <div className="text-base font-bold text-gray-800">
+                    {lockDong}동 {lockHo}호
+                  </div>
+                </div>
+              ) : (
+                <BuildingSelector
+                  selectedDong={selectedDong}
+                  selectedFloor={selectedFloor}
+                  selectedHo={basicInfo.ho || ''}
+                  dongList={dongList}
+                  floorList={floorList}
+                  hoList={hoList}
+                  onDongChange={handleDongChange}
+                  onFloorChange={handleFloorChange}
+                  onHoChange={handleHoChange}
+                />
+              )}
 
               {otherBasicFields.map((field) => (
                 <div key={field.key}>
@@ -261,5 +275,13 @@ export default function ManualInputPage() {
         )}
       </div>
     </AdminLayout>
+  );
+}
+
+export default function ManualInputPage() {
+  return (
+    <Suspense fallback={null}>
+      <ManualInputInner />
+    </Suspense>
   );
 }

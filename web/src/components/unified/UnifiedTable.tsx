@@ -26,6 +26,11 @@ const Check = ({ value }: { value: boolean }) =>
 const shortSurveyLabel = (id: string) =>
   id.replace(/_완료$/, '').replace(/^\d{4}_\d{2}_/, '');
 
+// 테이블 인터랙티브 컨트롤 공용 스타일 — 네모(rounded-md) + 푸른색 계열로 통일
+const CTRL = 'inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md border text-[11px] font-medium transition-colors';
+const CTRL_ON = 'bg-blue-600 text-white border-blue-600';
+const CTRL_OFF = 'bg-white text-gray-400 border-gray-300 hover:border-blue-400';
+
 function KakaoToggle({
   dong, ho, value, onChanged,
 }: {
@@ -56,11 +61,7 @@ function KakaoToggle({
       type="button"
       onClick={toggle}
       title="단톡방 참여 여부 (클릭해서 토글)"
-      className={`inline-flex items-center justify-center h-7 min-w-[3rem] px-2 rounded-full border text-[11px] font-medium transition-colors ${
-        value
-          ? 'bg-green-500 text-white border-green-500'
-          : 'bg-white text-gray-400 border-gray-300 hover:border-green-400'
-      }`}
+      className={`${CTRL} min-w-[3rem] ${value ? CTRL_ON : CTRL_OFF}`}
     >
       {value ? '✓ 참여' : '미참여'}
     </button>
@@ -88,10 +89,8 @@ function PlanMiniToggle({ dong, ho, field, label, value, onChanged }: {
   }
   return (
     <button type="button" onClick={toggle} title={`${label} 수령 여부 (클릭해서 토글)`}
-      className={`inline-flex items-center justify-center h-6 px-1.5 rounded border text-[10px] font-medium transition-colors ${
-        value ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-400 border-gray-300 hover:border-blue-400'
-      }`}>
-      {value ? '✓' : '·'}{label}
+      className={`${CTRL} ${value ? CTRL_ON : CTRL_OFF}`}>
+      {value ? `✓${label}` : label}
     </button>
   );
 }
@@ -101,8 +100,8 @@ function IdReceivedCell({ row, onPlanToggled }: { row: UnifiedRow; onPlanToggled
   return (
     <span className="inline-flex items-center gap-1">
       {online > 0 && (
-        <span className="inline-flex items-center h-6 px-1.5 rounded border text-[10px] font-medium bg-green-600 text-white border-green-600"
-          title={`온라인 신분증 ${online}장 업로드됨`}>✓온라인{online}</span>
+        <span className="inline-flex items-center justify-center h-7 px-2 rounded-md border text-[11px] font-medium bg-blue-50 text-blue-700 border-blue-200"
+          title={`온라인 신분증 ${online}장 업로드됨 (읽기 전용)`}>✓온라인{online}</span>
       )}
       <PlanMiniToggle dong={row.dong} ho={row.ho} field="id" label="종이" value={row.idReceived ?? false} onChanged={onPlanToggled} />
     </span>
@@ -137,14 +136,14 @@ function AgeSelect({
   return (
     <div className={`group relative inline-flex ${saving ? 'opacity-50' : ''}`}>
       <span
-        className={`inline-flex items-center gap-1 h-7 pl-2.5 pr-1.5 rounded-full border text-[11px] font-medium transition-colors ${
+        className={`${CTRL} ${
           value
-            ? 'bg-indigo-50 text-indigo-700 border-indigo-200 group-hover:border-indigo-400'
-            : 'bg-white text-gray-400 border-gray-300 group-hover:border-indigo-300'
+            ? CTRL_ON
+            : 'bg-white text-gray-400 border-gray-300 group-hover:border-blue-400'
         }`}
       >
         {value || '미지정'}
-        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 opacity-60" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5 opacity-70" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 4.5 6 7.5 9 4.5" />
         </svg>
       </span>
@@ -167,7 +166,7 @@ function AgeSelect({
 function Chip({ done, label }: { done: boolean; label: string }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border ${
+      className={`inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-md border ${
         done
           ? 'bg-green-50 text-green-700 border-green-200'
           : 'bg-red-50/60 text-red-400 border-red-100'
@@ -182,12 +181,12 @@ function Chip({ done, label }: { done: boolean; label: string }) {
 function DonationBadge({ total, count }: { total: number; count: number }) {
   if (total <= 0)
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-gray-50 text-gray-400 border-gray-200">
+      <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-md border bg-gray-50 text-gray-400 border-gray-200">
         <span className="whitespace-nowrap">- (미납부)</span>
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">
+    <span className="inline-flex items-center gap-1 text-[10px] leading-none px-2 py-1 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200">
       <span className="font-bold">✓</span>
       <span className="whitespace-nowrap">
         {total.toLocaleString()}원·{count}회

@@ -268,7 +268,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
               onClick={toggleKakao}
               disabled={kakaoSaving}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                kakaoGroup ? 'bg-green-500' : 'bg-gray-200'
+                kakaoGroup ? 'bg-blue-600' : 'bg-gray-200'
               }`}
             >
               <span
@@ -306,7 +306,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
               onClick={() => togglePlan('consent', planConsent, setPlanConsent)}
               disabled={planSaving === 'consent'}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                planConsent ? 'bg-blue-500' : 'bg-gray-200'
+                planConsent ? 'bg-blue-600' : 'bg-gray-200'
               }`}
             >
               <span
@@ -327,7 +327,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
               onClick={() => togglePlan('privacy', privacyConsent, setPrivacyConsent)}
               disabled={planSaving === 'privacy'}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                privacyConsent ? 'bg-blue-500' : 'bg-gray-200'
+                privacyConsent ? 'bg-blue-600' : 'bg-gray-200'
               }`}
             >
               <span
@@ -348,7 +348,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
               onClick={() => togglePlan('id', idReceived, setIdReceived)}
               disabled={planSaving === 'id'}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
-                idReceived ? 'bg-blue-500' : 'bg-gray-200'
+                idReceived ? 'bg-blue-600' : 'bg-gray-200'
               }`}
             >
               <span

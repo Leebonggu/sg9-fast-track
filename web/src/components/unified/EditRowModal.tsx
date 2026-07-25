@@ -40,6 +40,8 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
   const [planSaving, setPlanSaving] = useState<string | null>(null);
   const [consent, setConsent] = useState(row.consent ?? false);
   const [consentSaving, setConsentSaving] = useState(false);
+  // v2에 제출 행이 없는 세대에서 수거 토글을 켰을 때 뜨는 확인 폼(성명·연락처). null이면 닫힘.
+  const [consentEntry, setConsentEntry] = useState<{ name: string; phone: string } | null>(null);
   const [surveys, setSurveys] = useState<{ id: string; title: string; displayId?: string }[]>([]);
   const [activeSurvey, setActiveSurvey] = useState<{ id: string; displayId: string; title: string } | null>(null);
   const [completedSurveys, setCompletedSurveys] = useState<Set<string>>(new Set());
@@ -103,11 +105,39 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ building, unit: row.ho }),
       });
-      if (!res.ok) { alert('저장 실패'); return; }
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      // 제출 이력이 없어 뒤집을 행이 없는 세대 — 성명 확인 후 수동입력(웹) 행을 새로 만든다.
+      if (res.status === 404 && data.code === 'NO_ROW') {
+        setConsentEntry({ name: ownerName.trim(), phone: phone.trim() });
+        return;
+      }
+      if (!res.ok) { alert(data.error || '저장 실패'); return; }
       const newVal = data.collected ?? !consent;
       setConsent(newVal);
       onConsentToggled?.(row.dong, row.ho, newVal);
+    } finally {
+      setConsentSaving(false);
+    }
+  }
+
+  // 확인 폼 제출 → v2 동별 시트에 수동입력(웹) 행 생성(수거 완료 상태)
+  async function submitConsentEntry() {
+    if (!consentEntry) return;
+    const name = consentEntry.name.trim();
+    if (!name) { alert('성명을 입력하세요'); return; }
+    const building = row.dong.endsWith('동') ? row.dong : `${row.dong}동`;
+    setConsentSaving(true);
+    try {
+      const res = await adminFetch('/api/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ building, unit: row.ho, name, collected: true, phone: consentEntry.phone.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { alert(data.error || '등록 실패'); return; }
+      setConsent(true);
+      onConsentToggled?.(row.dong, row.ho, true);
+      setConsentEntry(null);
     } finally {
       setConsentSaving(false);
     }
@@ -267,7 +297,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
             <button
               type="button"
               onClick={toggleConsent}
-              disabled={consentSaving}
+              disabled={consentSaving || consentEntry !== null}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 ${
                 consent ? 'bg-blue-600' : 'bg-gray-200'
               }`}
@@ -280,6 +310,48 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
             </button>
           </div>
           <p className="text-[10px] text-blue-700 mt-1">⚠ v2 동별 시트에 직접 반영됩니다. 토글 즉시 저장.</p>
+
+          {consentEntry && (
+            <div className="mt-2 border-t border-blue-200 pt-2">
+              <p className="text-[11px] text-gray-600 mb-2">
+                v2 동별 시트에 제출 이력이 없는 세대입니다. 아래 정보로{' '}
+                <span className="font-semibold">수동입력(웹)</span> 행을 새로 만들고 수거 완료로 기록합니다.
+              </p>
+              <label className="block text-[10px] text-gray-500 mb-0.5">성명</label>
+              <input
+                autoFocus
+                value={consentEntry.name}
+                onChange={(e) => setConsentEntry({ ...consentEntry, name: e.target.value })}
+                placeholder="동의서에 기재된 성명"
+                className="w-full text-sm border border-gray-300 rounded px-2 py-1.5 mb-2 outline-none focus:border-blue-400"
+              />
+              <label className="block text-[10px] text-gray-500 mb-0.5">연락처</label>
+              <input
+                value={consentEntry.phone}
+                onChange={(e) => setConsentEntry({ ...consentEntry, phone: e.target.value })}
+                placeholder="010-0000-0000 (선택)"
+                className="w-full text-sm border border-gray-300 rounded px-2 py-1.5 outline-none focus:border-blue-400"
+              />
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setConsentEntry(null)}
+                  disabled={consentSaving}
+                  className="flex-1 px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={submitConsentEntry}
+                  disabled={consentSaving || !consentEntry.name.trim()}
+                  className="flex-1 px-3 py-1.5 text-sm rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {consentSaving ? '등록 중…' : '수거 등록'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <h3 className="text-xs font-semibold text-gray-500 mb-2">소유자 정보 수정</h3>

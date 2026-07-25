@@ -213,27 +213,36 @@ export async function deleteConsent(building: string, unit: string) {
   throw new Error('해당 호수 데이터 없음');
 }
 
-export async function toggleCollected(building: string, unit: string) {
+// 기존 제출 행의 수거여부만 뒤집는다. 뒤집을 행이 없을 때 두 경우를 구분해서 알린다.
+//   'NO_ROW'   — 제출 이력이 전혀 없음(전체 2,830세대 중 다수). 호출부에서 새 행 생성 가능.
+//   'DUP_ONLY' — 행은 있는데 전부 '중복(이전 응답)' 마킹. 짝이 사라진 고아 마킹일 수 있으므로
+//                새로 만들면 진짜 중복이 된다. 시트에서 마킹을 확인·해제해야 한다.
+export async function toggleCollected(
+  building: string,
+  unit: string,
+): Promise<boolean | 'NO_ROW' | 'DUP_ONLY'> {
   const doc = await getDoc();
   const sheet = doc.sheetsByTitle[building];
   if (!sheet) throw new Error('시트 없음: ' + building);
 
   const rows = await sheet.getRows();
+  let duplicateOnly = false;
 
   for (let i = rows.length - 1; i >= 0; i--) {
     const row = rows[i];
     const rowUnit = String(row.get('호수') || '');
     const note = String(row.get('비고') || '');
 
-    if (rowUnit === unit && !note.includes('중복(이전 응답)') && note.trim() !== '삭제') {
-      const current = String(row.get('동의서수거여부') || '');
-      const newVal = (current === 'TRUE' || current === 'true') ? 'FALSE' : 'TRUE';
-      row.set('동의서수거여부', newVal);
-      await row.save();
-      return newVal === 'TRUE';
-    }
+    if (rowUnit !== unit || note.trim() === '삭제') continue;
+    if (note.includes('중복(이전 응답)')) { duplicateOnly = true; continue; }
+
+    const current = String(row.get('동의서수거여부') || '');
+    const newVal = (current === 'TRUE' || current === 'true') ? 'FALSE' : 'TRUE';
+    row.set('동의서수거여부', newVal);
+    await row.save();
+    return newVal === 'TRUE';
   }
-  throw new Error('해당 호수 데이터 없음');
+  return duplicateOnly ? 'DUP_ONLY' : 'NO_ROW';
 }
 
 // 사전동의 완료 세대 키셋 반환: Set<"901-101"> + 중복 TRUE 행 목록

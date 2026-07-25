@@ -10,6 +10,9 @@ interface Props {
   rows: UnifiedRow[];
   surveyIds: string[];
   showDong: boolean;
+  // 스크롤을 맨 위로 되돌릴 시점을 정하는 키(필터/동 변경 등 "보는 목록이 바뀔 때"만 값이 달라져야 한다).
+  // rows 배열은 토글 낙관적 업데이트마다 새 배열이 되므로 리셋 기준으로 쓰면 안 된다.
+  resetKey?: string;
   onRowClick: (row: UnifiedRow) => void;
   onKakaoToggled: (dong: string, ho: string, value: boolean) => void;
   onAgeChanged: (dong: string, ho: string, value: string) => void;
@@ -400,7 +403,7 @@ function buildColWidths(showDong: boolean, surveyIds: string[]): number[] {
 const ROW_H = 41;
 const OVERSCAN = 8;
 
-function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged, onPlanToggled }: Props) {
+function UnifiedTableInner({ rows, resetKey, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged, onPlanToggled }: Props) {
   // 데스크톱/모바일 중 한쪽만 마운트 (둘 다 마운트 시 2,830행 이중 렌더로 느려짐). 기본 데스크톱.
   const [isDesktop, setIsDesktop] = useState(true);
   useEffect(() => {
@@ -417,7 +420,8 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportH, setViewportH] = useState(0);
 
-  // rows(필터/검색) 바뀌면 스크롤 리셋 + 뷰포트 높이 재측정
+  // 필터/동이 바뀌면(resetKey 변경) 스크롤 리셋 + 뷰포트 높이 재측정.
+  // rows를 의존성에 두면 토글 낙관적 업데이트마다 새 배열이 와서 스크롤이 맨 위로 튄다.
   useEffect(() => {
     if (!isDesktop) return;
     const el = scrollRef.current;
@@ -425,7 +429,7 @@ function UnifiedTableInner({ rows, surveyIds, showDong, onRowClick, onKakaoToggl
     el.scrollTop = 0;
     setScrollTop(0);
     setViewportH(el.clientHeight);
-  }, [rows, isDesktop]);
+  }, [resetKey, isDesktop]);
 
   useEffect(() => {
     if (!isDesktop) return;

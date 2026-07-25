@@ -177,6 +177,7 @@ export default function UnifiedPage() {
               </div>
               <UnifiedTable
                 rows={filtered}
+                resetKey={filter}
                 surveyIds={surveyIds}
                 showDong={true}
                 onRowClick={setEditing}

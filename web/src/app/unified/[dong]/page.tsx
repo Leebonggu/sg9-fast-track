@@ -112,6 +112,7 @@ export default function UnifiedDongPage() {
               </div>
               <UnifiedTable
                 rows={filtered}
+                resetKey={`${dong}:${filter}`}
                 surveyIds={surveyIds}
                 showDong={false}
                 onRowClick={setEditing}

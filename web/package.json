@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "orphans": "tsx --env-file=.env.local scripts/find-orphan-duplicates.mts",
     "test": "tsx tests/donation-parser.test.ts && tsx tests/donation-classify.test.ts && tsx tests/donation-import-file.test.ts && tsx tests/phone-format.test.ts && tsx tests/id-upload-correction-window.test.ts && tsx tests/unified-table-scroll.test.mts"
   },
   "dependencies": {

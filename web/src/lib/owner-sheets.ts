@@ -81,120 +81,52 @@ export async function getOwners(): Promise<OwnerRow[]> {
     .filter((r) => r.dong && r.ho);
 }
 
-// 마스터 시트("통합현황")에서 현재 메모 맵 읽기 (sync 전 보존용)
-export async function getMemoMap(): Promise<Map<string, string>> {
-  const doc = await getOwnerDoc();
-  const sheet = doc.sheetsByTitle['통합현황'];
-  if (!sheet) return new Map();
-  try {
-    const rows = await sheet.getRows();
-    const map = new Map<string, string>();
-    for (const row of rows) {
-      const key = `${row.get('동')}-${row.get('호수')}`;
-      const memo = String(row.get('메모') || '');
-      if (memo) map.set(key, memo);
-    }
-    return map;
-  } catch {
-    return new Map();
-  }
+// 마스터 시트("통합현황")에서 sync 시 보존해야 할 값 전부 (위원이 손으로 쌓은 데이터).
+// 원본이 통합현황 말고는 없으므로, 읽기가 실패하면 절대 빈 값으로 진행하면 안 된다.
+//
+// 이전에는 컬럼별로 함수가 나뉘어 같은 시트를 6번 읽었고, 각 함수가 실패를 catch해서
+// 빈 맵을 돌려줬다. 그 경우 sync가 그대로 진행돼 2,830행을 빈 값으로 덮어썼다
+// (일시적인 Sheets 쿼터 초과만으로도 메모·토글·연락처_수정이 통째로 날아간다).
+// → 한 번만 읽고, 실패는 그대로 던져서 sync 자체가 writeMasterRows에 도달하지 못하게 한다.
+export interface MasterPreservation {
+  memo: Map<string, string>;
+  opposition: Map<string, boolean>;
+  kakaoGroup: Map<string, boolean>;
+  planConsent: Map<string, boolean>;
+  privacyConsent: Map<string, boolean>;
+  idReceived: Map<string, boolean>;
+  age: Map<string, string>;
+  phoneOverride: Map<string, string>;
 }
 
-// 마스터 시트("통합현황")에서 반대 의사 맵 읽기 (sync 전 보존용)
-export async function getOppositionMap(): Promise<Map<string, boolean>> {
+export async function getMasterPreservation(): Promise<MasterPreservation> {
+  const empty: MasterPreservation = {
+    memo: new Map(), opposition: new Map(), kakaoGroup: new Map(),
+    planConsent: new Map(), privacyConsent: new Map(), idReceived: new Map(),
+    age: new Map(), phoneOverride: new Map(),
+  };
   const doc = await getOwnerDoc();
   const sheet = doc.sheetsByTitle['통합현황'];
-  if (!sheet) return new Map();
-  try {
-    const rows = await sheet.getRows();
-    const map = new Map<string, boolean>();
-    for (const row of rows) {
-      const key = `${row.get('동')}-${row.get('호수')}`;
-      if (row.get('재건축반대') === 'TRUE') map.set(key, true);
-    }
-    return map;
-  } catch {
-    return new Map();
-  }
-}
-
-// 마스터 시트("통합현황")에서 단톡방 참여 맵 읽기 (sync 전 보존용)
-export async function getKakaoGroupMap(): Promise<Map<string, boolean>> {
-  const doc = await getOwnerDoc();
-  const sheet = doc.sheetsByTitle['통합현황'];
-  if (!sheet) return new Map();
-  try {
-    const rows = await sheet.getRows();
-    const map = new Map<string, boolean>();
-    for (const row of rows) {
-      const key = `${row.get('동')}-${row.get('호수')}`;
-      if (row.get('단톡방참여') === 'TRUE') map.set(key, true);
-    }
-    return map;
-  } catch {
-    return new Map();
-  }
-}
-
-// 마스터 시트("통합현황")에서 정비계획입안 2종 + 신분증 수령 맵 읽기 (sync 전 보존용). 한 번의 getRows로 3컬럼 동시 처리.
-export async function getPlanTrackingMaps(): Promise<{
-  consent: Map<string, boolean>; privacyConsent: Map<string, boolean>; idReceived: Map<string, boolean>;
-}> {
-  const doc = await getOwnerDoc();
-  const sheet = doc.sheetsByTitle['통합현황'];
-  const empty = { consent: new Map<string, boolean>(), privacyConsent: new Map<string, boolean>(), idReceived: new Map<string, boolean>() };
+  // 시트가 아직 없는 최초 sync만 빈 값이 정상이다. 그 외 실패는 아래에서 throw된다.
   if (!sheet) return empty;
-  try {
-    const rows = await sheet.getRows();
-    const consent = new Map<string, boolean>();
-    const privacyConsent = new Map<string, boolean>();
-    const idReceived = new Map<string, boolean>();
-    for (const row of rows) {
-      const key = `${row.get('동')}-${row.get('호수')}`;
-      if (row.get('정비계획입안_동의서') === 'TRUE') consent.set(key, true);
-      if (row.get('개인정보수집동의') === 'TRUE') privacyConsent.set(key, true);
-      if (row.get('신분증_수령') === 'TRUE') idReceived.set(key, true);
-    }
-    return { consent, privacyConsent, idReceived };
-  } catch { return empty; }
-}
 
-// 마스터 시트("통합현황")에서 연령대 맵 읽기 (sync 전 보존용). 빈값은 제외.
-export async function getAgeMap(): Promise<Map<string, string>> {
-  const doc = await getOwnerDoc();
-  const sheet = doc.sheetsByTitle['통합현황'];
-  if (!sheet) return new Map();
-  try {
-    const rows = await sheet.getRows();
-    const map = new Map<string, string>();
-    for (const row of rows) {
-      const key = `${row.get('동')}-${row.get('호수')}`;
-      const age = normalizeAgeGroup(String(row.get('연령대') || '').trim());
-      if (age) map.set(key, age);
-    }
-    return map;
-  } catch {
-    return new Map();
+  const rows = await sheet.getRows();
+  const result = { ...empty };
+  for (const row of rows) {
+    const key = `${row.get('동')}-${row.get('호수')}`;
+    const memo = String(row.get('메모') || '');
+    if (memo) result.memo.set(key, memo);
+    if (row.get('재건축반대') === 'TRUE') result.opposition.set(key, true);
+    if (row.get('단톡방참여') === 'TRUE') result.kakaoGroup.set(key, true);
+    if (row.get('정비계획입안_동의서') === 'TRUE') result.planConsent.set(key, true);
+    if (row.get('개인정보수집동의') === 'TRUE') result.privacyConsent.set(key, true);
+    if (row.get('신분증_수령') === 'TRUE') result.idReceived.set(key, true);
+    const age = normalizeAgeGroup(String(row.get('연령대') || '').trim());
+    if (age) result.age.set(key, age);
+    const phone = String(row.get('연락처_수정') || '').trim();
+    if (phone) result.phoneOverride.set(key, phone);
   }
-}
-
-// 마스터 시트("통합현황")에서 연락처_수정(override) 맵 읽기 (sync 전 보존용). 빈값은 제외.
-export async function getPhoneOverrideMap(): Promise<Map<string, string>> {
-  const doc = await getOwnerDoc();
-  const sheet = doc.sheetsByTitle['통합현황'];
-  if (!sheet) return new Map();
-  try {
-    const rows = await sheet.getRows();
-    const map = new Map<string, string>();
-    for (const row of rows) {
-      const key = `${row.get('동')}-${row.get('호수')}`;
-      const phone = String(row.get('연락처_수정') || '').trim();
-      if (phone) map.set(key, phone);
-    }
-    return map;
-  } catch {
-    return new Map();
-  }
+  return result;
 }
 
 // 마스터 시트("통합현황") 전체 overwrite

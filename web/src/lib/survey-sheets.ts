@@ -2,6 +2,7 @@ import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { getServiceAccountAuth } from './google-auth';
 import type { SurveyConfig, SurveyResponse, SurveyStats } from './surveys/types';
 import { normalizeAgeGroup } from './unified-utils';
+import { normalizePhone } from './phone-format';
 
 const docCacheMap = new Map<string, GoogleSpreadsheet>();
 
@@ -231,6 +232,57 @@ export async function getSurveyKeyset(config: SurveyConfig): Promise<Set<string>
     if (dongNum && ho) result.add(`${dongNum}-${ho}`);
   }
   return result;
+}
+
+export interface SurveyContact {
+  name: string;
+  phone: string;
+}
+
+// 설문 응답에서 동-호별 (응답자명, 연락처) 목록 반환: Map<"901-101", [{name, phone}]>
+// v2 동별 시트(신속통합동의서)를 안 낸 세대는 연락처가 아예 없으므로 이 맵이 유일한 소스가 된다.
+// 연락처는 시트가 숫자로 저장해 선행 0이 날아가 있어 normalizePhone으로 복원한다.
+// getSurveyKeyset과 동일 키 규칙("901동" → "901"). 뒤(최신) 응답부터 수집하고 같은 번호는 중복 제거.
+export async function getSurveyPhoneMap(
+  config: SurveyConfig,
+): Promise<Map<string, SurveyContact[]>> {
+  const nameCol = config.basicInfoFields.find((f) => f.key === 'name')?.sheetColumn;
+  const phoneCol = config.basicInfoFields.find((f) => f.key === 'phone')?.sheetColumn;
+  if (!nameCol || !phoneCol) return new Map();
+
+  const doc = await getSurveyDoc(config);
+  const sheet = getUnifiedSheet(doc);
+  const rows = await sheet.getRows();
+  const map = new Map<string, SurveyContact[]>();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    const dongNum = String(row.get('동') || '').trim().replace('동', '');
+    const ho = String(row.get('호') || '').trim();
+    const phone = normalizePhone(String(row.get(phoneCol) || '').trim());
+    const name = String(row.get(nameCol) || '').trim();
+    if (!dongNum || !ho || !phone) continue;
+    const key = `${dongNum}-${ho}`;
+    const list = map.get(key);
+    if (!list) map.set(key, [{ name, phone }]);
+    else if (!list.some((x) => x.phone === phone)) list.push({ name, phone });
+  }
+  return map;
+}
+
+// 여러 설문의 연락처 맵 병합 — 먼저 등록된 설문이 앞에 오고, 같은 번호는 중복 제거.
+export async function getMergedSurveyPhoneMap(
+  configs: SurveyConfig[],
+): Promise<Map<string, SurveyContact[]>> {
+  const maps = await Promise.all(configs.map((c) => getSurveyPhoneMap(c)));
+  const merged = new Map<string, SurveyContact[]>();
+  for (const map of maps) {
+    for (const [key, contacts] of map) {
+      const list = merged.get(key);
+      if (!list) merged.set(key, [...contacts]);
+      else for (const c of contacts) if (!list.some((x) => x.phone === c.phone)) list.push(c);
+    }
+  }
+  return merged;
 }
 
 // 연령대 순위 — 다중응답 세대는 최고 연령대를 대표값으로 채택

@@ -1,6 +1,7 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { BUILDING_CONFIG, getTotalUnits } from './buildings';
 import { getServiceAccountAuth } from './google-auth';
+import { normalizePhone } from './phone-format';
 
 export { BUILDING_CONFIG };
 
@@ -298,7 +299,9 @@ export async function getPhoneMap(): Promise<Map<string, string>> {
     for (let i = rows.length - 1; i >= 0; i--) {
       const row = rows[i];
       const ho = String(row.get('호수') || '').trim();
-      const phone = String(row.get('연락처') || '').trim();
+      // v2 시트도 번호를 숫자로 저장해 선행 0이 날아가 있다(1,073건 중 1,071건).
+      // 시트 원본은 그대로 두고 읽는 쪽에서만 복원한다.
+      const phone = normalizePhone(String(row.get('연락처') || '').trim());
       const name = String(row.get('성명') || '').trim();
       const note = String(row.get('비고') || '').trim();
       if (!ho || !phone) continue;

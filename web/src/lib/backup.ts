@@ -15,8 +15,10 @@ function getSecret(): string {
   return s;
 }
 
+// 백업 cron은 UTC 16:00(=KST 01:00)에 돈다. toISOString()은 UTC라 이 시각의 날짜가
+// KST 기준으로는 전날이 되어, 백업 파일명이 항상 하루 밀린 채 붙었다. → KST 날짜로 붙인다.
 function todayLabel(): string {
-  return new Date().toISOString().slice(0, 10);
+  return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
 }
 
 export async function backupOwnerSpreadsheet(): Promise<{ fileId: string; name: string }> {

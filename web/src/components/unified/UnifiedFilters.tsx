@@ -115,6 +115,7 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
           {btn('consent', '동의서 제출', 'green')}
           {btn('no-id', '신분증 미제출')}
           {btn('id', '신분증 제출', 'green')}
+          {btn('id-scan-pending', '신분증 스캔 대기', 'orange')}
           {surveyIds.map((id) => btn(`no-${id}` as FilterType, `${shortSurveyLabel(id)} 미완료`))}
           {btn('no-plan-consent', '정비입안 미수령')}
           {btn('plan-consent', '정비입안 수령', 'green')}

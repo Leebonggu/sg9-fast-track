@@ -172,6 +172,9 @@ export function applyFilter(
     return rows.filter((r) => r.consent && !hasIdSubmitted(r));
   // 사전동의 완료 세대 중 신분증 제출 완료 (no-id의 여집합 → 둘의 합 = 동의세대 수)
   if (filter === 'id') return rows.filter((r) => r.consent && hasIdSubmitted(r));
+  // 종이로는 받았는데 아직 업로드 안 한 세대 = 스캔 작업 큐
+  if (filter === 'id-scan-pending')
+    return rows.filter((r) => r.idReceived && (r.idUploaded ?? 0) === 0);
   // 전체 세대 중 후원금 미납부 (사전동의 여부와 무관 — 후원금은 전체 세대 대상)
   if (filter === 'no-donation')
     return rows.filter((r) => (r.donationTotal ?? 0) === 0);

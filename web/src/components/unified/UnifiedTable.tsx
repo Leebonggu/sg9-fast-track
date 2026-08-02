@@ -71,9 +71,10 @@ function KakaoToggle({
   );
 }
 
-function PlanMiniToggle({ dong, ho, field, label, value, onChanged }: {
+function PlanMiniToggle({ dong, ho, field, label, value, onChanged, title }: {
   dong: string; ho: string; field: 'consent' | 'privacy' | 'id'; label: string; value: boolean;
   onChanged: (dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => void;
+  title?: string;
 }) {
   const [saving, setSaving] = useState(false);
   async function toggle() {
@@ -91,23 +92,28 @@ function PlanMiniToggle({ dong, ho, field, label, value, onChanged }: {
     finally { setSaving(false); }
   }
   return (
-    <button type="button" onClick={toggle} title={`${label} 수령 여부 (클릭해서 토글)`}
+    <button type="button" onClick={toggle} title={title ?? `${label} 수령 여부 (클릭해서 토글)`}
       className={`${CTRL} ${value ? CTRL_ON : CTRL_OFF}`}>
       {value ? `✓${label}` : label}
     </button>
   );
 }
 
+// 신분증은 전부 "종이로 받아서 위원이 스캔 업로드"하는 흐름이라, 주민 온라인 제출을
+// 따로 구분해 보여줄 이유가 없다. 하나로 합쳐 "종이(업로드된 파일 수)"로 표시한다.
+//   종이(0)   미수령
+//   ✓종이(0)  종이는 받았고 아직 업로드 안 함 → 스캔 대기
+//   ✓종이(2)  받고 2장 업로드 완료 (공동명의는 소유자 1명당 1장)
 function IdReceivedCell({ row, onPlanToggled }: { row: UnifiedRow; onPlanToggled: RowProps['onPlanToggled']; }) {
-  const online = row.idUploaded ?? 0;
+  const uploaded = row.idUploaded ?? 0;
   return (
-    <span className="inline-flex items-center gap-1">
-      {online > 0 && (
-        <span className="inline-flex items-center justify-center h-7 px-2 rounded-md border text-[11px] font-medium bg-blue-50 text-blue-700 border-blue-200"
-          title={`온라인 신분증 ${online}장 업로드됨 (읽기 전용)`}>✓온라인{online}</span>
-      )}
-      <PlanMiniToggle dong={row.dong} ho={row.ho} field="id" label="종이" value={row.idReceived ?? false} onChanged={onPlanToggled} />
-    </span>
+    <PlanMiniToggle
+      dong={row.dong} ho={row.ho} field="id"
+      label={`종이(${uploaded})`}
+      value={row.idReceived ?? false}
+      onChanged={onPlanToggled}
+      title={`종이 수령 여부 (클릭해서 토글) · 괄호 안은 업로드된 신분증 파일 수 ${uploaded}장 (자동 집계, 파기 제외)`}
+    />
   );
 }
 

@@ -524,7 +524,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
 
         <div className="mt-4 pt-3 border-t border-gray-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">신분증사본 수령 (오프라인 종이)</span>
+            <span className="text-xs text-gray-500">신분증사본 종이 수령</span>
             <button
               type="button"
               onClick={() => togglePlan('id', idReceived, setIdReceived)}
@@ -540,7 +540,7 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
               />
             </button>
           </div>
-          <p className="text-[10px] text-gray-400 mt-1">온라인 업로드분(위 신분증 패널)도 수령으로 자동 인정됩니다. 이 토글은 오프라인 종이 수령용.</p>
+          <p className="text-[10px] text-gray-400 mt-1">종이로 받았을 때 켭니다. 표에는 <span className="font-medium">종이(N)</span>으로 보이고, N은 위 패널에서 업로드된 파일 수입니다. 업로드가 1장이라도 있으면 이 토글과 무관하게 제출로 집계됩니다.</p>
         </div>
 
         <div className="mt-4 pt-3 border-t border-gray-200">

@@ -159,6 +159,27 @@ async function run(): Promise<void> {
   assertEqual('필터 변경 시 스크롤이 맨 위로 리셋된다', scroller.scrollTop, 0);
   assertEqual('필터 변경 후 첫 행(101호)이 다시 렌더된다', renderedHos().includes('101'), true);
 
+  // (3) 행 높이 불변 — 가상 스크롤은 모든 행이 정확히 ROW_H라고 가정하므로,
+  //     메모가 여러 줄이어도 셀은 한 줄로 렌더돼야 한다.
+  //     (2026-08-03 버그: sync가 붙이는 [설문연락처] 줄 때문에 메모가 2줄이 됐는데
+  //      표시용 버튼에 whitespace-pre-line이 걸려 있어 행이 41px를 넘었고 스크롤이 꿀렁거렸다.
+  //      jsdom엔 레이아웃이 없어 픽셀을 못 재므로 "한 줄로 렌더되는가"로 계약을 고정한다.)
+  const multiline = '종이:안명숙\n[설문연락처] 안명숙 010-8892-3392 (소유자명 불일치 — 확인 필요)';
+  await render(
+    makeRows(300).map((r) => (r.ho === '101' ? { ...r, memo: multiline } : r)),
+    'memo-check',
+  );
+  const memoBtn = scroller.querySelector('button[data-cell="memo"]') as HTMLElement | null;
+  assertEqual('메모 셀이 렌더된다', memoBtn != null, true);
+  assertEqual('메모가 여러 줄이어도 줄바꿈 없이 렌더된다', memoBtn?.textContent?.includes('\n'), false);
+  assertEqual('한 줄 유지를 위해 truncate가 걸려 있다', memoBtn?.className.includes('truncate'), true);
+  assertEqual(
+    '행 높이를 늘리는 whitespace-pre-line이 없다',
+    memoBtn?.className.includes('whitespace-pre-line'),
+    false,
+  );
+  assertEqual('전체 내용은 title로 보존된다', memoBtn?.getAttribute('title'), multiline);
+
   await act(async () => { root.unmount(); });
 }
 

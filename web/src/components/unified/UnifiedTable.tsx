@@ -353,7 +353,9 @@ const DesktopRow = memo(function DesktopRow({
           <Check value={row.surveys[id] ?? false} />
         </td>
       ))}
-      <td className="py-0 px-3 overflow-hidden whitespace-nowrap">
+      {/* 편집 상자가 absolute로 뜨므로 overflow-hidden을 걸지 않는다 (걸면 잘림).
+          내용은 MemoCell 안에서 truncate되고, table-layout:fixed라 열 너비는 안 벌어진다. */}
+      <td className="py-0 px-3 whitespace-nowrap">
         <MemoCell dong={row.dong} ho={row.ho} initialMemo={row.memo} />
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">

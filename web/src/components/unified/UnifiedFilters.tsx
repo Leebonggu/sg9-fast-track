@@ -112,10 +112,14 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
       {catRow('제출·수령', 'text-[#2F5496]', (
         <>
           {btn('no-consent', '동의서 미제출')}
+          {btn('consent', '동의서 제출', 'green')}
           {btn('no-id', '신분증 미제출')}
+          {btn('id', '신분증 제출', 'green')}
           {surveyIds.map((id) => btn(`no-${id}` as FilterType, `${shortSurveyLabel(id)} 미완료`))}
-          {btn('no-plan-consent', '정비입안 동의서')}
+          {btn('no-plan-consent', '정비입안 미수령')}
+          {btn('plan-consent', '정비입안 수령', 'green')}
           {btn('no-privacy', '개인정보 미동의')}
+          {btn('privacy', '개인정보 동의', 'green')}
         </>
       ))}
 

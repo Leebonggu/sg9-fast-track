@@ -146,6 +146,11 @@ export function downloadByDongAsXlsx(rows: UnifiedRow[], surveyIds: string[], fi
   XLSX.writeFile(wb, filename);
 }
 
+// 신분증 제출 인정 기준 — 온라인 업로드 1장 이상 또는 종이(오프라인) 수령 체크.
+// 요약 카드와 필터가 서로 다른 기준을 쓰면 숫자가 어긋나므로 여기서만 정의한다.
+export const hasIdSubmitted = (r: UnifiedRow) =>
+  (r.idUploaded ?? 0) > 0 || !!r.idReceived;
+
 const isRental = (r: UnifiedRow) => r.residency === '임대';
 const isResident = (r: UnifiedRow) => r.residency === '실거주';
 const isJoint = (r: UnifiedRow) => r.ownerName.includes(',');
@@ -161,9 +166,12 @@ export function applyFilter(
       (r) => !r.consent || surveyIds.some((id) => !r.surveys[id]),
     );
   if (filter === 'no-consent') return rows.filter((r) => !r.consent);
+  if (filter === 'consent') return rows.filter((r) => r.consent);
   // 사전동의 완료 세대 중 신분증 미제출 (온라인 업로드 없고 오프라인 수동체크도 없음)
   if (filter === 'no-id')
-    return rows.filter((r) => r.consent && (r.idUploaded ?? 0) === 0 && !r.idReceived);
+    return rows.filter((r) => r.consent && !hasIdSubmitted(r));
+  // 사전동의 완료 세대 중 신분증 제출 완료 (no-id의 여집합 → 둘의 합 = 동의세대 수)
+  if (filter === 'id') return rows.filter((r) => r.consent && hasIdSubmitted(r));
   // 전체 세대 중 후원금 미납부 (사전동의 여부와 무관 — 후원금은 전체 세대 대상)
   if (filter === 'no-donation')
     return rows.filter((r) => (r.donationTotal ?? 0) === 0);
@@ -174,8 +182,11 @@ export function applyFilter(
   if (filter === 'kakao-group') return rows.filter((r) => r.kakaoGroup);
   if (filter === 'no-kakao-group') return rows.filter((r) => !r.kakaoGroup);
 
+  // 정비계획입안 2종 — 전 세대 대상 오프라인 수령 체크 (사전동의 여부와 무관)
   if (filter === 'no-plan-consent') return rows.filter((r) => !r.planConsent);
+  if (filter === 'plan-consent') return rows.filter((r) => r.planConsent);
   if (filter === 'no-privacy') return rows.filter((r) => !r.privacyConsent);
+  if (filter === 'privacy') return rows.filter((r) => r.privacyConsent);
 
   if (filter === 'joint') return rows.filter(isJoint);
   if (filter === 'joint-incomplete')

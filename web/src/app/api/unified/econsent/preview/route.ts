@@ -4,7 +4,13 @@ import { previewEconsentUpload } from '@/lib/econsent-import';
 // 파일 2개를 받아 파싱·집계하고 직전 업로드 대비 변경분을 돌려준다. 시트에는 쓰지 않는다.
 // /api/unified/* 는 middleware.ts가 x-app-password로 보호한다.
 export async function POST(req: NextRequest) {
-  const formData = await req.formData();
+  // body가 multipart가 아니면 formData()가 그대로 던져서 500이 된다 → 400으로 받아준다.
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch {
+    return NextResponse.json({ error: '파일 업로드 형식이 아닙니다.' }, { status: 400 });
+  }
   const sinto = formData.get('sinto');
   const plan = formData.get('plan');
 

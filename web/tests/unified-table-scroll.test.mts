@@ -57,7 +57,18 @@ window.matchMedia = ((query: string) => ({
   dispatchEvent: () => false,
 })) as unknown as typeof window.matchMedia;
 
+// jsdom에는 ResizeObserver가 없다. 컴포넌트는 뷰포트 높이를 이걸로 관찰한다
+// (스크롤 이벤트에서 재면 가로 스크롤바가 생겼다 사라질 때 높이가 흔들려서 옮겼다).
+// 레이아웃이 없는 jsdom에서는 콜백이 불릴 일이 없으므로 빈 구현으로 충분하다.
+class NoopResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 const g = globalThis as unknown as Record<string, unknown>;
+g.ResizeObserver = NoopResizeObserver;
+(window as unknown as Record<string, unknown>).ResizeObserver = NoopResizeObserver;
 g.window = window;
 g.document = window.document;
 g.HTMLElement = window.HTMLElement;

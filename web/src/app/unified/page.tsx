@@ -9,7 +9,7 @@ import UnifiedFilters from '@/components/unified/UnifiedFilters';
 import UnifiedTable from '@/components/unified/UnifiedTable';
 import SyncButton from '@/components/unified/SyncButton';
 import EditRowModal from '@/components/unified/EditRowModal';
-import { applyFilter, downloadAsXlsx, downloadByDongAsXlsx } from '@/lib/unified-utils';
+import { applyFilter, searchRows, downloadAsXlsx, downloadByDongAsXlsx } from '@/lib/unified-utils';
 import type { UnifiedRow, FilterType } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 
@@ -17,6 +17,7 @@ export default function UnifiedPage() {
   const [rows, setRows] = useState<UnifiedRow[]>([]);
   const [surveyIds, setSurveyIds] = useState<string[]>([]);
   const [filter, setFilter] = useState<FilterType>('all');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<UnifiedRow | null>(null);
 
@@ -97,7 +98,7 @@ export default function UnifiedPage() {
   }, []);
 
   const lastSynced = rows[0]?.lastSynced ?? null;
-  const filtered = applyFilter(rows, filter, surveyIds);
+  const filtered = searchRows(applyFilter(rows, filter, surveyIds), query);
 
   return (
     <AdminLayout>
@@ -127,6 +128,30 @@ export default function UnifiedPage() {
           ) : (
             <>
               <UnifiedSummary rows={rows} surveyIds={surveyIds} />
+              {/* 가상 스크롤이라 브라우저 Ctrl+F가 렌더된 30여 행만 훑는다. 이 검색은 2,830세대
+                  전부를 데이터로 뒤지고, 화면에 없는 필드(명부이름·대표자·주소)까지 걸린다. */}
+              <div className="relative mb-3">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="동·호수·이름·연락처·메모 검색 (예: 901 김, 010-1234)"
+                  className="w-full pl-9 pr-20 py-2 text-sm rounded-lg border border-gray-300 focus:border-[#2F5496] focus:outline-none focus:ring-1 focus:ring-[#2F5496]"
+                />
+                {query && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <span className="text-xs text-gray-500">{filtered.length.toLocaleString()}건</span>
+                    <button
+                      onClick={() => setQuery('')}
+                      className="text-gray-400 hover:text-gray-600 text-sm px-1"
+                      aria-label="검색어 지우기"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+              </div>
               <UnifiedFilters active={filter} rows={rows} surveyIds={surveyIds} onChange={setFilter} />
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                 <span className="text-xs text-gray-400">
@@ -175,9 +200,11 @@ export default function UnifiedPage() {
                   </button>
                 </div>
               </div>
+              {/* resetKey에 query를 넣는 이유: 검색어가 바뀌면 목록 자체가 달라지므로
+                  필터 변경과 똑같이 스크롤을 맨 위로 되돌려야 한다. */}
               <UnifiedTable
                 rows={filtered}
-                resetKey={filter}
+                resetKey={`${filter} ${query}`}
                 surveyIds={surveyIds}
                 showDong={true}
                 onRowClick={setEditing}

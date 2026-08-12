@@ -381,7 +381,8 @@ const DesktopRow = memo(function DesktopRow({
   const totalCount = 1 + surveyIds.length;
   const bg = rowBgClass(doneCount, totalCount);
   return (
-    <tr className={`h-[41px] border-b border-gray-100 hover:bg-gray-50 ${bg}`}>
+    // data-row: 가상 스크롤이 실제 행 높이를 재는 표식 (패딩 행과 구분해야 한다)
+    <tr data-row className={`h-[41px] border-b border-gray-100 hover:bg-gray-50 ${bg}`}>
       {showDong && (
         <td className="py-0 px-3 text-gray-400 text-xs overflow-hidden whitespace-nowrap">{row.dong}</td>
       )}
@@ -469,18 +470,18 @@ function buildColWidths(showDong: boolean, surveyIds: string[]): number[] {
   return [
     ...(showDong ? [48] : []),
     56,   // 호수
-    150,  // 소유자
+    190,  // 소유자 (+명부이름 배지)
     120,  // 연락처
     64,   // 실거주
-    90,   // 신속통합동의서_제출
+    118,  // 신속통합동의서_제출 (+전자 배지)
     112,  // 후원금
     ...surveyIds.map(() => 90),
     170,  // 메모
     88,   // 연령대
     76,   // 단톡방
-    100,  // 정비입안 동의서
-    100,  // 개인정보동의
-    124,  // 신분증
+    128,  // 정비입안 동의서 (+전자 배지)
+    128,  // 개인정보동의 (+전자 배지)
+    152,  // 신분증 (+전자 배지)
     56,   // 수정
   ];
 }
@@ -501,9 +502,16 @@ function UnifiedTableInner({ rows, resetKey, surveyIds, showDong, onRowClick, on
 
   // 데스크톱 가상 스크롤 상태
   const scrollRef = useRef<HTMLDivElement>(null);
+  const bodyRef = useRef<HTMLTableSectionElement>(null);
   const rafRef = useRef<number | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportH, setViewportH] = useState(0);
+  // 실제 행 높이. ROW_H는 초기 추정치일 뿐이고, 렌더 후 실측값으로 교정한다.
+  //
+  // 상수로 고정하면 실제 높이와 1px만 어긋나도 스크롤할 때마다 표 전체 높이가 출렁인다
+  // (패딩은 N×가정값인데 렌더된 행은 실제값이라, 창이 밀릴 때마다 합이 달라진다).
+  // border-collapse의 경계선이나 셀 내용 변화로 높이는 언제든 바뀔 수 있으므로 재서 쓴다.
+  const [rowH, setRowH] = useState(ROW_H);
 
   // 필터/동이 바뀌면(resetKey 변경) 스크롤 리셋 + 뷰포트 높이 재측정.
   // rows를 의존성에 두면 토글 낙관적 업데이트마다 새 배열이 와서 스크롤이 맨 위로 튄다.
@@ -516,20 +524,38 @@ function UnifiedTableInner({ rows, resetKey, surveyIds, showDong, onRowClick, on
     setViewportH(el.clientHeight);
   }, [resetKey, isDesktop]);
 
+  // 뷰포트 높이는 스크롤이 아니라 크기 변화에만 반응해야 한다.
+  // 컨테이너가 calc(100vh - 260px)이라 창 크기 말고도 위쪽 필터 줄이 접히거나 늘어나면 바뀐다
+  // → window resize만으로는 놓쳐서 ResizeObserver로 컨테이너 자체를 관찰한다.
   useEffect(() => {
     if (!isDesktop) return;
-    const measure = () => { if (scrollRef.current) setViewportH(scrollRef.current.clientHeight); };
-    window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setViewportH(el.clientHeight);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [isDesktop]);
+
+  // 실제 행 높이 실측. 데이터 행에 data-row를 달아두고 첫 행을 잰다.
+  // 값이 달라졌을 때만 state를 갱신해 렌더 루프를 만들지 않는다.
+  useEffect(() => {
+    if (!isDesktop) return;
+    const tr = bodyRef.current?.querySelector<HTMLTableRowElement>('tr[data-row]');
+    if (!tr) return;
+    const h = tr.getBoundingClientRect().height;
+    if (h > 0 && Math.abs(h - rowH) > 0.5) setRowH(h);
+  });
 
   function onScroll() {
     const el = scrollRef.current;
     if (!el || rafRef.current != null) return;
     rafRef.current = requestAnimationFrame(() => {
       rafRef.current = null;
+      // 스크롤 중에는 scrollTop만 바뀐다. 여기서 clientHeight까지 매 프레임 재면
+      // 가로 스크롤바가 생겼다 사라질 때 높이가 흔들리며 되먹임이 생긴다 → ResizeObserver에 맡긴다.
       setScrollTop(el.scrollTop);
-      setViewportH(el.clientHeight);
     });
   }
 
@@ -568,11 +594,11 @@ function UnifiedTableInner({ rows, resetKey, surveyIds, showDong, onRowClick, on
 
   const total = rows.length;
   const vh = viewportH || 800;
-  const start = Math.max(0, Math.floor(scrollTop / ROW_H) - OVERSCAN);
-  const visibleCount = Math.ceil(vh / ROW_H) + OVERSCAN * 2;
+  const start = Math.max(0, Math.floor(scrollTop / rowH) - OVERSCAN);
+  const visibleCount = Math.ceil(vh / rowH) + OVERSCAN * 2;
   const end = Math.min(total, start + visibleCount);
-  const topPad = start * ROW_H;
-  const botPad = (total - end) * ROW_H;
+  const topPad = start * rowH;
+  const botPad = (total - end) * rowH;
 
   return (
     <div ref={scrollRef} onScroll={onScroll} className="overflow-auto" style={{ maxHeight: 'calc(100vh - 260px)' }}>
@@ -612,7 +638,7 @@ function UnifiedTableInner({ rows, resetKey, surveyIds, showDong, onRowClick, on
             <th className="text-center py-2 px-3 font-medium whitespace-nowrap">수정</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={bodyRef}>
           {topPad > 0 && (
             <tr aria-hidden style={{ height: topPad }}>
               <td colSpan={colCount} className="p-0 border-0" />

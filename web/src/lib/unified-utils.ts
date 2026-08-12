@@ -243,6 +243,29 @@ const isRental = (r: UnifiedRow) => r.residency === '임대';
 const isResident = (r: UnifiedRow) => r.residency === '실거주';
 const isJoint = (r: UnifiedRow) => r.ownerName.includes(',');
 
+/**
+ * 자유 검색 — 가상 스크롤 때문에 브라우저 Ctrl+F가 안 먹는 걸 대신한다.
+ *
+ * Ctrl+F는 화면에 렌더된 30여 행만 훑지만 이건 2,830세대 전부를 데이터로 뒤진다.
+ * 화면에 안 보이는 필드(명부이름·대표자·우편번호)까지 걸리는 것도 그래서다.
+ *
+ * 공백으로 나눈 토큰을 모두 만족해야 한다("901 김" → 901동의 김씨).
+ * 동/호수는 "901-101", "901 101" 어느 쪽으로 쳐도 걸리도록 결합 문자열도 넣는다.
+ */
+export function searchRows(rows: UnifiedRow[], query: string): UnifiedRow[] {
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return rows;
+  return rows.filter((r) => {
+    const haystack = [
+      r.dong, r.ho, `${r.dong}-${r.ho}`, `${r.dong}${r.ho}`,
+      r.ownerName, r.phone, r.phoneOverride, r.memo,
+      r.rosterName, r.representative, r.address, r.postalCode,
+      r.residency, r.ageGroup, r.ageGroupRoster, r.planChoice, r.consentName,
+    ].join(' ').toLowerCase();
+    return tokens.every((t) => haystack.includes(t));
+  });
+}
+
 export function applyFilter(
   rows: UnifiedRow[],
   filter: FilterType,

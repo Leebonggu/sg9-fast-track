@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
-import { applyFilter } from '@/lib/unified-utils';
+import { applyFilter, displayAgeGroup, hasSintoConsent } from '@/lib/unified-utils';
 import type { FilterType, UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 
@@ -117,6 +117,8 @@ function PrintContent() {
                   <th className="c-dong">동</th>
                   <th className="c-ho">호수</th>
                   <th className="c-name">성명</th>
+                  <th className="c-age">연령대</th>
+                  <th className="c-phone">연락처</th>
                   <th className="c-stat">실거주</th>
                   <th className="c-stat">신통기획<br />동의서</th>
                   {surveyIds.map((id) => (
@@ -134,9 +136,13 @@ function PrintContent() {
                     <td className="c-dong">{r.dong}</td>
                     <td className="c-ho">{r.ho}</td>
                     <td className="c-name">{r.ownerName}</td>
+                    <td className="c-age">{displayAgeGroup(r) || '-'}</td>
+                    <td className="c-phone">{r.phoneOverride || r.phone || '-'}</td>
                     <td className="c-stat">{r.residency || '-'}</td>
-                    <td className={`c-stat ${r.consent ? 'ox-o' : 'ox-x'}`}>
-                      {r.consent ? 'O' : 'X'}
+                    {/* 종이·전자 합산. 종이만 보면 전자로 이미 동의한 세대를 X로 찍어
+                        방문 명단에 올리게 되고, 위원이 헛걸음한다. */}
+                    <td className={`c-stat ${hasSintoConsent(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasSintoConsent(r) ? (r.consent ? 'O' : '전자') : 'X'}
                     </td>
                     {surveyIds.map((id) => (
                       <td
@@ -248,22 +254,36 @@ function PrintContent() {
           color: #b91c1c;
           font-weight: 700;
         }
+        /* 연령대·연락처를 넣느라 전체 186mm 안에서 폭을 재배분했다.
+           고정폭 합계 150mm, 나머지 36mm가 성명 몫이다(공동소유 병기 대비). */
         .c-no {
-          width: 13mm;
+          width: 10mm;
         }
         .c-dong {
-          width: 18mm;
+          width: 12mm;
           font-weight: 700;
         }
         .c-ho {
-          width: 18mm;
+          width: 14mm;
           font-weight: 700;
         }
         .c-stat {
-          width: 20mm;
+          width: 18mm;
+        }
+        .c-age {
+          width: 14mm;
+          font-size: 13pt;
+          color: #334155;
+        }
+        /* 방문 전에 전화를 걸 수 있게 통째로 보이도록 줄바꿈을 막는다 */
+        .c-phone {
+          width: 32mm;
+          font-size: 12.5pt;
+          white-space: nowrap;
+          letter-spacing: -0.01em;
         }
         .c-visit {
-          width: 18mm;
+          width: 16mm;
         }
         .list-table .checkbox {
           display: inline-block;

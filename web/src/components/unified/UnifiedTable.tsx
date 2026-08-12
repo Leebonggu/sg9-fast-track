@@ -274,6 +274,14 @@ const MobileCard = memo(function MobileCard({
           {row.nameMismatch && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
           )}
+          {row.rosterNameMismatch && (
+            <span
+              className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-medium"
+              title={`전자동의 명부: ${row.rosterName} — 소유권 이전 의심. 등기부로 확인 후 판단하세요.`}
+            >
+              명부 {row.rosterName}
+            </span>
+          )}
           {row.opposition && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
           )}
@@ -288,6 +296,7 @@ const MobileCard = memo(function MobileCard({
       )}
       <div className="flex flex-wrap gap-1 mb-2 items-center">
         <Chip done={row.consent} label="동의서" />
+        <EBadge state={row.econsentSinto} />
         {surveyIds.map((id) => (
           <Chip
             key={id}
@@ -307,14 +316,62 @@ const MobileCard = memo(function MobileCard({
       <div className="mt-1.5 flex items-center gap-1 flex-wrap">
         <span className="text-[10px] text-gray-400">정비입안 동의서</span>
         <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
+        <EBadge state={row.econsentPlan} />
         <span className="text-[10px] text-gray-400 ml-1">개인정보</span>
         <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
+        {!row.privacyConsent && eAccepted(row) && <EBadge state="완전" label="전자인정" />}
         <span className="text-[10px] text-gray-400 ml-1">신분증</span>
         <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
+        {!row.idReceived && !(row.idUploaded ?? 0) && eAccepted(row) && <EBadge state="완전" label="전자인정" />}
       </div>
+      {(row.representative || (row.coOwnerCount ?? 0) > 1 || row.planChoice) && (
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500">
+          {(row.coOwnerCount ?? 0) > 1 && (
+            <span title="공유 소유자 수">공유 {row.coOwnerCount}인</span>
+          )}
+          {row.representative
+            ? <span className="text-gray-700">대표 {row.representative}</span>
+            : (row.coOwnerCount ?? 0) > 1 && (
+                <span className="px-1 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">대표 미선임</span>
+              )}
+          {row.planChoice && <span className="text-gray-600">· {row.planChoice}</span>}
+        </div>
+      )}
     </div>
   );
 });
+
+/**
+ * 전자동의 배지 — 읽기 전용이다.
+ *
+ * 옆의 PlanMiniToggle·IdReceivedCell은 클릭하면 시트에 쓰는 위젯이고, 그 값은 위원이
+ * 손으로 체크한 종이 기록이다. 전자동의를 그 value에 섞으면 클릭 한 번에 종이 컬럼이
+ * 덮인다. 그래서 두 경로는 화면에서 나란히 보여주되 저장은 끝까지 분리한다.
+ */
+function EBadge({ state, label = '전자' }: { state?: string; label?: string }) {
+  if (state !== '완전' && state !== '일부') return null;
+  const full = state === '완전';
+  return (
+    <span
+      className={`shrink-0 text-[9px] px-1 py-0.5 rounded font-medium ${
+        full ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+      }`}
+      title={
+        full
+          ? '전자동의 제출 완료'
+          : '공유자 일부만 전자서명 — 대표 선임/나머지 독려 대상'
+      }
+    >
+      {full ? label : `${label}△`}
+    </span>
+  );
+}
+
+// 전자동의로 제출한 세대는 신분증·개인정보를 온라인으로 처리한 것으로 본다(위원회 판단).
+// 판정 근거는 unified-utils.ts의 hasIdVerified 주석 참고.
+function eAccepted(row: UnifiedRow): boolean {
+  return row.econsentSinto === '완전' || row.econsentPlan === '완전';
+}
 
 const DesktopRow = memo(function DesktopRow({
   row, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged, onPlanToggled,
@@ -335,6 +392,14 @@ const DesktopRow = memo(function DesktopRow({
           {row.nameMismatch && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-700 font-medium" title={`동의서: ${row.consentName}`}>이름불일치</span>
           )}
+          {row.rosterNameMismatch && (
+            <span
+              className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-medium"
+              title={`전자동의 명부: ${row.rosterName} — 소유권 이전 의심. 등기부로 확인 후 판단하세요.`}
+            >
+              명부 {row.rosterName}
+            </span>
+          )}
           {row.opposition && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
           )}
@@ -349,7 +414,10 @@ const DesktopRow = memo(function DesktopRow({
         <ResidencyBadge value={row.residency} />
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
-        <Check value={row.consent} />
+        <span className="inline-flex items-center gap-1">
+          <Check value={row.consent} />
+          <EBadge state={row.econsentSinto} />
+        </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <DonationBadge total={row.donationTotal ?? 0} count={row.donationCount ?? 0} />
@@ -371,13 +439,22 @@ const DesktopRow = memo(function DesktopRow({
         <KakaoToggle dong={row.dong} ho={row.ho} value={row.kakaoGroup ?? false} onChanged={onKakaoToggled} />
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
-        <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
+        <span className="inline-flex items-center gap-1">
+          <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
+          <EBadge state={row.econsentPlan} />
+        </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
-        <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
+        <span className="inline-flex items-center gap-1">
+          <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
+          {!row.privacyConsent && eAccepted(row) && <EBadge state="완전" />}
+        </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
-        <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
+        <span className="inline-flex items-center gap-1">
+          <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
+          {!row.idReceived && !(row.idUploaded ?? 0) && eAccepted(row) && <EBadge state="완전" />}
+        </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <EditButton onClick={() => onRowClick(row)} />

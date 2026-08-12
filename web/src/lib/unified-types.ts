@@ -27,6 +27,20 @@ export interface UnifiedRow extends OwnerRow {
   phone?: string  // 세대 연락처 (동별 시트에서 sync 시 채움, 폼 제출 세대만 값 있음)
   phoneOverride?: string  // 위원이 통합현황에서 직접 수정한 연락처 (연락처_수정 컬럼, sync에도 보존·우선)
   ageGroup?: string  // 세대 연령대 (통합현황 시트 연령대 컬럼, survey-001 시드 + 위원 수정)
+  // ↓ 서울시 전자동의 명부(전자동의원본 시트) 파생값 — 매 sync 재계산되므로 보존 대상이 아니다
+  econsentSinto?: '완전' | '일부' | ''  // 신속통합 전자동의 세대 판정 (소유자 전원 제출=완전, 일부만=일부, 미제출=빈칸)
+  econsentPlan?: '완전' | '일부' | ''  // 정비계획입안 전자동의 세대 판정 (판정 규칙은 econsentSinto와 동일)
+  coOwnerCount?: number  // 공유 세대의 소유자수 (2~5). 단독 소유 세대는 undefined
+  representative?: string  // 공유 세대 대표자 이름 (명부 대표자여부='대표'인 소유자). 미선임이면 ''
+  planChoice?: string  // 정비계획입안 동의자가 고른 추진 방식 ('추진위원회 구성' | '직접조합설립')
+  // 명부의 생년월일에서 파생한 연령대. 기존 ageGroup(연령대 컬럼)을 덮지 않고 별도로 두는 이유는,
+  // 그 칸에 survey-001 시드값과 위원이 손으로 고친 값이 섞여 있어 둘을 구분할 방법이 없기 때문이다.
+  // 덮어쓰면 위원 입력이 통째로 사라지므로, 표시할 때 `ageGroup || ageGroupRoster`로 합친다.
+  ageGroupRoster?: string
+  rosterName?: string  // 전자동의 명부에 기재된 소유자 이름들 (세대 단위, 쉼표 구분)
+  // 원본 소유자명과 명부 이름이 실질 불일치 — 소유권 이전 의심. 동명이인 접미사(윤지영 vs 윤지영A)는 제외한 판정.
+  // 원본을 자동으로 고치지 않는다. 목록만 뽑아 위원이 등기부로 확인하고 판단한다.
+  rosterNameMismatch?: boolean
 }
 
 // 위원이 모달에서 수정하는 4필드 — 원본 시트에 직접 적용 + 변경로그 기록

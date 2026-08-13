@@ -153,7 +153,19 @@ function PrintContent() {
                     <td className="c-no">{i + 1}</td>
                     <td className="c-dong">{r.dong}</td>
                     <td className="c-ho">{r.ho}</td>
-                    <td className="c-name">{r.ownerName}</td>
+                    <td className="c-name">
+                      {r.ownerName}
+                      {/* 공유 세대만 표시. 정비입안 동의서는 대표가 서명해야 유효하므로
+                          방문 전에 대표가 누구인지(또는 아직 없는지) 알아야 한다.
+                          명부에 소유자수가 없으면(sync 전) 판단할 근거가 없어 아무것도 안 띄운다. */}
+                      {(r.coOwnerCount ?? 0) > 1 && (
+                        <span className={`rep ${r.representative ? 'rep-set' : 'rep-none'}`}>
+                          {r.representative
+                            ? `대표 ${r.representative}`
+                            : `대표 미선임 (공유 ${r.coOwnerCount}인)`}
+                        </span>
+                      )}
+                    </td>
                     <td className="c-age">{displayAgeGroup(r) || '-'}</td>
                     <td className="c-phone">
                       {(() => {
@@ -284,6 +296,21 @@ function PrintContent() {
           text-align: left;
           padding-left: 5mm;
           letter-spacing: 0.02em;
+        }
+        /* 공유 세대의 대표자 — 소유자명 아래 작은 줄로 붙인다.
+           미선임은 방문해서 처리해야 할 일이라 색으로 구분한다. */
+        .list-table td.c-name .rep {
+          display: block;
+          margin-top: 0.8mm;
+          font-size: 10pt;
+          font-weight: 500;
+          letter-spacing: 0;
+        }
+        .list-table td.c-name .rep-set {
+          color: #475569;
+        }
+        .list-table td.c-name .rep-none {
+          color: #b45309;
         }
         .list-table td.c-stat {
           font-size: 14pt;

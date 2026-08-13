@@ -283,6 +283,7 @@ const MobileCard = memo(function MobileCard({
               명부 {row.rosterName}
             </span>
           )}
+          {/* 대표자는 아래 상세 줄에 공유 인원수·추진방식과 함께 나온다 (여기 배지는 중복) */}
           {row.opposition && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
           )}
@@ -376,6 +377,37 @@ function EBadge({ state, label = '전자' }: { state?: string; label?: string })
   );
 }
 
+/**
+ * 공유 세대 대표자 배지.
+ *
+ * 정비계획입안 동의서는 공유자 대표가 서명해야 유효하다. 대표가 없으면 동의 자체를
+ * 시작할 수 없어 방문 전에 알아야 한다(명부 실측 공유 334세대 중 259세대가 미선임).
+ *
+ * 한 줄 안에 배지로만 둔다 — 줄을 늘리면 공유 세대만 행이 높아져 가상 스크롤의
+ * 행 높이 가정이 깨지고 표가 다시 출렁인다.
+ *
+ * coOwnerCount는 전자동의 명부에서 온다. 명부 동기화 전에는 값이 없고,
+ * 그때는 대표 선임 여부를 알 방법이 없으므로 아무것도 띄우지 않는다.
+ */
+function RepBadge({ row }: { row: UnifiedRow }) {
+  if ((row.coOwnerCount ?? 0) <= 1) return null;
+  const set = Boolean(row.representative);
+  return (
+    <span
+      className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-medium ${
+        set ? 'bg-slate-100 text-slate-600' : 'bg-orange-100 text-orange-700'
+      }`}
+      title={
+        set
+          ? `공유 ${row.coOwnerCount}인 · 대표 ${row.representative}`
+          : `공유 ${row.coOwnerCount}인 · 대표 미선임 — 정비입안 동의서는 대표가 서명해야 유효하다`
+      }
+    >
+      {set ? `대표 ${row.representative}` : '대표 미선임'}
+    </span>
+  );
+}
+
 // 전자동의로 제출한 세대는 신분증·개인정보를 온라인으로 처리한 것으로 본다(위원회 판단).
 // 판정 근거는 unified-utils.ts의 hasIdVerified 주석 참고.
 function eAccepted(row: UnifiedRow): boolean {
@@ -410,6 +442,7 @@ const DesktopRow = memo(function DesktopRow({
               명부 {row.rosterName}
             </span>
           )}
+          <RepBadge row={row} />
           {row.opposition && (
             <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">반대</span>
           )}

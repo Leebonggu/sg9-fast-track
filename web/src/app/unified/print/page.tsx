@@ -7,6 +7,7 @@ import {
   applyFilter, displayAgeGroup,
   hasSintoConsent, hasPlanConsent, hasPrivacyConsent, hasIdVerified,
 } from '@/lib/unified-utils';
+import { splitContacts } from '@/lib/phone-format';
 import type { FilterType, UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 
@@ -154,7 +155,19 @@ function PrintContent() {
                     <td className="c-ho">{r.ho}</td>
                     <td className="c-name">{r.ownerName}</td>
                     <td className="c-age">{displayAgeGroup(r) || '-'}</td>
-                    <td className="c-phone">{r.phoneOverride || r.phone || '-'}</td>
+                    <td className="c-phone">
+                      {(() => {
+                        const cs = splitContacts(r.phoneOverride || r.phone || '');
+                        if (cs.length === 0) return '-';
+                        // 이름과 번호를 각자 줄로 나눈다 — 한 줄에 그리면 셀을 넘쳐 글자가 겹친다
+                        return cs.map((c, ci) => (
+                          <span key={ci} className="contact">
+                            {c.name && <span className="contact-name">{c.name}</span>}
+                            <span className="contact-num">{c.number || '-'}</span>
+                          </span>
+                        ));
+                      })()}
+                    </td>
                     <td className="c-stat">{r.residency || '-'}</td>
                     {/* 종이·전자 합산. 종이만 보면 전자로 이미 동의한 세대를 X로 찍어
                         방문 명단에 올리게 되고, 위원이 헛걸음한다. */}
@@ -306,19 +319,38 @@ function PrintContent() {
           font-weight: 700;
         }
         .c-stat {
-          width: 20mm;
+          width: 18mm; /* O/X 한 글자라 좁혀도 되고, 아낀 폭은 성명으로 간다 */
         }
         .c-age {
           width: 16mm; /* 13.6mm */
           font-size: 13pt;
           color: #334155;
         }
-        /* 방문 전에 전화를 걸 수 있게 통째로 보이도록 줄바꿈을 막는다 */
+        /* 연락처는 "나영선 010-2150-9054"처럼 이름이 병기된 경우가 99%다(실측 1,201/1,208).
+           한 줄에 다 그리면 셀을 넘쳐 글자가 겹치므로 이름을 윗줄로 내리고,
+           번호에만 nowrap을 걸어 통째로 보이게 한다. 방문 전에 걸어야 하는 정보다. */
         .c-phone {
-          width: 34mm; /* 28mm — "010-1234-5678"이 12.5pt로 한 줄에 들어간다 */
-          font-size: 12.5pt;
+          width: 36mm;
+          padding-left: 1.5mm;
+          padding-right: 1.5mm;
+        }
+        .c-phone .contact {
+          display: block;
+        }
+        .c-phone .contact + .contact {
+          margin-top: 1.2mm;
+        }
+        .c-phone .contact-name {
+          display: block;
+          font-size: 9.5pt;
+          line-height: 1.15;
+          color: #64748b;
+        }
+        .c-phone .contact-num {
+          display: block;
+          font-size: 13pt;
           white-space: nowrap;
-          letter-spacing: -0.01em;
+          letter-spacing: -0.02em;
         }
         .c-visit {
           width: 16mm;

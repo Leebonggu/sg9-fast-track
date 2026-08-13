@@ -4,6 +4,7 @@ import { memo, useEffect, useRef, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 import { AGE_GROUP_OPTIONS } from '@/lib/unified-utils';
+import { splitContacts } from '@/lib/phone-format';
 import MemoCell from './MemoCell';
 
 interface Props {
@@ -292,7 +293,15 @@ const MobileCard = memo(function MobileCard({
         </div>
       </div>
       {row.phone && (
-        <div className="text-[11px] text-gray-500 mb-1.5 break-all">📞 {row.phone}</div>
+        <div className="text-[11px] text-gray-500 mb-1.5 break-all">
+          📞 {splitContacts(row.phone).map((c, i) => (
+            <span key={i}>
+              {i > 0 && ' / '}
+              {c.number || c.name}
+              {c.number && c.name && <span className="text-gray-400"> {c.name}</span>}
+            </span>
+          ))}
+        </div>
       )}
       <div className="flex flex-wrap gap-1 mb-2 items-center">
         <Chip done={row.consent} label="동의서" />
@@ -406,9 +415,18 @@ const DesktopRow = memo(function DesktopRow({
           )}
         </span>
       </td>
+      {/* 연락처는 대부분 "나영선 010-2150-9054"처럼 이름이 병기돼 있다.
+          그대로 truncate하면 정작 필요한 번호 뒷자리가 잘리므로 번호를 앞세우고 이름은 뒤에 흐리게 둔다. */}
       <td className="py-0 px-3 text-xs text-gray-600 overflow-hidden whitespace-nowrap">
         <span className="block truncate" title={row.phone || undefined}>
-          {row.phone || '-'}
+          {splitContacts(row.phone || '').map((c, i) => (
+            <span key={i}>
+              {i > 0 && <span className="text-gray-300"> / </span>}
+              {c.number || c.name}
+              {c.number && c.name && <span className="text-gray-400"> {c.name}</span>}
+            </span>
+          ))}
+          {!row.phone && '-'}
         </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">

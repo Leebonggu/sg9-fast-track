@@ -3,7 +3,11 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
-import { applyFilter } from '@/lib/unified-utils';
+import {
+  applyFilter, displayAgeGroup,
+  hasSintoConsent, hasPlanConsent, hasPrivacyConsent, hasIdVerified,
+} from '@/lib/unified-utils';
+import { splitContacts } from '@/lib/phone-format';
 import type { FilterType, UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 
@@ -14,6 +18,17 @@ const shortSurveyLabel = (id: string) =>
     .replace(/_?제출_?/g, '')
     .replace(/_?완료$/, '')
     .replace(/_/g, ' ');
+
+// 인쇄물은 위원끼리 돌려보는 종이라 무슨 명단인지 제목에 드러나야 한다.
+// 등록되지 않은 필터는 기존 문구를 그대로 쓴다.
+const TITLE_BY_FILTER: Record<string, string> = {
+  'plan-docs-pending': '정비입안 3종 수거 명단',
+  'no-sinto-any': '신속통합 미동의 세대 명단',
+  'no-plan-any': '정비입안 미동의 세대 명단',
+  'no-representative': '공유 대표 미선임 명단',
+  'econsent-partial': '공유자 일부만 서명한 세대',
+  'roster-name-mismatch': '소유권 이전 의심 세대',
+};
 
 // 동(숫자) → 호수(숫자) 오름차순
 function sortRows(rows: UnifiedRow[]): UnifiedRow[] {
@@ -103,7 +118,7 @@ function PrintContent() {
           <section key={dong} className="dong-section">
             <header className="dong-head">
               <h2>
-                {dong}동 <span className="sub">미제출 세대 명단</span>
+                {dong}동 <span className="sub">{TITLE_BY_FILTER[filter] ?? '미제출 세대 명단'}</span>
               </h2>
               <div className="meta">
                 <span className="count">{dongRows.length}세대</span>
@@ -117,6 +132,8 @@ function PrintContent() {
                   <th className="c-dong">동</th>
                   <th className="c-ho">호수</th>
                   <th className="c-name">성명</th>
+                  <th className="c-age">연령대</th>
+                  <th className="c-phone">연락처</th>
                   <th className="c-stat">실거주</th>
                   <th className="c-stat">신통기획<br />동의서</th>
                   {surveyIds.map((id) => (
@@ -124,6 +141,9 @@ function PrintContent() {
                       {shortSurveyLabel(id)}
                     </th>
                   ))}
+                  <th className="c-stat">정비입안<br />동의서</th>
+                  <th className="c-stat">개인정보<br />동의</th>
+                  <th className="c-stat">신분증</th>
                   <th className="c-visit">방문</th>
                 </tr>
               </thead>
@@ -133,10 +153,38 @@ function PrintContent() {
                     <td className="c-no">{i + 1}</td>
                     <td className="c-dong">{r.dong}</td>
                     <td className="c-ho">{r.ho}</td>
-                    <td className="c-name">{r.ownerName}</td>
+                    <td className="c-name">
+                      {r.ownerName}
+                      {/* 공유 세대만 표시. 정비입안 동의서는 대표가 서명해야 유효하므로
+                          방문 전에 대표가 누구인지(또는 아직 없는지) 알아야 한다.
+                          명부에 소유자수가 없으면(sync 전) 판단할 근거가 없어 아무것도 안 띄운다. */}
+                      {(r.coOwnerCount ?? 0) > 1 && (
+                        <span className={`rep ${r.representative ? 'rep-set' : 'rep-none'}`}>
+                          {r.representative
+                            ? `대표 ${r.representative}`
+                            : `대표 미선임 (공유 ${r.coOwnerCount}인)`}
+                        </span>
+                      )}
+                    </td>
+                    <td className="c-age">{displayAgeGroup(r) || '-'}</td>
+                    <td className="c-phone">
+                      {(() => {
+                        const cs = splitContacts(r.phoneOverride || r.phone || '');
+                        if (cs.length === 0) return '-';
+                        // 이름과 번호를 각자 줄로 나눈다 — 한 줄에 그리면 셀을 넘쳐 글자가 겹친다
+                        return cs.map((c, ci) => (
+                          <span key={ci} className="contact">
+                            {c.name && <span className="contact-name">{c.name}</span>}
+                            <span className="contact-num">{c.number || '-'}</span>
+                          </span>
+                        ));
+                      })()}
+                    </td>
                     <td className="c-stat">{r.residency || '-'}</td>
-                    <td className={`c-stat ${r.consent ? 'ox-o' : 'ox-x'}`}>
-                      {r.consent ? 'O' : 'X'}
+                    {/* 종이·전자 합산. 종이만 보면 전자로 이미 동의한 세대를 X로 찍어
+                        방문 명단에 올리게 되고, 위원이 헛걸음한다. */}
+                    <td className={`c-stat ${hasSintoConsent(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasSintoConsent(r) ? (r.consent ? 'O' : '전자') : 'X'}
                     </td>
                     {surveyIds.map((id) => (
                       <td
@@ -146,6 +194,16 @@ function PrintContent() {
                         {r.surveys[id] ? 'O' : 'X'}
                       </td>
                     ))}
+                    {/* 방문해서 받아야 할 3종. 종이·전자 합산이라 전자로 낸 세대는 O로 뜬다. */}
+                    <td className={`c-stat ${hasPlanConsent(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasPlanConsent(r) ? 'O' : 'X'}
+                    </td>
+                    <td className={`c-stat ${hasPrivacyConsent(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasPrivacyConsent(r) ? 'O' : 'X'}
+                    </td>
+                    <td className={`c-stat ${hasIdVerified(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasIdVerified(r) ? 'O' : 'X'}
+                    </td>
                     <td className="c-visit">
                       <span className="checkbox" />
                     </td>
@@ -158,8 +216,10 @@ function PrintContent() {
       </div>
 
       <style jsx global>{`
+        /* 가로: 컬럼이 13개(정비입안 3종 추가)라 세로 186mm로는 글씨를 키운 채 담기지 않는다.
+           본문 폭 297 - 24 = 273mm. 이 페이지는 ?filter=로 모든 명단이 공용이라 기존 명단도 가로가 된다. */
         @page {
-          size: A4;
+          size: A4 landscape;
           margin: 14mm 12mm;
         }
         html,
@@ -174,7 +234,7 @@ function PrintContent() {
           padding: 10mm 0;
         }
         .dong-section {
-          width: 186mm;
+          width: 273mm;
           background: white;
           padding: 10mm 9mm;
           box-sizing: border-box;
@@ -237,6 +297,21 @@ function PrintContent() {
           padding-left: 5mm;
           letter-spacing: 0.02em;
         }
+        /* 공유 세대의 대표자 — 소유자명 아래 작은 줄로 붙인다.
+           미선임은 방문해서 처리해야 할 일이라 색으로 구분한다. */
+        .list-table td.c-name .rep {
+          display: block;
+          margin-top: 0.8mm;
+          font-size: 10pt;
+          font-weight: 500;
+          letter-spacing: 0;
+        }
+        .list-table td.c-name .rep-set {
+          color: #475569;
+        }
+        .list-table td.c-name .rep-none {
+          color: #b45309;
+        }
         .list-table td.c-stat {
           font-size: 14pt;
         }
@@ -248,22 +323,64 @@ function PrintContent() {
           color: #b91c1c;
           font-weight: 700;
         }
+        /* 숫자·짧은 값 컬럼은 좌우 패딩부터 줄여 실제 내용 폭을 확보한다.
+           기본 padding(3.2mm 3mm)이 좌우 6mm를 먹어서, 10mm 컬럼에 4mm만 남은 것이
+           번호가 잘리던 원인이었다. 폭만 키우면 컬럼이 하나 더 늘 때 같은 사고가 반복된다. */
+        .list-table th.c-no, .list-table td.c-no,
+        .list-table th.c-dong, .list-table td.c-dong,
+        .list-table th.c-ho, .list-table td.c-ho,
+        .list-table th.c-age, .list-table td.c-age {
+          padding-left: 1.2mm;
+          padding-right: 1.2mm;
+        }
+        /* 273mm 배분: 고정 227mm + 성명 46mm. 괄호 안은 패딩을 뺀 실제 내용 폭. */
         .c-no {
-          width: 13mm;
+          width: 14mm; /* 11.6mm — 3자리 여유 */
         }
         .c-dong {
-          width: 18mm;
+          width: 14mm; /* 11.6mm */
           font-weight: 700;
         }
         .c-ho {
-          width: 18mm;
+          width: 17mm; /* 14.6mm */
           font-weight: 700;
         }
         .c-stat {
-          width: 20mm;
+          width: 18mm; /* O/X 한 글자라 좁혀도 되고, 아낀 폭은 성명으로 간다 */
+        }
+        .c-age {
+          width: 16mm; /* 13.6mm */
+          font-size: 13pt;
+          color: #334155;
+        }
+        /* 연락처는 "나영선 010-2150-9054"처럼 이름이 병기된 경우가 99%다(실측 1,201/1,208).
+           한 줄에 다 그리면 셀을 넘쳐 글자가 겹치므로 이름을 윗줄로 내리고,
+           번호에만 nowrap을 걸어 통째로 보이게 한다. 방문 전에 걸어야 하는 정보다. */
+        .c-phone {
+          width: 36mm;
+          padding-left: 1.5mm;
+          padding-right: 1.5mm;
+        }
+        .c-phone .contact {
+          display: block;
+        }
+        .c-phone .contact + .contact {
+          margin-top: 1.2mm;
+        }
+        .c-phone .contact-name {
+          display: block;
+          font-size: 9.5pt;
+          line-height: 1.15;
+          color: #64748b;
+        }
+        .c-phone .contact-num {
+          display: block;
+          font-size: 13pt;
+          white-space: nowrap;
+          letter-spacing: -0.02em;
         }
         .c-visit {
-          width: 18mm;
+          width: 16mm;
         }
         .list-table .checkbox {
           display: inline-block;

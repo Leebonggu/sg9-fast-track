@@ -17,7 +17,9 @@ function normalizePostalCode(raw: string): string {
 
 let ownerDocCache: GoogleSpreadsheet | null = null;
 
-async function getOwnerDoc(): Promise<GoogleSpreadsheet> {
+// export인 이유: 전자동의 임포터도 같은 스프레드시트를 쓴다. 각자 new GoogleSpreadsheet + loadInfo를
+// 하면 Sheets 쿼터를 두 배로 먹으므로 이 캐시를 공유한다.
+export async function getOwnerDoc(): Promise<GoogleSpreadsheet> {
   if (ownerDocCache) return ownerDocCache;
   const auth = getServiceAccountAuth();
   const doc = new GoogleSpreadsheet(process.env.OWNER_SPREADSHEET_ID!, auth);
@@ -143,6 +145,9 @@ export async function writeMasterRows(
     '신속통합동의서_제출_완료',
     ...surveyIds,
     '재건축반대', '단톡방참여', '정비계획입안_동의서', '개인정보수집동의', '신분증_수령', '메모', '마지막_동기화', '동의서이름', '이름불일치', '연락처', '연락처_수정', '연령대',
+    // 전자동의 명부 파생 6컬럼 — 기존 컬럼 순서를 건드리지 않도록 반드시 맨 끝에만 추가한다
+    '신속통합_전자동의', '정비계획입안_전자동의', '공유_소유자수', '공유_대표자', '추진방식_선택', '연령대_명부',
+    '명부이름', '명부이름불일치',
   ];
 
   await sheet.clear();
@@ -171,6 +176,15 @@ export async function writeMasterRows(
     연락처: sanitizeCell(r.phone ?? ''),
     연락처_수정: sanitizeCell(r.phoneOverride ?? ''),
     연령대: r.ageGroup ?? '',
+    // 전자동의 2컬럼만 TRUE/FALSE가 아닌 완전/일부/빈칸 3값이다 (공유 세대의 부분 제출을 구분해야 하므로).
+    신속통합_전자동의: r.econsentSinto ?? '',
+    정비계획입안_전자동의: r.econsentPlan ?? '',
+    공유_소유자수: r.coOwnerCount ? String(r.coOwnerCount) : '',
+    공유_대표자: sanitizeCell(r.representative ?? ''),
+    추진방식_선택: r.planChoice ?? '',
+    연령대_명부: r.ageGroupRoster ?? '',
+    명부이름: sanitizeCell(r.rosterName ?? ''),
+    명부이름불일치: r.rosterNameMismatch ? 'TRUE' : 'FALSE',
   }));
 
   for (let i = 0; i < data.length; i += 500) {
@@ -274,7 +288,39 @@ interface ChangeLogEntry {
   newValue: string;
 }
 
+const CHANGE_LOG_TITLE = '변경로그';
 const CHANGE_LOG_HEADERS = ['시각', '동', '호수', '필드', '이전값', '새값', '수정자'];
+
+// 변경 이력 시트 공용 append. 시트가 없으면 만들고, 있으면 빠진 컬럼만 헤더에 자동 보강한다
+// (기존 기록은 그대로 두고 컬럼만 늘려야 과거 이력이 유실되지 않는다).
+//
+// 시트명·헤더를 파라미터로 뺀 이유: 전자동의 임포터는 「전자동의변경로그」라는 별도 시트에 쌓아야 한다.
+// 기본 「변경로그」는 위원이 모달에서 원본을 손으로 고친 이력 전용이라, 첫 업로드 900여 행이 섞이면
+// 사람이 고친 기록이 묻힌다(후원금이 「후원금변경로그」를 따로 쓰는 것과 같은 선례).
+//
+// 시각은 헤더 준비가 끝난 뒤 한 번만 찍어 한 배치가 같은 값을 갖게 한다. rows에 직접 넣으면 그쪽이 우선.
+export async function appendChangeLog(
+  doc: GoogleSpreadsheet,
+  rows: Record<string, string>[],
+  options: { title?: string; headers?: string[] } = {},
+): Promise<void> {
+  if (rows.length === 0) return;
+  const title = options.title ?? CHANGE_LOG_TITLE;
+  const headerValues = options.headers ?? CHANGE_LOG_HEADERS;
+  let sheet = doc.sheetsByTitle[title];
+  if (!sheet) {
+    sheet = await doc.addSheet({ title, headerValues });
+  } else {
+    // 기존 시트에 새 컬럼(수정자 등)이 없으면 자동 추가
+    await sheet.loadHeaderRow();
+    const missing = headerValues.filter((h) => !sheet!.headerValues.includes(h));
+    if (missing.length > 0) {
+      await sheet.setHeaderRow([...sheet.headerValues, ...missing]);
+    }
+  }
+  const now = new Date().toISOString();
+  await sheet.addRows(rows.map((r) => ({ 시각: now, ...r })));
+}
 
 async function logChanges(
   doc: GoogleSpreadsheet,
@@ -283,22 +329,9 @@ async function logChanges(
   changes: ChangeLogEntry[],
   operator: string,
 ): Promise<void> {
-  if (changes.length === 0) return;
-  let sheet = doc.sheetsByTitle['변경로그'];
-  if (!sheet) {
-    sheet = await doc.addSheet({ title: '변경로그', headerValues: CHANGE_LOG_HEADERS });
-  } else {
-    // 기존 시트에 새 컬럼(수정자 등)이 없으면 자동 추가
-    await sheet.loadHeaderRow();
-    const missing = CHANGE_LOG_HEADERS.filter((h) => !sheet!.headerValues.includes(h));
-    if (missing.length > 0) {
-      await sheet.setHeaderRow([...sheet.headerValues, ...missing]);
-    }
-  }
-  const now = new Date().toISOString();
-  await sheet.addRows(
+  await appendChangeLog(
+    doc,
     changes.map((c) => ({
-      시각: now,
       동: dong,
       호수: ho,
       필드: c.field,
@@ -413,6 +446,12 @@ async function updateMasterRowFields(
   await row.save();
 }
 
+// 전자동의 세대 판정 컬럼 읽기 — 정해진 2값 외에는 전부 미제출('')로 본다
+function readEconsentState(raw: unknown): '완전' | '일부' | '' {
+  const v = String(raw || '').trim();
+  return v === '완전' || v === '일부' ? v : '';
+}
+
 // 마스터 시트 전체 읽기 (API에서 사용)
 export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: string[] }> {
   const doc = await getOwnerDoc();
@@ -433,6 +472,10 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     '정비계획입안_동의서', '개인정보수집동의', '신분증_수령',
     '메모', '마지막_동기화',
     '동의서이름', '이름불일치', '연락처', '연락처_수정', '연령대',
+    // 전자동의 파생 6컬럼도 반드시 여기 등록해야 한다 — surveyIds는 "고정 컬럼이 아닌 헤더 전부"라
+    // 빠뜨리면 sync 직후 표·필터·엑셀에 설문 6개가 유령으로 생긴다.
+    '신속통합_전자동의', '정비계획입안_전자동의', '공유_소유자수', '공유_대표자', '추진방식_선택', '연령대_명부',
+    '명부이름', '명부이름불일치',
   ]);
   const surveyIds = headers.filter((h) => !fixedCols.has(h));
 
@@ -460,6 +503,14 @@ export async function getMasterRows(): Promise<{ rows: UnifiedRow[]; surveyIds: 
     phone: String(row.get('연락처') || ''),
     phoneOverride: String(row.get('연락처_수정') || ''),
     ageGroup: String(row.get('연령대') || ''),
+    econsentSinto: readEconsentState(row.get('신속통합_전자동의')),
+    econsentPlan: readEconsentState(row.get('정비계획입안_전자동의')),
+    coOwnerCount: Number(row.get('공유_소유자수')) || undefined,
+    representative: String(row.get('공유_대표자') || ''),
+    planChoice: String(row.get('추진방식_선택') || ''),
+    ageGroupRoster: String(row.get('연령대_명부') || ''),
+    rosterName: String(row.get('명부이름') || ''),
+    rosterNameMismatch: row.get('명부이름불일치') === 'TRUE',
   }));
 
   return { rows, surveyIds };

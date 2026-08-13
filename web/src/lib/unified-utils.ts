@@ -12,20 +12,108 @@ export function normalizeAgeGroup(raw: string): string {
   return raw === '60대 이상' ? '60대' : raw;
 }
 
+// ─── 종이 경로와 전자동의 합산 ──────────────────────────────────────────────
+//
+// 시트에는 두 경로를 끝까지 따로 저장하고, 합치는 건 여기 읽는 시점에만 한다.
+// 그래서 위원이 손으로 체크한 기록이 임포트로 손상되지 않고, 아래 판단이 바뀌어도
+// 이 파일만 고치면 된다.
+
+export type ConsentSource = '' | '종이' | '전자' | '종이·전자';
+
+// 전자동의는 '완전'만 동의로 센다. '일부'는 공유자 일부만 서명한 상태라 아직 미완결이고,
+// 대표를 세우거나 나머지를 독려하면 완결되는 세대로 따로 관리한다.
+function electronicDone(state: string | undefined): boolean {
+  return state === '완전';
+}
+
+export function consentSource(paper: boolean, electronic: string | undefined): ConsentSource {
+  const e = electronicDone(electronic);
+  if (paper && e) return '종이·전자';
+  if (paper) return '종이';
+  if (e) return '전자';
+  return '';
+}
+
+/** 신속통합 동의 — 종이(v2 수거) OR 전자동의 */
+export function hasSintoConsent(r: UnifiedRow): boolean {
+  return r.consent || electronicDone(r.econsentSinto);
+}
+
+/** 정비계획입안 동의 — 오프라인 수령 OR 전자동의 */
+export function hasPlanConsent(r: UnifiedRow): boolean {
+  return Boolean(r.planConsent) || electronicDone(r.econsentPlan);
+}
+
+/**
+ * 신분증 인정 — 오프라인 수령 OR 온라인 업로드 OR 전자동의 제출.
+ *
+ * 전자동의 명부의 `신분증` 컬럼은 3,184행 전원 '미제출'이다. 전자동의 시스템이 그 서류를
+ * 수집하지 않았다. 전자서명이 본인인증 기반이라 사본이 불필요하다는 위원회의 운영 판단이지
+ * 원본 데이터에 있는 사실이 아니다. 판단이 바뀌면 이 함수만 고치면 된다.
+ */
+export function hasIdVerified(r: UnifiedRow): boolean {
+  return (
+    Boolean(r.idReceived) ||
+    (r.idUploaded ?? 0) > 0 ||
+    electronicDone(r.econsentSinto) ||
+    electronicDone(r.econsentPlan)
+  );
+}
+
+/** 개인정보 수집·제공 동의 — 오프라인 체크 OR 전자동의 제출 (근거는 hasIdVerified와 동일) */
+export function hasPrivacyConsent(r: UnifiedRow): boolean {
+  return (
+    Boolean(r.privacyConsent) ||
+    electronicDone(r.econsentSinto) ||
+    electronicDone(r.econsentPlan)
+  );
+}
+
+/**
+ * 표시용 연령대 — 위원 입력/설문 시드가 있으면 그걸 쓰고, 없을 때만 명부 파생값으로 채운다.
+ *
+ * 명부(공식 등기 생년월일)가 더 정확하지만 `연령대` 칸에는 위원이 손으로 고친 값이 섞여 있고
+ * 시드와 구분할 방법이 없다. 명부를 우선하면 위원 입력이 조용히 사라진다.
+ * 두 값이 충돌하는 세대는 리포트로 뽑아 사람이 판단한다.
+ */
+export function displayAgeGroup(r: UnifiedRow): string {
+  return normalizeAgeGroup(r.ageGroup || '') || r.ageGroupRoster || '';
+}
+
+/** 공유자 일부만 서명해 대표만 세우면 완결되는 세대 — 독려 1순위 */
+export function isPartialConsent(r: UnifiedRow): boolean {
+  return r.econsentSinto === '일부' || r.econsentPlan === '일부';
+}
+
+/** 공유 세대인데 대표가 없는 경우 */
+export function needsRepresentative(r: UnifiedRow): boolean {
+  return (r.coOwnerCount ?? 0) > 1 && !r.representative;
+}
+
 // 행 배열 → 워크시트. includeDong=false면 '동' 컬럼 제외(동별 시트에서는 시트명이 동 역할).
 function buildSheet(rows: UnifiedRow[], surveyIds: string[], includeDong: boolean) {
+  // 연령대·연락처는 오프라인 방문·전화 독려용으로 넣는다(인쇄 명단과 같은 목적).
+  // 신속통합동의서_제출은 종이·전자 합산 — 종이만 보면 전자로 이미 동의한 세대를 X로 찍어
+  // 방문 대상에 올리게 된다. 어느 경로였는지는 옆의 전자동의 컬럼으로 구분한다.
   const headers = [
     ...(includeDong ? ['동'] : []),
-    '호수', '소유자명', '우편번호', '대표주소', '실거주여부', '신속통합동의서_제출', ...surveyIds, '메모',
+    '호수', '소유자명', '연령대', '연락처', '우편번호', '대표주소', '실거주여부',
+    '신속통합동의서_제출', '신속통합_전자동의', '정비계획입안_전자동의', '공유_대표자',
+    ...surveyIds, '메모',
   ];
   const dataRows = rows.map((r) => [
     ...(includeDong ? [sanitizeCell(r.dong)] : []),
     sanitizeCell(r.ho),
     sanitizeCell(r.ownerName),
+    sanitizeCell(displayAgeGroup(r)),
+    sanitizeCell(r.phoneOverride || r.phone || ''),
     sanitizeCell(r.postalCode),
     sanitizeCell(r.address),
     sanitizeCell(r.residency),
-    r.consent ? 'O' : 'X',
+    hasSintoConsent(r) ? 'O' : 'X',
+    sanitizeCell(r.econsentSinto ?? ''),
+    sanitizeCell(r.econsentPlan ?? ''),
+    sanitizeCell(r.representative ?? ''),
     ...surveyIds.map((id) => (r.surveys[id] ? 'O' : 'X')),
     sanitizeCell(r.memo),
   ]);
@@ -155,6 +243,29 @@ const isRental = (r: UnifiedRow) => r.residency === '임대';
 const isResident = (r: UnifiedRow) => r.residency === '실거주';
 const isJoint = (r: UnifiedRow) => r.ownerName.includes(',');
 
+/**
+ * 자유 검색 — 가상 스크롤 때문에 브라우저 Ctrl+F가 안 먹는 걸 대신한다.
+ *
+ * Ctrl+F는 화면에 렌더된 30여 행만 훑지만 이건 2,830세대 전부를 데이터로 뒤진다.
+ * 화면에 안 보이는 필드(명부이름·대표자·우편번호)까지 걸리는 것도 그래서다.
+ *
+ * 공백으로 나눈 토큰을 모두 만족해야 한다("901 김" → 901동의 김씨).
+ * 동/호수는 "901-101", "901 101" 어느 쪽으로 쳐도 걸리도록 결합 문자열도 넣는다.
+ */
+export function searchRows(rows: UnifiedRow[], query: string): UnifiedRow[] {
+  const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return rows;
+  return rows.filter((r) => {
+    const haystack = [
+      r.dong, r.ho, `${r.dong}-${r.ho}`, `${r.dong}${r.ho}`,
+      r.ownerName, r.phone, r.phoneOverride, r.memo,
+      r.rosterName, r.representative, r.address, r.postalCode,
+      r.residency, r.ageGroup, r.ageGroupRoster, r.planChoice, r.consentName,
+    ].join(' ').toLowerCase();
+    return tokens.every((t) => haystack.includes(t));
+  });
+}
+
 export function applyFilter(
   rows: UnifiedRow[],
   filter: FilterType,
@@ -181,6 +292,27 @@ export function applyFilter(
   // 전체 세대 중 후원금 납부 완료
   if (filter === 'donation')
     return rows.filter((r) => (r.donationTotal ?? 0) > 0);
+  // 신통은 동의했으나 정비입안 3종(동의서·개인정보·신분증) 중 하나라도 미완료 — 오프라인 수거 대상.
+  // 모수를 신통 동의자로 잡는 이유: 신통도 아직 안 낸 세대는 3종을 받으러 갈 단계가 아니다.
+  // 전자동의 완료 세대는 개인정보·신분증이 자동 인정이라 자연히 빠지고,
+  // 신통만 전자로 내고 정비입안은 안 낸 세대는 남는다.
+  if (filter === 'plan-docs-pending')
+    return rows.filter(
+      (r) => hasSintoConsent(r)
+        && !(hasPlanConsent(r) && hasPrivacyConsent(r) && hasIdVerified(r)),
+    );
+  // 공유자 일부만 전자서명 — 대표만 세우면 완결되는 세대라 독려 1순위
+  if (filter === 'econsent-partial') return rows.filter(isPartialConsent);
+  // 공유 세대인데 대표 미선임 — 전자동의를 시작조차 못 하는 상태
+  if (filter === 'no-representative') return rows.filter(needsRepresentative);
+  // 종이·전자 통틀어 신속통합 동의가 없는 세대
+  if (filter === 'no-sinto-any') return rows.filter((r) => !hasSintoConsent(r));
+  // 종이·전자 통틀어 정비계획입안 동의가 없는 세대
+  if (filter === 'no-plan-any') return rows.filter((r) => !hasPlanConsent(r));
+  // 소유권 이전 의심 — 원본 소유자명과 전자동의 명부 이름이 실질 불일치. 원본은 자동으로 안 고친다.
+  if (filter === 'roster-name-mismatch') return rows.filter((r) => r.rosterNameMismatch);
+  if (filter === 'plan-promotion') return rows.filter((r) => r.planChoice === '추진위원회 구성');
+  if (filter === 'plan-direct') return rows.filter((r) => r.planChoice === '직접조합설립');
   if (filter === 'opposition') return rows.filter((r) => r.opposition);
   if (filter === 'kakao-group') return rows.filter((r) => r.kakaoGroup);
   if (filter === 'no-kakao-group') return rows.filter((r) => !r.kakaoGroup);

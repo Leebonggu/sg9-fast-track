@@ -69,3 +69,17 @@ P1 완료, 팀 리뷰 후 수정 예정. 핵심 파일: `src/setup.gs`, `src/set
 - 방법: `web/.env.local` + `google-spreadsheet`로 라이브 시트를 읽는 read-only 스크립트를
   `web/` 안에 두고 실행(ESM이 node_modules를 파일 위치 기준으로 찾아 scratchpad에서는 실패), 실행 후 삭제.
 - 관련 문서: `docs/superpowers/specs/2026-08-12-전자동의-통합현황-병합-design.md`
+
+### 통합현황 2,830행 소실 사고 (2026-08-13)
+sync 실행 중 Sheets 읽기 쿼터(429)에 걸려 **통합현황 시트가 통째로 비었다.** 백업에서 복원.
+- 직접 원인: `writeMasterRows`가 `clear()` → `setHeaderRow()` → `addRows()×6` 순서였다.
+  **지우기가 먼저 성공하고 쓰기가 중간에 끊기면 빈 시트만 남는다.** 파괴적·비원자적 쓰기.
+- 쿼터 원인: `getConsentKeyset`과 `getPhoneMap`이 같은 23개 동 시트를 각각 getRows()로 훑어
+  46회를 호출했다. 사용자당 분당 60회 제한이라 sync 한 번에 대부분을 소진.
+  여기에 전자동의 읽기가 하나 더 얹히면서 넘겼다.
+- 교훈 1: **"읽기 실패는 throw" 만으로는 부족하다.** 읽기를 다 끝낸 뒤 쓰기가 시작되므로
+  쓰기 단계 실패 경로가 그대로 남아 있었다. 파괴적 연산은 순서를 뒤집어야 한다 —
+  **먼저 쓰고, 남는 꼬리를 나중에 지운다.**
+- 교훈 2: 같은 시트를 여러 함수가 각자 읽으면 쿼터가 곱해진다. `values.batchGet`으로 합칠 것.
+- 수정: values.update 1회로 전체 덮어쓰기(호출 8회→1~2회), batchGet으로 46회→1회.
+- 관련: `feedback_live_numbers_from_live_sheet`, `project_unified_sync_overwrite_risk`

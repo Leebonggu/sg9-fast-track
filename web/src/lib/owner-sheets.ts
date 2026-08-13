@@ -3,6 +3,7 @@ import {
   GoogleSpreadsheet,
   type GoogleSpreadsheetRow,
 } from 'google-spreadsheet';
+import { google } from 'googleapis';
 import { getServiceAccountAuth } from './google-auth';
 import type { OwnerRow, UnifiedRow, UnifiedRowOverrides } from './unified-types';
 import { sanitizeCell } from './xlsx-safe';
@@ -13,6 +14,20 @@ function normalizePostalCode(raw: string): string {
   const digits = raw.replace(/\D/g, '');
   if (!digits) return '';
   return digits.length < 5 ? digits.padStart(5, '0') : digits;
+}
+
+const MASTER_SHEET = '통합현황';
+
+// 값 단위 읽기/쓰기용 raw Sheets 클라이언트.
+// google-spreadsheet의 addRows/clear는 호출이 여러 번 쪼개져 쿼터를 많이 먹고,
+// 중간에 끊기면 시트가 어중간한 상태로 남는다. 전체를 한 번에 덮어쓸 때는 이걸 쓴다.
+let sheetsApiCache: ReturnType<typeof google.sheets> | null = null;
+
+function getSheetsApi() {
+  if (!sheetsApiCache) {
+    sheetsApiCache = google.sheets({ version: 'v4', auth: getServiceAccountAuth() });
+  }
+  return sheetsApiCache;
 }
 
 let ownerDocCache: GoogleSpreadsheet | null = null;
@@ -150,9 +165,6 @@ export async function writeMasterRows(
     '명부이름', '명부이름불일치',
   ];
 
-  await sheet.clear();
-  await sheet.setHeaderRow(headers);
-
   const data = rows.map((r) => ({
     동: r.dong,
     호수: r.ho,
@@ -187,8 +199,40 @@ export async function writeMasterRows(
     명부이름불일치: r.rosterNameMismatch ? 'TRUE' : 'FALSE',
   }));
 
-  for (let i = 0; i < data.length; i += 500) {
-    await sheet.addRows(data.slice(i, i + 500));
+  // 2026-08-13 사고: 예전에는 sheet.clear() → setHeaderRow() → addRows()×6 순서로 썼다.
+  // 지우기는 성공하고 쓰기 도중 Sheets 읽기 쿼터(429)에 걸려 끊기자 2,830행이 빈 시트로 남았다.
+  //
+  // 그래서 순서를 뒤집었다. 먼저 값을 한 번의 update로 덮어쓰고, 남는 꼬리 행은 그 뒤에 지운다.
+  // 실패하면 이전 데이터가 그대로 남을 뿐 빈 시트가 되지 않는다.
+  // 호출 수도 8회 → 1~2회로 줄어 쿼터 자체를 덜 먹는다.
+  const values = [headers, ...data.map((d) => headers.map((h) => String(d[h as keyof typeof d] ?? '')))];
+
+  // 그리드가 좁으면 먼저 넓힌다. 늘리는 건 기존 값을 건드리지 않는다.
+  const needRows = values.length;
+  const needCols = headers.length;
+  if (sheet.rowCount < needRows || sheet.columnCount < needCols) {
+    await sheet.resize({
+      rowCount: Math.max(sheet.rowCount, needRows),
+      columnCount: Math.max(sheet.columnCount, needCols),
+    });
+  }
+
+  const api = getSheetsApi();
+  const spreadsheetId = process.env.OWNER_SPREADSHEET_ID!;
+  await api.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${MASTER_SHEET}!A1`,
+    valueInputOption: 'RAW',
+    requestBody: { values },
+  });
+
+  // 세대 수가 줄었을 때만 꼬리를 지운다. 데이터가 안전하게 써진 뒤라 실패해도 손실이 없다.
+  const previousRows = sheet.rowCount;
+  if (previousRows > values.length) {
+    await api.spreadsheets.values.clear({
+      spreadsheetId,
+      range: `${MASTER_SHEET}!A${values.length + 1}:${previousRows}`,
+    });
   }
 }
 

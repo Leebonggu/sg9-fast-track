@@ -1,7 +1,7 @@
 // web/src/lib/unified-sync.ts
 import { getOwners, getMasterPreservation, writeMasterRows } from './owner-sheets';
 import { getEconsentHouseholds } from './econsent-sheets';
-import { getConsentKeyset, getPhoneMap } from './sheets';
+import { getConsentAndPhone } from './sheets';
 import { getSurveyKeyset, getMergedSurveyAgeMap, getMergedSurveyPhoneMap } from './survey-sheets';
 import { withSurveyPhoneNote } from './survey-phone-note';
 import { getAllSurveyConfigs } from './surveys/registry';
@@ -54,17 +54,21 @@ export async function syncMasterSheet(): Promise<SyncResult> {
 
   // 1. 소스 시트들 병렬 읽기 — 메모는 sync 시 보존, 4필드는 원본에 직접 갱신되므로 보존 불필요
   const surveyConfigs = getAllSurveyConfigs();
-  const [owners, preserved, surveyAgeMap, surveyPhoneMap, consentResult, phoneMap, econsent, ...surveyKeysets] =
+  // v2 동별 시트 23개는 getConsentAndPhone이 batchGet 한 번으로 읽는다.
+  // 예전에는 동의/연락처가 각각 훑어 46회를 호출했고, 사용자당 분당 60회인
+  // Sheets 읽기 쿼터를 sync 한 번에 소진해 429가 났다(2026-08-13 사고).
+  const [owners, preserved, surveyAgeMap, surveyPhoneMap, v2, econsent, ...surveyKeysets] =
     await Promise.all([
       getOwners(),
       getMasterPreservation(),
       getMergedSurveyAgeMap(surveyConfigs),
       getMergedSurveyPhoneMap(surveyConfigs),
-      getConsentKeyset(),
-      getPhoneMap(),
+      getConsentAndPhone(),
       getEconsentHouseholds(),
       ...surveyConfigs.map((c) => getSurveyKeyset(c)),
     ]);
+  const consentResult = v2.consent;
+  const phoneMap = v2.phones;
   const consentKeys = consentResult.keys;
   const consentNameMap = consentResult.nameMap;
   const duplicates = consentResult.duplicates;

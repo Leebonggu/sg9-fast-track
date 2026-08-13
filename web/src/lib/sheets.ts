@@ -1,4 +1,5 @@
 import { GoogleSpreadsheet } from 'google-spreadsheet';
+import { google } from 'googleapis';
 import { BUILDING_CONFIG, getTotalUnits } from './buildings';
 import { getServiceAccountAuth } from './google-auth';
 import { normalizePhone } from './phone-format';
@@ -316,4 +317,89 @@ export async function getPhoneMap(): Promise<Map<string, string>> {
     }
   }
   return new Map([...acc].map(([k, d]) => [k, d.entries.join(' / ')]));
+}
+
+/**
+ * 동의 현황과 연락처를 v2 동별 시트에서 한 번에 읽는다.
+ *
+ * getConsentKeyset과 getPhoneMap은 같은 23개 시트를 각각 getRows()로 훑어
+ * 합쳐서 46회를 호출했다. Sheets 읽기 쿼터가 사용자당 분당 60회라 sync 한 번에
+ * 그 대부분을 써버렸고, 2026-08-13에 실제로 429가 나면서 쓰기 도중 끊겨
+ * 통합현황 2,830행이 날아갔다.
+ *
+ * batchGet은 여러 범위를 한 번의 호출로 가져온다 → 46회가 1회가 된다.
+ * 판정 규칙은 기존 두 함수와 동일하게 유지한다.
+ */
+export async function getConsentAndPhone(): Promise<{
+  consent: Awaited<ReturnType<typeof getConsentKeyset>>;
+  phones: Map<string, string>;
+}> {
+  const dongs = Object.keys(BUILDING_CONFIG);
+  const api = google.sheets({ version: 'v4', auth: getServiceAccountAuth() });
+  const res = await api.spreadsheets.values.batchGet({
+    spreadsheetId: process.env.SPREADSHEET_ID!,
+    ranges: dongs.map((d) => `'${d}'!A:L`),
+  });
+
+  const keys = new Set<string>();
+  const nameMap = new Map<string, string>();
+  const duplicates: { dong: string; ho: string; count: number }[] = [];
+  const acc = new Map<string, { seen: Set<string>; entries: string[] }>();
+
+  const ranges = res.data.valueRanges ?? [];
+  dongs.forEach((dongKey, i) => {
+    const values = ranges[i]?.values ?? [];
+    if (values.length < 2) return; // 헤더뿐이거나 없는 시트
+    const header = values[0].map((h) => String(h ?? '').trim());
+    const col = (name: string) => header.indexOf(name);
+    const [iHo, iCollected, iName, iNote, iPhone] = [
+      col('호수'), col('동의서수거여부'), col('성명'), col('비고'), col('연락처'),
+    ];
+    const cell = (row: unknown[], idx: number) =>
+      idx < 0 ? '' : String(row[idx] ?? '').trim();
+
+    const dongNum = dongKey.replace('동', '');
+    const body = values.slice(1);
+    const countMap: Record<string, number> = {};
+
+    for (const row of body) {
+      const ho = cell(row, iHo);
+      const note = cell(row, iNote);
+      if (!ho) continue;
+      // 동의 판정 — getConsentKeyset과 동일
+      if (cell(row, iCollected) === 'TRUE' && note !== '삭제') {
+        const key = `${dongNum}-${ho}`;
+        keys.add(key);
+        const name = cell(row, iName);
+        if (name) nameMap.set(key, name);
+        countMap[ho] = (countMap[ho] || 0) + 1;
+      }
+    }
+    for (const [ho, count] of Object.entries(countMap)) {
+      if (count > 1) duplicates.push({ dong: dongKey, ho, count });
+    }
+
+    // 연락처 — getPhoneMap과 동일하게 뒤에서부터(최신 우선)
+    for (let i2 = body.length - 1; i2 >= 0; i2--) {
+      const row = body[i2];
+      const ho = cell(row, iHo);
+      const phone = normalizePhone(cell(row, iPhone));
+      const note = cell(row, iNote);
+      if (!ho || !phone) continue;
+      if (note === '삭제' || note.includes('중복(이전 응답)')) continue;
+      const key = `${dongNum}-${ho}`;
+      let d = acc.get(key);
+      if (!d) { d = { seen: new Set(), entries: [] }; acc.set(key, d); }
+      if (!d.seen.has(phone)) {
+        d.seen.add(phone);
+        const name = cell(row, iName);
+        d.entries.push(name ? `${name} ${phone}` : phone);
+      }
+    }
+  });
+
+  return {
+    consent: { keys, nameMap, duplicates },
+    phones: new Map([...acc].map(([k, d]) => [k, d.entries.join(' / ')])),
+  };
 }

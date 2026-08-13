@@ -121,6 +121,7 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
           {btn('plan-consent', '정비입안 수령', 'green')}
           {btn('no-privacy', '개인정보 미동의')}
           {btn('privacy', '개인정보 동의', 'green')}
+          {btn('plan-docs-pending', '정비입안 3종 미완료', 'orange')}
         </>
       ))}
 

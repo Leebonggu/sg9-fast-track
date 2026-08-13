@@ -292,6 +292,15 @@ export function applyFilter(
   // 전체 세대 중 후원금 납부 완료
   if (filter === 'donation')
     return rows.filter((r) => (r.donationTotal ?? 0) > 0);
+  // 신통은 동의했으나 정비입안 3종(동의서·개인정보·신분증) 중 하나라도 미완료 — 오프라인 수거 대상.
+  // 모수를 신통 동의자로 잡는 이유: 신통도 아직 안 낸 세대는 3종을 받으러 갈 단계가 아니다.
+  // 전자동의 완료 세대는 개인정보·신분증이 자동 인정이라 자연히 빠지고,
+  // 신통만 전자로 내고 정비입안은 안 낸 세대는 남는다.
+  if (filter === 'plan-docs-pending')
+    return rows.filter(
+      (r) => hasSintoConsent(r)
+        && !(hasPlanConsent(r) && hasPrivacyConsent(r) && hasIdVerified(r)),
+    );
   // 공유자 일부만 전자서명 — 대표만 세우면 완결되는 세대라 독려 1순위
   if (filter === 'econsent-partial') return rows.filter(isPartialConsent);
   // 공유 세대인데 대표 미선임 — 전자동의를 시작조차 못 하는 상태

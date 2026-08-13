@@ -3,7 +3,10 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AdminLayout from '@/components/AdminLayout';
-import { applyFilter, displayAgeGroup, hasSintoConsent } from '@/lib/unified-utils';
+import {
+  applyFilter, displayAgeGroup,
+  hasSintoConsent, hasPlanConsent, hasPrivacyConsent, hasIdVerified,
+} from '@/lib/unified-utils';
 import type { FilterType, UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
 
@@ -14,6 +17,17 @@ const shortSurveyLabel = (id: string) =>
     .replace(/_?제출_?/g, '')
     .replace(/_?완료$/, '')
     .replace(/_/g, ' ');
+
+// 인쇄물은 위원끼리 돌려보는 종이라 무슨 명단인지 제목에 드러나야 한다.
+// 등록되지 않은 필터는 기존 문구를 그대로 쓴다.
+const TITLE_BY_FILTER: Record<string, string> = {
+  'plan-docs-pending': '정비입안 3종 수거 명단',
+  'no-sinto-any': '신속통합 미동의 세대 명단',
+  'no-plan-any': '정비입안 미동의 세대 명단',
+  'no-representative': '공유 대표 미선임 명단',
+  'econsent-partial': '공유자 일부만 서명한 세대',
+  'roster-name-mismatch': '소유권 이전 의심 세대',
+};
 
 // 동(숫자) → 호수(숫자) 오름차순
 function sortRows(rows: UnifiedRow[]): UnifiedRow[] {
@@ -103,7 +117,7 @@ function PrintContent() {
           <section key={dong} className="dong-section">
             <header className="dong-head">
               <h2>
-                {dong}동 <span className="sub">미제출 세대 명단</span>
+                {dong}동 <span className="sub">{TITLE_BY_FILTER[filter] ?? '미제출 세대 명단'}</span>
               </h2>
               <div className="meta">
                 <span className="count">{dongRows.length}세대</span>
@@ -126,6 +140,9 @@ function PrintContent() {
                       {shortSurveyLabel(id)}
                     </th>
                   ))}
+                  <th className="c-stat">정비입안<br />동의서</th>
+                  <th className="c-stat">개인정보<br />동의</th>
+                  <th className="c-stat">신분증</th>
                   <th className="c-visit">방문</th>
                 </tr>
               </thead>
@@ -152,6 +169,16 @@ function PrintContent() {
                         {r.surveys[id] ? 'O' : 'X'}
                       </td>
                     ))}
+                    {/* 방문해서 받아야 할 3종. 종이·전자 합산이라 전자로 낸 세대는 O로 뜬다. */}
+                    <td className={`c-stat ${hasPlanConsent(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasPlanConsent(r) ? 'O' : 'X'}
+                    </td>
+                    <td className={`c-stat ${hasPrivacyConsent(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasPrivacyConsent(r) ? 'O' : 'X'}
+                    </td>
+                    <td className={`c-stat ${hasIdVerified(r) ? 'ox-o' : 'ox-x'}`}>
+                      {hasIdVerified(r) ? 'O' : 'X'}
+                    </td>
                     <td className="c-visit">
                       <span className="checkbox" />
                     </td>
@@ -164,8 +191,10 @@ function PrintContent() {
       </div>
 
       <style jsx global>{`
+        /* 가로: 컬럼이 13개(정비입안 3종 추가)라 세로 186mm로는 글씨를 키운 채 담기지 않는다.
+           본문 폭 297 - 24 = 273mm. 이 페이지는 ?filter=로 모든 명단이 공용이라 기존 명단도 가로가 된다. */
         @page {
-          size: A4;
+          size: A4 landscape;
           margin: 14mm 12mm;
         }
         html,
@@ -180,7 +209,7 @@ function PrintContent() {
           padding: 10mm 0;
         }
         .dong-section {
-          width: 186mm;
+          width: 273mm;
           background: white;
           padding: 10mm 9mm;
           box-sizing: border-box;
@@ -254,30 +283,39 @@ function PrintContent() {
           color: #b91c1c;
           font-weight: 700;
         }
-        /* 연령대·연락처를 넣느라 전체 186mm 안에서 폭을 재배분했다.
-           고정폭 합계 150mm, 나머지 36mm가 성명 몫이다(공동소유 병기 대비). */
+        /* 숫자·짧은 값 컬럼은 좌우 패딩부터 줄여 실제 내용 폭을 확보한다.
+           기본 padding(3.2mm 3mm)이 좌우 6mm를 먹어서, 10mm 컬럼에 4mm만 남은 것이
+           번호가 잘리던 원인이었다. 폭만 키우면 컬럼이 하나 더 늘 때 같은 사고가 반복된다. */
+        .list-table th.c-no, .list-table td.c-no,
+        .list-table th.c-dong, .list-table td.c-dong,
+        .list-table th.c-ho, .list-table td.c-ho,
+        .list-table th.c-age, .list-table td.c-age {
+          padding-left: 1.2mm;
+          padding-right: 1.2mm;
+        }
+        /* 273mm 배분: 고정 227mm + 성명 46mm. 괄호 안은 패딩을 뺀 실제 내용 폭. */
         .c-no {
-          width: 10mm;
+          width: 14mm; /* 11.6mm — 3자리 여유 */
         }
         .c-dong {
-          width: 12mm;
+          width: 14mm; /* 11.6mm */
           font-weight: 700;
         }
         .c-ho {
-          width: 14mm;
+          width: 17mm; /* 14.6mm */
           font-weight: 700;
         }
         .c-stat {
-          width: 18mm;
+          width: 20mm;
         }
         .c-age {
-          width: 14mm;
+          width: 16mm; /* 13.6mm */
           font-size: 13pt;
           color: #334155;
         }
         /* 방문 전에 전화를 걸 수 있게 통째로 보이도록 줄바꿈을 막는다 */
         .c-phone {
-          width: 32mm;
+          width: 34mm; /* 28mm — "010-1234-5678"이 12.5pt로 한 줄에 들어간다 */
           font-size: 12.5pt;
           white-space: nowrap;
           letter-spacing: -0.01em;

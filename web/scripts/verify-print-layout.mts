@@ -46,6 +46,10 @@ const rows = await doc.sheetsByTitle['통합현황'].getRows();
 type R = {
   dong: string; ho: string; name: string; age: string; phone: string;
   live: string; rep: string; co: number;
+  // 상태 5종은 종이·전자를 따로 들고 있어야 "O전"이 겹쳐 찍히는 최악 폭을 잴 수 있다
+  sintoPaper: boolean; sintoElec: boolean;
+  planPaper: boolean; planElec: boolean;
+  privacyPaper: boolean; idPaper: boolean; survey: boolean;
 };
 const all: R[] = [];
 for (const r of rows) {
@@ -60,6 +64,13 @@ for (const r of rows) {
     live: s(r.get('실거주여부')),
     rep: s(r.get('공유_대표자')),
     co: Number(r.get('공유_소유자수')) || 0,
+    sintoPaper: s(r.get('신속통합동의서_제출_완료')) === 'TRUE',
+    sintoElec: s(r.get('신속통합_전자동의')) === '완전',
+    planPaper: s(r.get('정비계획입안_동의서')) === 'TRUE',
+    planElec: s(r.get('정비계획입안_전자동의')) === '완전',
+    privacyPaper: s(r.get('개인정보수집동의')) === 'TRUE',
+    idPaper: s(r.get('신분증_수령')) === 'TRUE',
+    survey: s(r.get('2026_04_기본조사_제출_완료')) === 'TRUE',
   });
 }
 
@@ -69,6 +80,8 @@ const worst = [
   ...byLen((r) => r.phone).slice(0, 8),
   ...[...all].sort((a, b) => b.co - a.co).slice(0, 5),
   ...byLen((r) => r.rep).slice(0, 5),
+  // 종이·전자 둘 다인 세대 — 상태 칸에 "O전"이 겹쳐 찍히는 가장 넓은 본문이다
+  ...all.filter((r) => r.sintoPaper && r.sintoElec).slice(0, 6),
 ];
 
 console.log('=== 라이브 최악 케이스 ===');
@@ -89,6 +102,14 @@ const SURVEYS = ['기본조사']; // 현재 설문 1개
 
 const esc = (v: string) => v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+// page.tsx의 mark()와 같은 규칙 — 종이 O, 전자 전, 둘 다면 겹쳐 찍는다.
+// 여기가 어긋나면 가장 넓은 본문("O전")을 안 재게 되므로 page.tsx를 고칠 때 같이 고칠 것.
+const mk = (paper: boolean, elec: boolean) =>
+  !paper && !elec
+    ? '<span class="ox-x">X</span>'
+    : `${paper ? '<span class="ox-o">O</span>' : ''}${elec ? '<span class="ox-e">전</span>' : ''}`;
+const elecAny = (r: R) => r.sintoElec || r.planElec;
+
 function cell(r: R, i: number) {
   const contacts = splitContacts(r.phone);
   const phoneHtml = contacts.length === 0 ? '-' : contacts.map((c) =>
@@ -105,11 +126,11 @@ function cell(r: R, i: number) {
     <td class="c-age">${esc(r.age) || '-'}</td>
     <td class="c-phone">${phoneHtml}</td>
     <td class="c-live">${esc(r.live) || '-'}</td>
-    <td class="c-stat ox-o">O</td>
-    ${SURVEYS.map(() => '<td class="c-stat ox-x">X</td>').join('')}
-    <td class="c-stat ox-e">전</td>
-    <td class="c-stat ox-x">X</td>
-    <td class="c-stat ox-o">O</td>
+    <td class="c-stat">${mk(r.sintoPaper, r.sintoElec)}</td>
+    ${SURVEYS.map(() => `<td class="c-stat ${r.survey ? 'ox-o' : 'ox-x'}">${r.survey ? 'O' : 'X'}</td>`).join('')}
+    <td class="c-stat">${mk(r.planPaper, r.planElec)}</td>
+    <td class="c-stat">${mk(r.privacyPaper, elecAny(r))}</td>
+    <td class="c-stat">${mk(r.idPaper, elecAny(r))}</td>
     <td class="c-visit"><span class="checkbox"></span></td>
   </tr>`;
 }
@@ -127,7 +148,7 @@ function section(title: string, rs: R[]) {
   <thead>
     <tr class="sheet-title">
       <th class="t-left" colspan="${leftSpan}">${esc(title)} <span class="sub">정비입안 3종 수거 명단</span></th>
-      <th class="t-right" colspan="${totalCols - leftSpan}"><span class="count">${rs.length}세대</span><span class="date">2026년 8월 14일</span><span class="legend">O 완료 · 전 전자동의 · X 미완료</span></th>
+      <th class="t-right" colspan="${totalCols - leftSpan}"><span class="count">${rs.length}세대</span><span class="date">2026년 8월 14일</span><span class="legend">O 종이 · 전 전자 · O전 둘다 · X 없음</span></th>
     </tr>
     <tr class="col-head">
       <th class="c-no">번호</th><th class="c-dong">동</th><th class="c-ho">호수</th>

@@ -41,13 +41,24 @@ const TITLE_BY_FILTER: Record<string, string> = {
   'roster-name-mismatch': '소유권 이전 의심 세대',
 };
 
-// 종이(오프라인) 근거가 있으면 O, 전자동의로만 인정된 항목은 '전'.
+// 종이(오프라인) 근거는 O(초록), 전자동의는 전(파랑), 둘 다면 O전을 겹쳐 찍는다.
 // 개인정보·신분증은 전자동의 세대에서 실제로 받은 게 아니라 자동 인정된 것이라,
 // 방문 현장에서 "서류가 없다"고 헷갈리지 않으려면 O와 구분돼야 한다.
-// 판정 기준(O·전 vs X)은 unified-utils의 hasXxx와 동일하다 — 표시만 갈라진다.
-const mark = (paper: boolean, elec: boolean) => (paper ? 'O' : elec ? '전' : 'X');
-const markClass = (paper: boolean, elec: boolean) =>
-  paper ? 'ox-o' : elec ? 'ox-e' : 'ox-x';
+//
+// 종이 우선으로 O만 찍던 때는 근거가 두 개인 세대가 종이 한 개인 세대와 똑같아 보였다.
+// 신통은 전자로 낸 474세대 중 394세대가 종이도 갖고 있어(라이브 실측) 그 사실이
+// 통째로 O에 흡수돼, 인쇄물만 보면 신통에는 전자동의가 없는 것처럼 보였다.
+//
+// 판정 기준(무엇이 X가 아닌가)은 unified-utils의 hasXxx와 동일하다 — 표시만 갈라진다.
+function mark(paper: boolean, elec: boolean) {
+  if (!paper && !elec) return <span className="ox-x">X</span>;
+  return (
+    <>
+      {paper && <span className="ox-o">O</span>}
+      {elec && <span className="ox-e">전</span>}
+    </>
+  );
+}
 
 // 동(숫자) → 호수(숫자) 오름차순
 function sortRows(rows: UnifiedRow[]): UnifiedRow[] {
@@ -171,7 +182,7 @@ function PrintContent() {
                   <th className="t-right" colSpan={rightSpan}>
                     <span className="count">{dongRows.length}세대</span>
                     <span className="date">{today}</span>
-                    <span className="legend">O 완료 · 전 전자동의 · X 미완료</span>
+                    <span className="legend">O 종이 · 전 전자 · O전 둘다 · X 없음</span>
                   </th>
                 </tr>
                 <tr className="col-head">
@@ -232,7 +243,7 @@ function PrintContent() {
                     <td className="c-live">{r.residency || '-'}</td>
                     {/* 종이·전자 합산. 종이만 보면 전자로 이미 동의한 세대를 X로 찍어
                         방문 명단에 올리게 되고, 위원이 헛걸음한다. */}
-                    <td className={`c-stat ${markClass(r.consent, isElectronicDone(r.econsentSinto))}`}>
+                    <td className="c-stat">
                       {mark(r.consent, isElectronicDone(r.econsentSinto))}
                     </td>
                     {surveyIds.map((id) => (
@@ -253,15 +264,9 @@ function PrintContent() {
                       const elecPlan = isElectronicDone(r.econsentPlan);
                       return (
                         <>
-                          <td className={`c-stat ${markClass(planPaper, elecPlan)}`}>
-                            {mark(planPaper, elecPlan)}
-                          </td>
-                          <td className={`c-stat ${markClass(privacyPaper, elecAny)}`}>
-                            {mark(privacyPaper, elecAny)}
-                          </td>
-                          <td className={`c-stat ${markClass(idPaper, elecAny)}`}>
-                            {mark(idPaper, elecAny)}
-                          </td>
+                          <td className="c-stat">{mark(planPaper, elecPlan)}</td>
+                          <td className="c-stat">{mark(privacyPaper, elecAny)}</td>
+                          <td className="c-stat">{mark(idPaper, elecAny)}</td>
                         </>
                       );
                     })()}
@@ -356,9 +361,16 @@ function PrintContent() {
         .list-table thead tr.sheet-title th.t-right span + span {
           margin-left: 3mm;
         }
+        /* 범례는 세대수·날짜와 같은 줄에 두면 넘쳐서 "X 없/음"으로 접힌다.
+           제 줄로 내리고 nowrap을 건다 — 표기 규칙이 반토막 나면 읽으나 마나다. */
         .list-table thead tr.sheet-title th.t-right .legend {
+          display: block;
+          margin-left: 0;
+          margin-top: 1mm;
           font-size: 8pt;
+          font-weight: 600;
           color: #64748b;
+          white-space: nowrap;
         }
         /* 컬럼 머리글은 2줄짜리(신통/동의서)가 있어 좁은 폭에서도 안 깨지게 줄인다.
            padding-top은 제목 줄과 붙어 보이지 않게 하는 여백.
@@ -422,10 +434,15 @@ function PrintContent() {
           color: #15803d;
           font-weight: 700;
         }
-        /* 전자동의로만 인정된 항목 — 초록 O(종이 있음)·빨강 X(없음)와 한눈에 갈라져야 한다 */
+        /* 전자동의 — 초록 O(종이 있음)·빨강 X(없음)와 한눈에 갈라져야 한다 */
         .list-table .ox-e {
           color: #1d4ed8;
           font-weight: 700;
+        }
+        /* 종이·전자 둘 다인 세대는 "O전"이 한 칸에 같이 들어간다.
+           붙여 쓰면 한 낱말처럼 읽혀서 아주 좁은 간격을 준다. */
+        .list-table .ox-o + .ox-e {
+          margin-left: 0.4mm;
         }
         .list-table .ox-x {
           color: #b91c1c;
@@ -477,8 +494,8 @@ function PrintContent() {
           width: 15mm; /* "실거주" 3글자가 한 줄에 들어가야 한다 */
         }
         .list-table col.c-stat {
-          /* 폭을 정하는 건 본문(O/전/X 한 글자)이 아니라 머리글이다.
-             가장 넓은 "동의서" 3자 x 7.5pt = 7.9mm + 좌우 패딩 1.6mm = 9.5mm.
+          /* 폭을 정하는 건 본문이 아니라 머리글이다. 본문 최대는 "O전"(11pt, 약 6.4mm),
+             머리글 최대는 "동의서" 3자 x 7.5pt = 7.9mm + 좌우 패딩 1.6mm = 9.5mm.
              12 → 10mm로 5개에서 10mm를 회수해 성명·연락처에 줬다(실측 확인). */
           width: 10mm;
         }

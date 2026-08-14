@@ -294,10 +294,15 @@ function PrintContent() {
           gap: 10mm;
           padding: 10mm 0;
         }
+        /* 화면 미리보기는 A4 한 장을 그대로 흉내낸다 — 210mm에 여백 12mm.
+           내용 폭이 186mm로 인쇄와 정확히 같아진다.
+           예전에 width:186mm + padding:9mm이라 화면에서만 내용 폭이 168mm였고,
+           표(185mm)가 17mm 넘쳐 오른쪽이 잘려 보였다. 인쇄는 멀쩡한데 화면만 깨져서
+           "인쇄하면 잘린다"는 신고로 이어졌다. 두 상태의 내용 폭은 반드시 같아야 한다. */
         .dong-section {
-          width: 186mm;
+          width: 210mm;
           background: white;
-          padding: 10mm 9mm;
+          padding: 12mm;
           box-sizing: border-box;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
@@ -309,7 +314,7 @@ function PrintContent() {
         .list-table th,
         .list-table td {
           border: 1.2px solid #cbd5e1;
-          padding: 1.1mm 1.2mm;
+          padding: 0.8mm 1.2mm;
           text-align: center;
         }
         .list-table thead th {
@@ -365,13 +370,16 @@ function PrintContent() {
           letter-spacing: -0.02em;
           padding-top: 2.5mm;
         }
-        /* 동 컬럼을 넣으려고 전체를 1pt씩 줄였다. 위원용이라 이 이하로는 내리지 말 것. */
+        /* 본문은 9.5pt까지 줄였다(사용자 승인 — "동/호수만 잘 보이면 된다").
+           행 높이를 실제로 지배하는 건 글씨 크기보다 line-height다. 기본값(한글 약 1.5)을
+           1.15로 조이면 글씨를 안 줄여도 행마다 1.3mm가 빠진다. 둘을 같이 적용했다. */
         .list-table tbody td {
-          font-size: 11pt;
+          font-size: 9.5pt;
+          line-height: 1.15;
           color: #111;
         }
         .list-table td.c-name {
-          font-size: 11pt;
+          font-size: 10pt;
           font-weight: 700;
           text-align: left;
           padding-left: 2.5mm;
@@ -477,8 +485,11 @@ function PrintContent() {
         .list-table col.c-visit {
           width: 10mm;
         }
+        /* 동·호수는 본문을 줄여도 크게 남긴다 — 방문 명단에서 세대를 찾는 기준이라
+           이것만 잘 보이면 나머지는 작아도 된다는 게 위원 요구였다. */
         .list-table td.c-dong,
         .list-table td.c-ho {
+          font-size: 11pt;
           font-weight: 700;
         }
         /* .list-table tbody td(11pt)보다 구체적으로 써야 실제로 적용된다 */

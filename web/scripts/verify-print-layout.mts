@@ -5,9 +5,11 @@
  * 라이브 통합현황의 실제 최악 케이스(가장 긴 이름·연락처·공유 세대)로 정적 HTML을 만들고,
  * 헤드리스 크롬으로 PDF를 뽑아 컬럼이 넘치는지 숫자로 잰다.
  *
- * 두 가지를 낸다:
- *   1) 셀 넘침 측정 — @media print 규칙을 강제 적용한 상태에서 scrollWidth > clientWidth인 셀
- *   2) 실제 PDF — out/print-layout.pdf (눈으로 확인)
+ * 세 가지를 낸다:
+ *   1) 인쇄 상태 측정 — @media print 규칙을 강제 적용
+ *   2) 화면 상태 측정 — 위원이 인쇄 버튼 누르기 전에 보는 그대로
+ *      (둘은 .dong-section의 width/padding이 달라 실제로 어긋난 적이 있다. 반드시 둘 다 잰다)
+ *   3) 실제 PDF — out/print-layout.pdf (눈으로 확인)
  *
  * 실행: npm run verify-print
  */
@@ -147,8 +149,16 @@ window.addEventListener('load', () => {
   const sec = document.querySelector('.dong-section');
   const tbl = document.querySelector('.list-table');
   const MM = document.getElementById('mm').getBoundingClientRect().width / 100;
-  out.push('섹션 내용폭 ' + (sec.clientWidth / MM).toFixed(1) + 'mm');
-  out.push('표 실제폭 ' + (tbl.getBoundingClientRect().width / MM).toFixed(1) + 'mm');
+  // ⚠ clientWidth는 패딩을 포함한다. 그걸 "내용 폭"으로 쓰면 패딩이 있는 화면 상태에서
+  //   표가 17mm 넘치는데도 정상으로 보인다(실제로 그렇게 놓쳤다). 패딩을 빼야 한다.
+  const cs = getComputedStyle(sec);
+  const inner = sec.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const tw = tbl.getBoundingClientRect().width;
+  out.push('섹션 내용폭 ' + (inner / MM).toFixed(1) + 'mm (패딩 제외)');
+  out.push('표 실제폭 ' + (tw / MM).toFixed(1) + 'mm');
+  out.push(tw > inner + 0.5
+    ? '>>> 표가 ' + ((tw - inner) / MM).toFixed(1) + 'mm 넘친다 — 오른쪽이 잘린다'
+    : '표가 내용 폭 안에 들어간다');
   const over = new Map();
   for (const c of document.querySelectorAll('td, th')) {
     if (c.scrollWidth > c.clientWidth + 1) {
@@ -175,39 +185,56 @@ window.addEventListener('load', () => {
 });
 </script>`;
 
-const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
-<style>${css}</style>
-<style>/* 인쇄 상태 강제 — screen 렌더로도 인쇄 폭을 재기 위해 */
-body { background: white; margin: 0; }
-.print-root { padding: 0; gap: 0; }
-${printOverrides}
-/* 인쇄 본문 폭(A4 210 - 12*2)을 화면에서 재현 */
-.print-root { width: 186mm; }
-#mm { width: 100mm; height: 1px; position: absolute; }
-#out { font: 12px monospace; white-space: pre; }
-</style></head>
-<body><div id="mm"></div><pre id="out"></pre>
+const body = `<body><div id="mm"></div><pre id="out"></pre>
 <div class="print-root">
 ${section(`${bigDong}동`, bigDongRows)}
 ${section('최악 케이스', worst)}
 </div>${probe}</body></html>`;
 
-const htmlPath = path.join(OUT, 'print-layout.html');
-fs.writeFileSync(htmlPath, html);
+const head = (extra: string) => `<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<style>${css}</style>
+<style>
+#mm { width: 100mm; height: 1px; position: absolute; }
+#out { font: 12px monospace; white-space: pre; }
+${extra}
+</style></head>`;
+
+// 인쇄 상태 — @media print 안의 규칙을 밖으로 꺼내 적용하고, 본문 폭(A4 210 - 12*2)을 재현
+const printHtml = head(`body { background: white; margin: 0; }
+.print-root { padding: 0; gap: 0; width: 186mm; }
+${printOverrides}`) + body;
+
+// 화면 상태 — page.tsx의 CSS를 그대로. 위원이 인쇄 버튼 누르기 전에 보는 화면이다.
+const screenHtml = head('') + body;
+
+const printPath = path.join(OUT, 'print-layout.html');
+const screenPath = path.join(OUT, 'screen-layout.html');
+fs.writeFileSync(printPath, printHtml);
+fs.writeFileSync(screenPath, screenHtml);
 
 // ── 4. 측정값 뽑기
-const dom = execFileSync(CHROME, [
-  '--headless=new', '--disable-gpu', '--virtual-time-budget=5000',
-  '--dump-dom', `file://${htmlPath}`,
-], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-const measured = dom.match(/<pre id="out">([\s\S]*?)<\/pre>/);
-console.log('\n=== 인쇄 상태 실측 ===');
-console.log(measured ? measured[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&') : '(측정 실패)');
+function measure(file: string, label: string) {
+  const dom = execFileSync(CHROME, [
+    '--headless=new', '--disable-gpu', '--virtual-time-budget=5000',
+    '--window-size=1600,2000', '--dump-dom', `file://${file}`,
+  ], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  const hit = dom.match(/<pre id="out">([\s\S]*?)<\/pre>/);
+  console.log(`\n=== ${label} 실측 ===`);
+  console.log(hit ? hit[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&gt;/g, '>').replace(/&lt;/g, '<') : '(측정 실패)');
+}
+measure(printPath, '인쇄 상태');
+measure(screenPath, '화면 상태');
 
-// ── 5. 실제 PDF
+// ── 5. 실제 PDF + 화면 스크린샷
 const pdfPath = path.join(OUT, 'print-layout.pdf');
 execFileSync(CHROME, [
   '--headless=new', '--disable-gpu', '--virtual-time-budget=5000',
-  '--no-pdf-header-footer', `--print-to-pdf=${pdfPath}`, `file://${htmlPath}`,
+  '--no-pdf-header-footer', `--print-to-pdf=${pdfPath}`, `file://${printPath}`,
 ], { stdio: 'ignore' });
-console.log(`\nPDF: ${pdfPath}`);
+const shotPath = path.join(OUT, 'screen-layout.png');
+execFileSync(CHROME, [
+  '--headless=new', '--disable-gpu', '--virtual-time-budget=5000',
+  '--window-size=1600,1400', `--screenshot=${shotPath}`, `file://${screenPath}`,
+], { stdio: 'ignore' });
+console.log(`\nPDF:   ${pdfPath}`);
+console.log(`화면:  ${shotPath}`);

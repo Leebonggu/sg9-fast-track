@@ -274,17 +274,21 @@ export function applyFilter(
   surveyIds: string[],
 ): UnifiedRow[] {
   if (filter === 'all') return rows;
+  // ⚠ "동의했나"는 전부 hasSintoConsent(종이 OR 전자)로 판정한다. r.consent(종이)를 쓰면
+  //   전자로만 낸 80세대가 빠져 현황판 큰 숫자(1,102)와 필터 결과(1,022)가 어긋난다.
+  //   실제로 어긋나 있었다. 종이/전자 내역이 필요한 곳은 현황판 카드뿐이고,
+  //   거기서만 r.consent를 직접 센다(UnifiedSummary의 MergedCard).
   if (filter === 'incomplete')
     return rows.filter(
-      (r) => !r.consent || surveyIds.some((id) => !r.surveys[id]),
+      (r) => !hasSintoConsent(r) || surveyIds.some((id) => !r.surveys[id]),
     );
-  if (filter === 'no-consent') return rows.filter((r) => !r.consent);
-  if (filter === 'consent') return rows.filter((r) => r.consent);
+  if (filter === 'no-consent') return rows.filter((r) => !hasSintoConsent(r));
+  if (filter === 'consent') return rows.filter(hasSintoConsent);
   // 사전동의 완료 세대 중 신분증 미제출 (온라인 업로드 없고 오프라인 수동체크도 없음)
   if (filter === 'no-id')
-    return rows.filter((r) => r.consent && !hasIdSubmitted(r));
+    return rows.filter((r) => hasSintoConsent(r) && !hasIdSubmitted(r));
   // 사전동의 완료 세대 중 신분증 제출 완료 (no-id의 여집합 → 둘의 합 = 동의세대 수)
-  if (filter === 'id') return rows.filter((r) => r.consent && hasIdSubmitted(r));
+  if (filter === 'id') return rows.filter((r) => hasSintoConsent(r) && hasIdSubmitted(r));
   // 종이로는 받았는데 아직 업로드 안 한 세대 = 스캔 작업 큐
   if (filter === 'id-scan-pending')
     return rows.filter((r) => r.idReceived && (r.idUploaded ?? 0) === 0);
@@ -307,9 +311,12 @@ export function applyFilter(
   if (filter === 'econsent-partial') return rows.filter(isPartialConsent);
   // 공유 세대인데 대표 미선임 — 전자동의를 시작조차 못 하는 상태
   if (filter === 'no-representative') return rows.filter(needsRepresentative);
-  // 종이·전자 통틀어 신속통합 동의가 없는 세대
+  // no-consent와 같은 집합이다. 예전엔 no-consent가 종이만 봐서 둘이 달랐고,
+  // 그걸 보완하려고 이 필터를 따로 뒀다. 이제 no-consent도 합산이라 별칭이 됐다.
+  // 지우지 않는 이유: 위원들이 이 id로 인쇄 링크(/unified/print?filter=no-sinto-any)를
+  // 공유해뒀다. UI 버튼만 뺐다.
   if (filter === 'no-sinto-any') return rows.filter((r) => !hasSintoConsent(r));
-  // 종이·전자 통틀어 정비계획입안 동의가 없는 세대
+  // no-plan-consent와 같은 집합 — no-sinto-any와 같은 사연이라 별칭으로 남긴다.
   if (filter === 'no-plan-any') return rows.filter((r) => !hasPlanConsent(r));
   // 소유권 이전 의심 — 원본 소유자명과 전자동의 명부 이름이 실질 불일치. 원본은 자동으로 안 고친다.
   if (filter === 'roster-name-mismatch') return rows.filter((r) => r.rosterNameMismatch);
@@ -320,28 +327,30 @@ export function applyFilter(
   if (filter === 'no-kakao-group') return rows.filter((r) => !r.kakaoGroup);
 
   // 정비계획입안 2종 — 전 세대 대상 오프라인 수령 체크 (사전동의 여부와 무관)
-  if (filter === 'no-plan-consent') return rows.filter((r) => !r.planConsent);
-  if (filter === 'plan-consent') return rows.filter((r) => r.planConsent);
-  if (filter === 'no-privacy') return rows.filter((r) => !r.privacyConsent);
-  if (filter === 'privacy') return rows.filter((r) => r.privacyConsent);
+  // 신통과 같은 이유로 합산 기준이다. 입안은 종이 20 · 전자 384라 종이만 보면
+  // 필터가 현황판(404)의 20분의 1을 내놓는다. 개인정보도 마찬가지.
+  if (filter === 'no-plan-consent') return rows.filter((r) => !hasPlanConsent(r));
+  if (filter === 'plan-consent') return rows.filter(hasPlanConsent);
+  if (filter === 'no-privacy') return rows.filter((r) => !hasPrivacyConsent(r));
+  if (filter === 'privacy') return rows.filter(hasPrivacyConsent);
 
   if (filter === 'joint') return rows.filter(isJoint);
   if (filter === 'joint-incomplete')
-    return rows.filter((r) => isJoint(r) && (!r.consent || surveyIds.some((id) => !r.surveys[id])));
+    return rows.filter((r) => isJoint(r) && (!hasSintoConsent(r) || surveyIds.some((id) => !r.surveys[id])));
   if (filter === 'joint-no-consent')
-    return rows.filter((r) => isJoint(r) && !r.consent);
+    return rows.filter((r) => isJoint(r) && !hasSintoConsent(r));
 
   if (filter === 'rental') return rows.filter(isRental);
   if (filter === 'rental-incomplete')
-    return rows.filter((r) => isRental(r) && (!r.consent || surveyIds.some((id) => !r.surveys[id])));
+    return rows.filter((r) => isRental(r) && (!hasSintoConsent(r) || surveyIds.some((id) => !r.surveys[id])));
   if (filter === 'rental-no-consent')
-    return rows.filter((r) => isRental(r) && !r.consent);
+    return rows.filter((r) => isRental(r) && !hasSintoConsent(r));
 
   if (filter === 'resident') return rows.filter(isResident);
   if (filter === 'resident-incomplete')
-    return rows.filter((r) => isResident(r) && (!r.consent || surveyIds.some((id) => !r.surveys[id])));
+    return rows.filter((r) => isResident(r) && (!hasSintoConsent(r) || surveyIds.some((id) => !r.surveys[id])));
   if (filter === 'resident-no-consent')
-    return rows.filter((r) => isResident(r) && !r.consent);
+    return rows.filter((r) => isResident(r) && !hasSintoConsent(r));
 
   const matchedSurveyId = surveyIds.find((id) => filter === `no-${id}`);
   if (matchedSurveyId) return rows.filter((r) => !r.surveys[matchedSurveyId]);

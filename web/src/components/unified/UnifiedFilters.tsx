@@ -125,11 +125,10 @@ export default function UnifiedFilters({ active, rows, surveyIds, onChange }: Pr
         </>
       ))}
 
-      {/* 전자동의 — 종이와 합산한 기준, 그리고 독려 대상 */}
+      {/* 전자동의 — 독려 대상. "미동의(종이+전자)" 두 버튼은 위 '제출·수령'의
+          동의서 미제출·정비입안 미수령과 같은 집합이 되어 뺐다(필터 id는 인쇄 링크용으로 살아 있다). */}
       {catRow('전자동의', 'text-blue-600', (
         <>
-          {btn('no-sinto-any', '신속통합 미동의(종이+전자)')}
-          {btn('no-plan-any', '정비입안 미동의(종이+전자)')}
           {btn('econsent-partial', '공유자 일부만 서명', 'orange')}
           {btn('no-representative', '공유 대표 미선임', 'orange')}
           {btn('roster-name-mismatch', '소유권 이전 의심', 'red')}

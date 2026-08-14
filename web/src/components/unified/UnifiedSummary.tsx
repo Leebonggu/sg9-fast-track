@@ -79,8 +79,6 @@ export default function UnifiedSummary({ rows, surveyIds }: Props) {
   const noRepCount = rows.filter(needsRepresentative).length;
   const promotion = rows.filter((r) => r.planChoice === '추진위원회 구성').length;
   const direct = rows.filter((r) => r.planChoice === '직접조합설립').length;
-  // 신분증: 사전동의 완료 세대 중 제출한 세대 수 (온라인 업로드 + 종이 수령 — 필터와 동일 기준)
-  const idDoneCount = rows.filter((r) => r.consent && hasIdSubmitted(r)).length;
   // 후원금: 납부 세대 수 및 전체 누적 총액
   const donationDoneCount = rows.filter((r) => (r.donationTotal ?? 0) > 0).length;
   const donationTotalSum = rows.reduce((sum, r) => sum + (r.donationTotal ?? 0), 0);

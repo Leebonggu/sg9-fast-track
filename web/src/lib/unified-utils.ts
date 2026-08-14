@@ -22,12 +22,14 @@ export type ConsentSource = '' | '종이' | '전자' | '종이·전자';
 
 // 전자동의는 '완전'만 동의로 센다. '일부'는 공유자 일부만 서명한 상태라 아직 미완결이고,
 // 대표를 세우거나 나머지를 독려하면 완결되는 세대로 따로 관리한다.
-function electronicDone(state: string | undefined): boolean {
+// export인 이유: 인쇄 명단이 종이 근거와 전자동의를 구분해 O 대신 '전'을 찍으려면
+// 합산된 결과(hasXxx)만으로는 부족하고 전자동의 여부를 따로 물어봐야 한다.
+export function isElectronicDone(state: string | undefined): boolean {
   return state === '완전';
 }
 
 export function consentSource(paper: boolean, electronic: string | undefined): ConsentSource {
-  const e = electronicDone(electronic);
+  const e = isElectronicDone(electronic);
   if (paper && e) return '종이·전자';
   if (paper) return '종이';
   if (e) return '전자';
@@ -36,12 +38,12 @@ export function consentSource(paper: boolean, electronic: string | undefined): C
 
 /** 신속통합 동의 — 종이(v2 수거) OR 전자동의 */
 export function hasSintoConsent(r: UnifiedRow): boolean {
-  return r.consent || electronicDone(r.econsentSinto);
+  return r.consent || isElectronicDone(r.econsentSinto);
 }
 
 /** 정비계획입안 동의 — 오프라인 수령 OR 전자동의 */
 export function hasPlanConsent(r: UnifiedRow): boolean {
-  return Boolean(r.planConsent) || electronicDone(r.econsentPlan);
+  return Boolean(r.planConsent) || isElectronicDone(r.econsentPlan);
 }
 
 /**
@@ -55,8 +57,8 @@ export function hasIdVerified(r: UnifiedRow): boolean {
   return (
     Boolean(r.idReceived) ||
     (r.idUploaded ?? 0) > 0 ||
-    electronicDone(r.econsentSinto) ||
-    electronicDone(r.econsentPlan)
+    isElectronicDone(r.econsentSinto) ||
+    isElectronicDone(r.econsentPlan)
   );
 }
 
@@ -64,8 +66,8 @@ export function hasIdVerified(r: UnifiedRow): boolean {
 export function hasPrivacyConsent(r: UnifiedRow): boolean {
   return (
     Boolean(r.privacyConsent) ||
-    electronicDone(r.econsentSinto) ||
-    electronicDone(r.econsentPlan)
+    isElectronicDone(r.econsentSinto) ||
+    isElectronicDone(r.econsentPlan)
   );
 }
 

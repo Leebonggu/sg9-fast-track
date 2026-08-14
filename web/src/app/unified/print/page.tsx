@@ -309,7 +309,7 @@ function PrintContent() {
         .list-table th,
         .list-table td {
           border: 1.2px solid #cbd5e1;
-          padding: 1.6mm 1.2mm;
+          padding: 1.1mm 1.2mm;
           text-align: center;
         }
         .list-table thead th {
@@ -376,6 +376,14 @@ function PrintContent() {
           text-align: left;
           padding-left: 2.5mm;
           letter-spacing: 0.02em;
+          /* 공유 세대는 "문애숙임, 문기성제이슨, 문인주"처럼 한 덩어리로 흘러서
+             한글 사이 아무 데나 접혔다 — "문기성/제이슨"으로 이름 한가운데가 끊긴다.
+             keep-all이면 쉼표 뒤 공백에서만 접혀 이름은 통째로 남는다.
+             개별 이름은 6자 이하가 99.8%(3169/3175)라 한 줄에 들어간다.
+             overflow-wrap: anywhere는 나머지 0.2%(법인명 "주식회사트리플바운더리" 등
+             11자)를 위한 탈출구다 — 이게 없으면 keep-all이 셀을 넘쳐 옆 칸을 침범한다. */
+          word-break: keep-all;
+          overflow-wrap: anywhere;
         }
         /* 공유 세대의 대표자 — 소유자명 아래 작은 줄로 붙인다.
            미선임은 방문해서 처리해야 할 일이라 색으로 구분한다. */
@@ -430,11 +438,15 @@ function PrintContent() {
         }
         /* 컬럼 폭은 여기(col)에서만 정한다. th/td에 width를 주면 table-layout:fixed가
            첫 행에서만 폭을 읽는데 첫 행이 colSpan 제목 줄이라 통째로 무시된다.
-           186mm 배분 (A4 세로 본문 폭):
-           번호 8 + 동 10 + 호수 11 + 성명 31 + 연령 10 + 연락처 31 + 실거주 15
-           + 상태 12 x 5(신통·설문1·입안·개인정보·신분증) 60 + 방문 10 = 186mm.
+           185mm 배분 (A4 세로 본문 폭 186mm - 여유 1mm):
+           번호 8 + 동 10 + 호수 11 + 성명 36 + 연령 10 + 연락처 35 + 실거주 15
+           + 상태 10 x 5(신통·설문1·입안·개인정보·신분증) 50 + 방문 10 = 185mm.
+           1mm를 비워두는 이유: 합계를 186mm에 꽉 채우면 border-collapse의 바깥 테두리가
+           col 폭 밖으로 나가 표 실제 폭이 186.3mm가 된다(실측). 오른쪽 테두리가 인쇄
+           영역을 넘는다. 1mm를 남기면 fixed 레이아웃이 그 여유로 테두리를 흡수해
+           표 실제 폭이 정확히 186.0mm가 된다 — verify-print로 잰 값이다.
            ⚠ 컬럼이 늘면 이 합계를 다시 맞춰야 한다. 특히 설문 컬럼이 2개 이상이 되면
-           12mm씩 초과하므로 c-name / c-phone에서 그만큼 폭을 떼어와야 한다. */
+           10mm씩 초과하므로 c-name / c-phone에서 그만큼 폭을 떼어와야 한다. */
         .list-table col.c-no {
           width: 8mm; /* 최대 3자리(가장 큰 동이 210세대) */
         }
@@ -445,19 +457,22 @@ function PrintContent() {
           width: 11mm; /* 최대 4자리(1408) */
         }
         .list-table col.c-name {
-          width: 31mm;
+          width: 36mm;
         }
         .list-table col.c-age {
           width: 10mm;
         }
         .list-table col.c-phone {
-          width: 31mm;
+          width: 35mm;
         }
         .list-table col.c-live {
           width: 15mm; /* "실거주" 3글자가 한 줄에 들어가야 한다 */
         }
         .list-table col.c-stat {
-          width: 12mm; /* O/전/X 한 글자 */
+          /* 폭을 정하는 건 본문(O/전/X 한 글자)이 아니라 머리글이다.
+             가장 넓은 "동의서" 3자 x 7.5pt = 7.9mm + 좌우 패딩 1.6mm = 9.5mm.
+             12 → 10mm로 5개에서 10mm를 회수해 성명·연락처에 줬다(실측 확인). */
+          width: 10mm;
         }
         .list-table col.c-visit {
           width: 10mm;

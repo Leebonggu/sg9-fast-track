@@ -10,6 +10,7 @@
     "orphans": "tsx --env-file=.env.local scripts/find-orphan-duplicates.mts",
     "phone-gap": "tsx --env-file=.env.local scripts/check-survey-phone-gap.mts",
     "backup-now": "tsx --env-file=.env.local scripts/backup-now.mts",
+    "verify-print": "tsx --env-file=.env.local scripts/verify-print-layout.mts",
     "test": "tsx tests/donation-parser.test.ts && tsx tests/donation-classify.test.ts && tsx tests/donation-import-file.test.ts && tsx tests/phone-format.test.ts && tsx tests/id-upload-correction-window.test.ts && tsx tests/survey-phone-note.test.ts && tsx tests/unified-table-scroll.test.mts && tsx tests/econsent-parser.test.ts && tsx tests/econsent-diff.test.ts && tsx tests/unified-search.test.ts && tsx tests/unified-print-filter.test.ts"
   },
   "dependencies": {

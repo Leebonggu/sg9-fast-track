@@ -131,7 +131,10 @@ function ResultView({
   }[];
 }) {
   const missingSurveys = surveyIds.filter((id) => !row.surveys[id]);
-  const hasAnyMissing = !row.consent || missingSurveys.length > 0;
+  // 전자동의(서울시 시스템) 완료도 동의다 — 종이만 보면 전자 동의 세대에 "미제출"이 떠서
+  // 이미 동의한 주민에게 다시 내라는 안내가 나간다.
+  const sintoDone = row.consent || row.econsentSinto === '완전';
+  const hasAnyMissing = !sintoDone || missingSurveys.length > 0;
 
   return (
     <div className="min-h-screen bg-[#2F5496] flex items-center justify-center p-4">
@@ -150,7 +153,10 @@ function ResultView({
             <div className="text-xs font-semibold text-gray-500 mb-2">
               신속통합동의서 (사전동의)
             </div>
-            <Chip done={row.consent} label={row.consent ? '제출 완료' : '미제출'} />
+            <Chip
+              done={sintoDone}
+              label={row.consent ? '제출 완료' : sintoDone ? '제출 완료 (전자)' : '미제출'}
+            />
           </div>
 
           <div>
@@ -178,7 +184,7 @@ function ResultView({
         {hasAnyMissing && (
           <p className="mt-5 text-xs text-gray-500 bg-amber-50 rounded-xl p-3 leading-relaxed">
             미제출 항목이 있습니다. 아래 페이지에서 제출을 완료해 주세요.
-            {!row.consent && (
+            {!sintoDone && (
               <span className="block mt-1">· 신속통합동의서는 위원에게 문의</span>
             )}
             {missingSurveys.map((id) => (

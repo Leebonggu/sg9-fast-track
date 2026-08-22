@@ -293,7 +293,16 @@ export default function EditRowModal({ row, onClose, onSaved, onDonationChanged,
 
         <div className="mb-3 rounded border border-blue-200 bg-blue-50 px-2.5 py-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-700">사전동의(신속통합동의서) 수거</span>
+            <span className="text-xs font-semibold text-gray-700">
+              사전동의(신속통합동의서) 수거
+              {/* 토글은 종이 수거 전용 — 전자로 이미 동의한 세대는 배지로 알려 "미동의"로 오독되지 않게 한다 */}
+              {row.econsentSinto === '완전' && (
+                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">전자동의 완료</span>
+              )}
+              {row.econsentSinto === '일부' && (
+                <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">전자 일부서명</span>
+              )}
+            </span>
             <button
               type="button"
               onClick={toggleConsent}

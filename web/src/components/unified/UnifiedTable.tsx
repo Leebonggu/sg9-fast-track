@@ -3,7 +3,7 @@
 import { memo, useEffect, useRef, useState } from 'react';
 import type { UnifiedRow } from '@/lib/unified-types';
 import { adminFetch } from '@/lib/admin-fetch';
-import { AGE_GROUP_OPTIONS } from '@/lib/unified-utils';
+import { AGE_GROUP_OPTIONS, hasSintoConsent, consentSource } from '@/lib/unified-utils';
 import { splitContacts } from '@/lib/phone-format';
 import MemoCell from './MemoCell';
 
@@ -255,8 +255,9 @@ interface RowProps {
 const MobileCard = memo(function MobileCard({
   row, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged, onPlanToggled,
 }: RowProps) {
+  // 동의는 종이·전자 합산 — 전자로만 낸 세대가 빨간 배경(미완료)으로 찍히면 안 된다.
   const doneCount =
-    (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
+    (hasSintoConsent(row) ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
   const totalCount = 1 + surveyIds.length;
   const bg = rowBgClass(doneCount, totalCount) || 'bg-white';
   return (
@@ -305,7 +306,7 @@ const MobileCard = memo(function MobileCard({
         </div>
       )}
       <div className="flex flex-wrap gap-1 mb-2 items-center">
-        <Chip done={row.consent} label="동의서" />
+        <Chip done={hasSintoConsent(row)} label="동의서" />
         <EBadge state={row.econsentSinto} />
         {surveyIds.map((id) => (
           <Chip
@@ -417,8 +418,9 @@ function eAccepted(row: UnifiedRow): boolean {
 const DesktopRow = memo(function DesktopRow({
   row, surveyIds, showDong, onRowClick, onKakaoToggled, onAgeChanged, onPlanToggled,
 }: RowProps) {
+  // 동의는 종이·전자 합산 — 전자로만 낸 세대가 빨간 배경(미완료)으로 찍히면 안 된다.
   const doneCount =
-    (row.consent ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
+    (hasSintoConsent(row) ? 1 : 0) + surveyIds.filter((id) => row.surveys[id]).length;
   const totalCount = 1 + surveyIds.length;
   const bg = rowBgClass(doneCount, totalCount);
   return (
@@ -465,9 +467,13 @@ const DesktopRow = memo(function DesktopRow({
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <ResidencyBadge value={row.residency} />
       </td>
+      {/* 체크는 종이·전자 합산(동의했는가). 경로는 옆 배지(전자)와 툴팁으로 구분하고 저장은 계속 분리 */}
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
-        <span className="inline-flex items-center gap-1">
-          <Check value={row.consent} />
+        <span
+          className="inline-flex items-center gap-1"
+          title={consentSource(row.consent, row.econsentSinto) || '미제출'}
+        >
+          <Check value={hasSintoConsent(row)} />
           <EBadge state={row.econsentSinto} />
         </span>
       </td>

@@ -1,10 +1,15 @@
 /**
- * 역방향 동기화 — 종이 신통동의 세대를 전자업체 벌크등록용 xlsx로 변환.
+ * 역방향 동기화 — 종이 동의 세대를 전자업체 벌크등록용 xlsx로 변환.
  *
- * 실행: npm run econsent-writeback -- <업체_신속통합.xlsx> [출력.xlsx]
+ * 실행: npm run econsent-writeback -- <업체파일.xlsx> [출력.xlsx] [--mode=sinto|plan]
  *      (= npx tsx --env-file=.env.local scripts/make-econsent-writeback.mts ...)
  *
- * 대상: 통합현황에서 종이 신통동의(consent=TRUE) + 신분증 제출(업로드>0 또는 종이수령) 세대.
+ * 모드 (파일 헤더로 자동 감지 — `선택 항목` 컬럼은 정비계획입안 파일에만 있다):
+ *  - sinto: 신속통합기획. 대상 = 종이 신통동의(consent=TRUE) + 신분증 제출.
+ *  - plan:  정비계획입안.  대상 = 종이 입안동의(planConsent=TRUE) + 신분증 제출.
+ *    입안 파일의 `선택 항목`(추진위/직접조합)은 벌크로 입력 불가 — 서면동의 행은 '-'로
+ *    남는다 (2026-08-22 실측: 업체가 8/3 수동 등록한 908-107도 '-' + 자동완비).
+ * 신분증 제출 = 업로드>0 또는 종이수령. (사용자 확정 기준: 신분증까지 제출된 대상만 입력)
  * 동작: 업체에서 내려받은 파일의 사본을 만들어 대상 소유자 행의 `제출상태`만
  *       '서면동의(직접)'으로 바꾼다. 다른 셀·열 구성(recipientSeq 등 숨김 컬럼 포함)은
  *       건드리지 않는다 — 업체 벌크등록은 내려받은 파일 그대로의 열 구성을 요구한다.
@@ -33,8 +38,14 @@ const includeArg = process.argv.find((a) => a.startsWith('--include='));
 const forceInclude = new Set(
   (includeArg?.slice('--include='.length) ?? '').split(',').map((s) => s.trim()).filter(Boolean),
 );
+// --exclude=905-1008,910-605 : 대상 조건을 만족해도 사람이 빼기로 결정한 세대.
+const excludeArg = process.argv.find((a) => a.startsWith('--exclude='));
+const forceExclude = new Set(
+  (excludeArg?.slice('--exclude='.length) ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+);
+const modeArg = process.argv.find((a) => a.startsWith('--mode='))?.slice('--mode='.length);
 if (!vendorPath) {
-  console.error('사용법: npm run econsent-writeback -- <업체_신속통합.xlsx> [출력.xlsx] [--include=동-호,…]');
+  console.error('사용법: npm run econsent-writeback -- <업체파일.xlsx> [출력.xlsx] [--mode=sinto|plan] [--include=동-호,…] [--exclude=동-호,…]');
   process.exit(1);
 }
 const outPath =
@@ -47,7 +58,32 @@ const strip = (s: string) => s.replace(/[A-Z]+$/, '').trim();
 const nameSet = (raw: string) =>
   new Set(raw.split(/[,ㆍ·/、]\s*/).map((s) => s.trim()).filter(Boolean));
 
-// ── 1. 우리 쪽 대상 세대 ──────────────────────────────────────────────────
+// ── 1. 업체 파일 읽기 + 모드 감지 ────────────────────────────────────────
+const wb = XLSX.read(fs.readFileSync(vendorPath), { type: 'buffer' });
+const ws = wb.Sheets[wb.SheetNames[0]];
+const vrows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { raw: false, defval: '' });
+
+// 헤더 행에서 제출상태 컬럼 위치 탐색 + 모드 감지 (선택 항목 컬럼 = 입안 파일)
+const range = XLSX.utils.decode_range(ws['!ref']!);
+let statusCol = -1;
+let hasSelectCol = false;
+for (let c = range.s.c; c <= range.e.c; c++) {
+  const cell = ws[XLSX.utils.encode_cell({ r: range.s.r, c })];
+  const h = cell ? String(cell.v).trim() : '';
+  if (h === '제출상태') statusCol = c;
+  if (h === '선택 항목') hasSelectCol = true;
+}
+if (statusCol < 0) throw new Error('업체 파일에서 제출상태 컬럼을 찾지 못했습니다.');
+const mode = modeArg ?? (hasSelectCol ? 'plan' : 'sinto');
+if (mode !== 'sinto' && mode !== 'plan') throw new Error(`--mode는 sinto|plan: ${mode}`);
+if ((mode === 'plan') !== hasSelectCol) {
+  throw new Error(
+    `모드(${mode})와 파일이 안 맞습니다 — '선택 항목' 컬럼 ${hasSelectCol ? '있음(입안 파일)' : '없음(신통 파일)'}. 파일을 확인하세요.`,
+  );
+}
+console.log(`모드: ${mode === 'plan' ? '정비계획입안' : '신속통합기획'} (헤더 자동 감지)`);
+
+// ── 2. 우리 쪽 대상 세대 ──────────────────────────────────────────────────
 const [{ rows }, uploads] = await Promise.all([getMasterRows(), getAllIdUploads()]);
 const uploadNames = new Map<string, Set<string>>();
 for (const u of uploads) {
@@ -55,23 +91,12 @@ for (const u of uploads) {
   if (!uploadNames.has(k)) uploadNames.set(k, new Set());
   if (u.ownerName) uploadNames.get(k)!.add(u.ownerName.trim());
 }
-const targets = rows.filter(
-  (r) => r.consent && (r.idReceived || uploadNames.has(`${r.dong}-${r.ho}`)),
-);
-
-// ── 2. 업체 파일 ─────────────────────────────────────────────────────────
-const wb = XLSX.read(fs.readFileSync(vendorPath), { type: 'buffer' });
-const ws = wb.Sheets[wb.SheetNames[0]];
-const vrows = XLSX.utils.sheet_to_json<Record<string, string>>(ws, { raw: false, defval: '' });
-
-// 헤더 행에서 제출상태 컬럼 위치 탐색 (열 구성이 바뀌어도 좇아간다)
-const range = XLSX.utils.decode_range(ws['!ref']!);
-let statusCol = -1;
-for (let c = range.s.c; c <= range.e.c; c++) {
-  const cell = ws[XLSX.utils.encode_cell({ r: range.s.r, c })];
-  if (cell && String(cell.v).trim() === '제출상태') { statusCol = c; break; }
-}
-if (statusCol < 0) throw new Error('업체 파일에서 제출상태 컬럼을 찾지 못했습니다.');
+const targets = rows.filter((r) => {
+  const k = `${r.dong}-${r.ho}`;
+  if (forceExclude.has(k)) return false;
+  const consented = mode === 'plan' ? r.planConsent : r.consent;
+  return consented && (r.idReceived || uploadNames.has(k));
+});
 
 interface VRow { name: string; status: string; excelRow: number }
 const vendorByKey = new Map<string, VRow[]>();
@@ -153,15 +178,23 @@ XLSX.writeFile(wb, outPath);
 
 // ── 5. 명단 리포트 (docs/raw — gitignore) ────────────────────────────────
 const today = new Date().toISOString().slice(0, 10);
-const reportPath = path.resolve(import.meta.dirname, `../../docs/raw/${today}_서면동의_역동기화_명단.md`);
+const modeLabel = mode === 'plan' ? '정비계획입안' : '신통';
+const reportPath = path.resolve(
+  import.meta.dirname,
+  `../../docs/raw/${today}_서면동의_역동기화_명단${mode === 'plan' ? '_입안' : ''}.md`,
+);
 const households = new Set(marks.map((m) => m.key));
 const lines = [
-  `# 서면동의(직접) 역동기화 명단 — ${today}`,
+  `# 서면동의(직접) 역동기화 명단 (${modeLabel}) — ${today}`,
   '',
   `- 원본: ${path.basename(vendorPath)}`,
   `- 출력: ${path.basename(outPath)} (제출상태 ${marks.length}행 변경)`,
-  `- 대상 세대(종이 신통동의+신분증): ${targets.length} / 표기 ${households.size}세대 ${marks.length}행 / 업체에 이미 제출 ${alreadyDone}세대 / 보류 ${review.length}건`,
+  `- 대상 세대(종이 ${modeLabel}동의+신분증): ${targets.length} / 표기 ${households.size}세대 ${marks.length}행 / 업체에 이미 제출 ${alreadyDone}세대 / 보류 ${review.length}건`,
+  ...(forceExclude.size ? [`- 사람이 제외 결정한 세대(--exclude): ${[...forceExclude].join(', ')}`] : []),
   '- 업로드 후 업체 등록 화면에서 제출일시 입력 필요. 이 명단은 개인정보 — 커밋 금지.',
+  ...(mode === 'plan'
+    ? ["- 입안 `선택 항목`(추진위/직접조합)은 벌크 입력 불가 — 서면동의 행은 '-'로 남음 (업체 8/3 수동 등록 선례 동일)"]
+    : []),
   '',
   '## 표기한 행',
   ...marks.map((m) => `- ${m.key} ${m.name} (엑셀 ${m.excelRow + 1}행)`),

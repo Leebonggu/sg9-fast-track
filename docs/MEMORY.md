@@ -84,6 +84,20 @@ sync 실행 중 Sheets 읽기 쿼터(429)에 걸려 **통합현황 시트가 통
 - 수정: values.update 1회로 전체 덮어쓰기(호출 8회→1~2회), batchGet으로 46회→1회.
 - 관련: `feedback_live_numbers_from_live_sheet`, `project_unified_sync_overwrite_risk`
 
+### 전자동의 명부 임포트 — 정기 워크플로우 (2026-08-22 확립)
+서울시 전자동의 시스템에서 받은 「전자동의서 대상자관리」 xlsx 2종(신속통합기획/정비계획입안)을
+통합현황에 반영하는 절차. 사용자도 위치를 잊었으므로 여기 고정 기록. (비고: skill 후보)
+1. `npm run verify-econsent -- <신통.xlsx> <입안.xlsx>` — 읽기 전용 파싱 리포트 (업로드 전 필수)
+2. `npm run backup-now` — 통합현황 스프레드시트 백업 (덮어쓰기 전 권장)
+3. 업로드 확정 — 웹 UI `/unified/econsent-import` 또는 `commitEconsentUpload()` 직접 호출
+   (「전자동의원본」 overwrite + 「전자동의변경로그」에 diff 기록. 통합현황엔 아직 반영 안 됨)
+4. `npm run sync-now` — 통합현황 재작성 (전자동의 6컬럼은 매 sync 재계산되는 파생값)
+- 2026-08-22 실행 결과: 3,182행/2,830세대, 신통 완전 609(8/10 474→609)·일부 40, 입안 완전 494.
+  직전 대비 변경 532건 로그 기록. 경고 4건(추진방식 소유자간 불일치 3세대 + 잘린 연락처 1건)은 기지 패턴.
+- **표시 규칙(2026-08-22 변경): "동의했는가" 체크는 어디서나 종이·전자 합산(`hasSintoConsent`)**.
+  /unified 표 체크·행 배경, 모바일 칩, /check-submission 주민 화면까지 합산. 경로 구분은 배지(전자)·툴팁.
+  저장은 계속 분리(종이 컬럼에 전자를 쓰지 않음) — 합산은 읽는 시점에만 한다(unified-utils.ts).
+
 ### 인쇄 명단 레이아웃은 실측 도구로 잰다 (2026-08-14)
 `/unified/print`는 화면으로 판단하면 안 된다. **`npm run verify-print`**
 (`web/scripts/verify-print-layout.mts`, 읽기 전용)가 page.tsx의 `<style jsx global>`을 그대로 뽑아

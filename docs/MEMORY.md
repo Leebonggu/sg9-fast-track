@@ -128,6 +128,13 @@ sync 실행 중 Sheets 읽기 쿼터(429)에 걸려 **통합현황 시트가 통
   (`npm run verify-registration`이 이 방식). 임포트는 같은 시각에 받은 신통·입안 쌍으로.
 - ⚠ xlsx 재인코딩으로 서식은 빠질 수 있음(값·열 구성은 보존) — 업체 업로드가 거부하면 exceljs로 전환 검토.
 
+### 반복 워크플로우는 전부 스킬로 (2026-08-22 사용자 지시)
+"사소한 것들 전부 스킬로 만들어놔라" — 반복 작업을 발견하면 `.claude/skills/<name>/SKILL.md`로
+만든다. 현재 9종: econsent-import/-writeback/-registration-check(전자동의 사이클), safe-sync,
+status-report(공유용 현황 집계, `npm run status-report` — /unified와 동일 판정 함수),
+data-quality(verify-sync·orphans·phone-gap 묶음), print-roster, apps-script-deploy, add-survey.
+스킬 추가 시 CLAUDE.md의 skills 줄도 갱신할 것.
+
 ### 인쇄 명단 레이아웃은 실측 도구로 잰다 (2026-08-14)
 `/unified/print`는 화면으로 판단하면 안 된다. **`npm run verify-print`**
 (`web/scripts/verify-print-layout.mts`, 읽기 전용)가 page.tsx의 `<style jsx global>`을 그대로 뽑아

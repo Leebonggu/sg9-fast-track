@@ -34,6 +34,8 @@ const shortSurveyLabel = (id: string) =>
 const CTRL = 'inline-flex items-center justify-center gap-1 h-7 px-2 rounded-md border text-[11px] font-medium transition-colors';
 const CTRL_ON = 'bg-blue-600 text-white border-blue-600';
 const CTRL_OFF = 'bg-white text-gray-400 border-gray-300 hover:border-blue-400';
+// 종이 기록은 없지만 전자동의로 인정되는 상태 — 채워진 모양이되 종이(진한 파랑)와 구분되는 연한 파랑
+const CTRL_E = 'bg-blue-50 text-blue-700 border-blue-300';
 
 function KakaoToggle({
   dong, ho, value, onChanged,
@@ -72,8 +74,11 @@ function KakaoToggle({
   );
 }
 
-function PlanMiniToggle({ dong, ho, field, label, value, onChanged, title }: {
+// electronic: 전자동의로 이미 인정되는 항목이면 채워진 모양(연한 파랑, `✓라벨(전자)`)으로 보여준다.
+// 클릭은 여전히 종이 기록 전용 — 전자 상태는 명부 파생값이라 여기서 켜고 끌 수 없다.
+function PlanMiniToggle({ dong, ho, field, label, value, electronic, onChanged, title }: {
   dong: string; ho: string; field: 'consent' | 'privacy' | 'id'; label: string; value: boolean;
+  electronic?: boolean;
   onChanged: (dong: string, ho: string, field: 'consent' | 'privacy' | 'id', value: boolean) => void;
   title?: string;
 }) {
@@ -92,10 +97,19 @@ function PlanMiniToggle({ dong, ho, field, label, value, onChanged, title }: {
     } catch { onChanged(dong, ho, field, value); }
     finally { setSaving(false); }
   }
+  const eOnly = !value && Boolean(electronic);
   return (
-    <button type="button" onClick={toggle} title={title ?? `${label} 수령 여부 (클릭해서 토글)`}
-      className={`${CTRL} ${value ? CTRL_ON : CTRL_OFF}`}>
-      {value ? `✓${label}` : label}
+    <button
+      type="button"
+      onClick={toggle}
+      title={
+        eOnly
+          ? `전자동의로 인정됨 — 클릭하면 종이 ${label} 수령을 별도로 기록합니다`
+          : title ?? `${label} 수령 여부 (클릭해서 토글)`
+      }
+      className={`${CTRL} ${value ? CTRL_ON : eOnly ? CTRL_E : CTRL_OFF}`}
+    >
+      {value ? `✓${label}` : eOnly ? `✓${label}(전자)` : label}
     </button>
   );
 }
@@ -112,6 +126,7 @@ function IdReceivedCell({ row, onPlanToggled }: { row: UnifiedRow; onPlanToggled
       dong={row.dong} ho={row.ho} field="id"
       label={`종이(${uploaded})`}
       value={row.idReceived ?? false}
+      electronic={eAccepted(row)}
       onChanged={onPlanToggled}
       title={`종이 수령 여부 (클릭해서 토글) · 괄호 안은 업로드된 신분증 파일 수 ${uploaded}장 (자동 집계, 파기 제외)`}
     />
@@ -326,14 +341,12 @@ const MobileCard = memo(function MobileCard({
       </div>
       <div className="mt-1.5 flex items-center gap-1 flex-wrap">
         <span className="text-[10px] text-gray-400">정비입안 동의서</span>
-        <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
-        <EBadge state={row.econsentPlan} />
+        <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} electronic={row.econsentPlan === '완전'} onChanged={onPlanToggled} />
+        {row.econsentPlan === '일부' && <EBadge state="일부" />}
         <span className="text-[10px] text-gray-400 ml-1">개인정보</span>
-        <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
-        {!row.privacyConsent && eAccepted(row) && <EBadge state="완전" label="전자인정" />}
+        <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} electronic={eAccepted(row)} onChanged={onPlanToggled} />
         <span className="text-[10px] text-gray-400 ml-1">신분증</span>
         <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
-        {!row.idReceived && !(row.idUploaded ?? 0) && eAccepted(row) && <EBadge state="완전" label="전자인정" />}
       </div>
       {(row.representative || (row.coOwnerCount ?? 0) > 1 || row.planChoice) && (
         <div className="mt-1 flex items-center gap-1.5 flex-wrap text-[10px] text-gray-500">
@@ -498,20 +511,18 @@ const DesktopRow = memo(function DesktopRow({
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <span className="inline-flex items-center gap-1">
-          <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} onChanged={onPlanToggled} />
-          <EBadge state={row.econsentPlan} />
+          <PlanMiniToggle dong={row.dong} ho={row.ho} field="consent" label="동의서" value={row.planConsent ?? false} electronic={row.econsentPlan === '완전'} onChanged={onPlanToggled} />
+          {row.econsentPlan === '일부' && <EBadge state="일부" />}
         </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <span className="inline-flex items-center gap-1">
-          <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} onChanged={onPlanToggled} />
-          {!row.privacyConsent && eAccepted(row) && <EBadge state="완전" />}
+          <PlanMiniToggle dong={row.dong} ho={row.ho} field="privacy" label="개인정보" value={row.privacyConsent ?? false} electronic={eAccepted(row)} onChanged={onPlanToggled} />
         </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">
         <span className="inline-flex items-center gap-1">
           <IdReceivedCell row={row} onPlanToggled={onPlanToggled} />
-          {!row.idReceived && !(row.idUploaded ?? 0) && eAccepted(row) && <EBadge state="완전" />}
         </span>
       </td>
       <td className="py-0 px-3 text-center overflow-hidden whitespace-nowrap">

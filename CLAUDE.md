@@ -10,7 +10,7 @@
 - `CLAUDE.md` — 행동 규칙 허브 (무엇을 해도 되고 안 되는지)
 - `.claude/settings.json` — hooks (v2 가드레일 + 세션 종료 피드백 트리거)
 - `memory/` — 누적 학습 (feedback, project, user 타입)
-- `skills/` — 재사용 워크플로우 (`add-survey` 등)
+- `.claude/skills/` — 재사용 워크플로우 (`econsent-import` 정방향 임포트, `econsent-writeback` 서면동의 역동기화, `safe-sync` 백업+동기화, `add-survey` 설문 추가)
 - `docs/superpowers/specs/2026-04-18-harness-compound-framework.md` — 철학/멘탈모델 전체 문서
 
 ## Harness Rules (행동 규칙)

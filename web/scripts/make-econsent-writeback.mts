@@ -26,8 +26,15 @@ import { getMasterRows } from '../src/lib/owner-sheets';
 import { getAllIdUploads } from '../src/lib/id-upload';
 
 const [vendorPath, outArg] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+// --include=916-1506,902-101 : 이름 불일치로 보류된 단독 세대를 사람이 판단한 뒤 강제 포함.
+// 포함하더라도 명단 리포트에 '이름 확인 필요'로 남는다. 공유 세대는 어느 행인지 특정할 수
+// 없어 지원하지 않는다(수동 처리).
+const includeArg = process.argv.find((a) => a.startsWith('--include='));
+const forceInclude = new Set(
+  (includeArg?.slice('--include='.length) ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+);
 if (!vendorPath) {
-  console.error('사용법: npm run econsent-writeback -- <업체_신속통합.xlsx> [출력.xlsx]');
+  console.error('사용법: npm run econsent-writeback -- <업체_신속통합.xlsx> [출력.xlsx] [--include=동-호,…]');
   process.exit(1);
 }
 const outPath =
@@ -84,6 +91,7 @@ vrows.forEach((v, i) => {
 // ── 3. 매칭 → 표기 대상 행 산출 ──────────────────────────────────────────
 const marks: { key: string; name: string; excelRow: number }[] = [];
 const review: string[] = [];
+const nameCheck: string[] = []; // --include로 강제 포함 — 표기는 하되 이름 확인 필요
 let alreadyDone = 0;
 
 for (const t of targets) {
@@ -109,10 +117,13 @@ for (const t of targets) {
     // 동의서 이름이 있는데 등기 소유자와도, 명부 이름과도 안 맞으면 보류
     const consentMismatch =
       t.consentName && ![...consentNames].some((n) => ownerNames.has(n) || n === vn);
-    if (consentMismatch) {
-      review.push(`${k}: 단독 이름 불일치 (명부 ${v.name} / 동의서 ${t.consentName}) — 확인 후 수동 처리`);
+    if (consentMismatch && !forceInclude.has(k)) {
+      review.push(`${k}: 단독 이름 불일치 (명부 ${v.name} / 동의서 ${t.consentName}) — 확인 후 수동 처리 (포함하려면 --include=${k})`);
     } else {
       marked = [v];
+      if (consentMismatch) {
+        nameCheck.push(`${k} ${v.name}: 동의서 이름 '${t.consentName}'과 불일치 — 동의서 원본과 등기 대조 필요`);
+      }
     }
   } else {
     marked = pending.filter((v) => {
@@ -155,6 +166,9 @@ const lines = [
   '## 표기한 행',
   ...marks.map((m) => `- ${m.key} ${m.name} (엑셀 ${m.excelRow + 1}행)`),
   '',
+  '## ⚠ 표기했으나 이름 확인 필요 (--include 강제 포함)',
+  ...(nameCheck.length ? nameCheck.map((r) => `- ${r}`) : ['- 없음']),
+  '',
   '## 보류 (자동 표기 제외 — 수동 확인)',
   ...(review.length ? review.map((r) => `- ${r}`) : ['- 없음']),
   '',
@@ -165,4 +179,5 @@ fs.writeFileSync(reportPath, lines.join('\n'));
 console.log(`출력: ${outPath}`);
 console.log(`제출상태 변경 ${marks.length}행 / ${households.size}세대 (이미 제출 ${alreadyDone}세대 제외, 보류 ${review.length}건)`);
 console.log(`명단: ${reportPath}`);
+nameCheck.forEach((r) => console.log('  ⚠ 이름확인 -', r));
 review.forEach((r) => console.log('  보류 -', r));

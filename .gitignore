@@ -7,7 +7,9 @@ node_modules/
 *.tsbuildinfo
 next-env.d.ts
 
-.claude
+# .claude는 로컬 상태(projects, worktrees, settings.local)라 무시하되, 스킬은 repo 자산으로 커밋
+.claude/*
+!.claude/skills/
 .superpowers
 
 # 소유주 이름·주소·전화번호(PII) 원천/산출 엑셀 — GitHub 커밋 금지

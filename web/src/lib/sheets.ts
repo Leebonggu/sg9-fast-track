@@ -182,7 +182,9 @@ export async function updateConsent(building: string, unit: string, newName: str
   throw new Error('해당 호수 데이터 없음');
 }
 
-export async function deleteConsent(building: string, unit: string) {
+// 삭제 후 이 세대의 동의서수거여부 최종 상태를 반환한다(호출부가 통합현황 즉시 반영에 씀).
+// 마킹 해제된 중복행이 남으면 그 행의 값, 아무 행도 안 남으면 false(미제출).
+export async function deleteConsent(building: string, unit: string): Promise<boolean> {
   const doc = await getDoc();
   const sheet = doc.sheetsByTitle[building];
   if (!sheet) throw new Error('시트 없음: ' + building);
@@ -206,10 +208,11 @@ export async function deleteConsent(building: string, unit: string) {
         if (rUnit === unit && rNote.includes('중복(이전 응답)') && !rNote.includes('삭제')) {
           r.set('비고', rNote.replace('중복(이전 응답)', '').trim());
           await r.save();
-          break;
+          const restored = String(r.get('동의서수거여부') || '');
+          return restored === 'TRUE' || restored === 'true';
         }
       }
-      return;
+      return false;
     }
   }
   throw new Error('해당 호수 데이터 없음');

@@ -312,6 +312,22 @@ export async function updatePhoneOverride(dong: string, ho: string, phone: strin
   await row.save();
 }
 
+// v2 동별 시트에서 사전동의(신속통합동의서) 수거 상태가 바뀐 직후, 다음 정기 동기화를
+// 기다리지 않고 통합현황에도 즉시 반영한다. 통합현황의 이 컬럼은 sync 때 v2에서 다시
+// 계산되므로 여기서 먼저 써 둬도 다음 sync와 충돌하지 않는다(같은 값으로 덮어써질 뿐).
+// 세대를 못 찾아도(상가 등 통합현황 밖 호실) throw하지 않는다 — v2 쓰기는 이미 끝났고
+// 이건 화면 즉시 반영용 보조 동작이라, 실패해도 호출부의 성공 응답을 막을 이유가 없다.
+export async function updateConsentMirror(dong: string, ho: string, value: boolean): Promise<void> {
+  const doc = await getOwnerDoc();
+  const sheet = doc.sheetsByTitle['통합현황'];
+  if (!sheet) return;
+  const rows = await sheet.getRows();
+  const row = rows.find((r) => String(r.get('동')) === dong && String(r.get('호수')) === ho);
+  if (!row) return;
+  row.set('신속통합동의서_제출_완료', value ? 'TRUE' : 'FALSE');
+  await row.save();
+}
+
 // 특정 세대 메모만 업데이트 (통합현황 시트)
 export async function updateMemo(dong: string, ho: string, memo: string): Promise<void> {
   const doc = await getOwnerDoc();

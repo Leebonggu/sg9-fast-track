@@ -121,6 +121,18 @@ console.log('\n[2] 서면동의(직접)도 제출로 인정');
   assertEqual('서면동의(직접) → 완전', r.households.get('902-201')!.sinto, '완전');
 }
 
+console.log('\n[2-1] 위임자의 "미제출(대표자제출)"은 미제출로 취급 (2026-08-27 실측: 완비여부 미비)');
+{
+  const owners: Owner[] = [
+    { seq: '1-1', status: '전자동의', at: '2026-07-20 10:00:00', ownership: '공유', rep: '대표', name: '정석환', dong: '제907동', ho: '제602호', birth: '1970-01-01' },
+    { seq: '1-2', status: '미제출(대표자제출)', ownership: '공유', rep: '위임', name: '권지은', dong: '제907동', ho: '제602호', birth: '1972-01-01' },
+  ];
+  const [s, p] = pair(owners, () => '미제출');
+  const r = parseEconsentFiles(s, p, NOW);
+  assertEqual('대표만 제출 → 일부(완전 아님)', r.households.get('907-602')!.sinto, '일부');
+  assertEqual('알려지지 않은 값 경고 없음', r.warnings.some((w) => w.includes('미제출(대표자제출)')), false);
+}
+
 console.log('\n[3] 상가는 스킵, 무명 행은 세대로 유지');
 {
   const owners: Owner[] = [

@@ -20,7 +20,7 @@ const PLAN_CHOICE_COLUMN = '선택 항목';
 const PHONE_PATTERN = /^\d{2,3}-\d{3,4}-\d{4}$/;
 const BIRTH_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
-const SUBMIT_STATUSES: readonly string[] = ['미제출', '전자동의', '서면동의(직접)', ''];
+const SUBMIT_STATUSES: readonly string[] = ['미제출', '미제출(대표자제출)', '전자동의', '서면동의(직접)', ''];
 const REP_STATUSES: readonly string[] = ['', '대표', '위임', '미선임'];
 const PLAN_CHOICES: readonly string[] = ['', '추진위원회 구성', '직접조합설립'];
 
@@ -85,7 +85,10 @@ function ageGroupOf(birth: string, today: Date): string {
   return `${Math.floor(age / 10) * 10}대`;
 }
 
-const isSubmitted = (status: SubmitStatus) => status !== '' && status !== '미제출';
+// '미제출(대표자제출)'은 완비여부가 '미비'로 남는 실질 미제출이라(econsent-types.ts 주석 참고)
+// '미제출'과 동일하게 취급한다.
+const isSubmitted = (status: SubmitStatus) =>
+  status !== '' && status !== '미제출' && status !== '미제출(대표자제출)';
 
 // 세대 판정: 제출 0명 → 미제출, 전원 → 완전, 그 외(공유자 일부만 서명) → 일부
 function judgeHousehold(total: number, submitted: number): HouseholdConsent {
